@@ -40,4 +40,6 @@ private:
   static std::vector<uint32_t> get_rst_n(Dut *self);
   static std::vector<uint32_t> get_in(Dut *self);
   static std::vector<uint32_t> get_out(Dut *self);
+  static std::vector<uint32_t> get_sample_DOT_c(Dut *self);
+  static std::vector<uint32_t> get_sample_DOT_adder_inst_DOT_d(Dut *self);
 };

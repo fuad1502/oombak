@@ -76,4 +76,6 @@ void Dut::set_signal_mappings(std::map<std::string, Signal> &signalMapping) {
   signalMapping["rst_n"].get = get_rst_n;
   signalMapping["in"].get = get_in;
   signalMapping["out"].get = get_out;
+  signalMapping["sample.c"].get = get_sample_DOT_c;
+  signalMapping["sample.adder_inst.d"].get = get_sample_DOT_adder_inst_DOT_d;
 }

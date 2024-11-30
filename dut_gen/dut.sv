@@ -4,7 +4,7 @@ module dut ();
   logic [5:0] in;
   wire [5:0] out;
 
-  sample sample_inst (
+  sample sample (
       .clk(clk),
       .rst_n(rst_n),
       .in(in),
@@ -42,5 +42,11 @@ module dut ();
   function automatic v_sample_get_out(output bit [5:0] _out);
     _out = out;
   endfunction
-
+  export "DPI-C" function _ombak_get_sample_DOT_c;
+  function automatic _ombak_get_sample_DOT_c(output bit [5:0] _out);
+    _out = sample.c;
+  endfunction
+  export "DPI-C" function _ombak_get_sample_DOT_adder_inst_DOT_d;
+  function automatic _ombak_get_sample_DOT_adder_inst_DOT_d(output bit _out);
+    _out = sample.adder_inst.d; endfunction
 endmodule

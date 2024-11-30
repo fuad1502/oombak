@@ -8,7 +8,7 @@ module sample #(
 );
   wire [DLEN - 1:0] c;
 
-  assign c = in + out;
+  adder adder_inst(.a(in), .b(out), .c(c));
 
   always_ff @(posedge clk) begin : counter
     if (!rst_n) begin
