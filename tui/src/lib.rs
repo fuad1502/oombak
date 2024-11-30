@@ -1,5 +1,8 @@
 use libloading::{Library, Symbol};
-use std::ffi::{c_char, c_int, CString};
+use std::{
+    ffi::{c_char, c_int, CString},
+    ptr::null,
+};
 
 #[derive(Debug)]
 pub struct Error {
@@ -49,16 +52,16 @@ impl Dut {
 
     pub fn get(&self, sig_name: &str) -> Result<Vec<u32>, Error> {
         let c_str = CString::new(sig_name).unwrap();
-        let bytes = vec![0; 4];
-        match self
-            .lib
-            .get(c_str.as_ptr(), bytes.as_ptr(), bytes.len() as u64)?
-        {
-            0 => Ok(bytes),
-            _ => Err(Error {
+        let mut len: u64 = 0;
+        let res = self.lib.get(c_str.as_ptr(), &mut len as *mut u64)?;
+        if res == std::ptr::null() {
+            return Err(Error {
                 _message: "failed to get".to_string(),
-            }),
+            });
         }
+        let vec_size = len as usize / 32 + if len % 32 != 0 { 1 } else { 0 };
+        let res = unsafe { std::slice::from_raw_parts(res, vec_size) };
+        Ok(Vec::from(res))
     }
 }
 
@@ -89,14 +92,9 @@ impl DutLib {
         Ok(unsafe { f(sig_name, bytes, len) })
     }
 
-    fn get(
-        &self,
-        sig_name: *const c_char,
-        bytes: *const u32,
-        len: u64,
-    ) -> Result<c_int, libloading::Error> {
-        let f: Symbol<unsafe extern "C" fn(*const c_char, *const u32, u64) -> c_int> =
+    fn get(&self, sig_name: *const c_char, len: *mut u64) -> Result<*const u32, libloading::Error> {
+        let f: Symbol<unsafe extern "C" fn(*const c_char, *mut u64) -> *mut u32> =
             unsafe { self.lib.get(b"get")? };
-        Ok(unsafe { f(sig_name, bytes, len) })
+        Ok(unsafe { f(sig_name, len) })
     }
 }

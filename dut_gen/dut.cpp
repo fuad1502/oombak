@@ -22,7 +22,7 @@ bool Dut::set(const std::string &sig_name, const std::vector<uint32_t> &bytes) {
   return true;
 }
 
-std::optional<std::vector<uint32_t>> Dut::get(const std::string &sig_name) {
+std::optional<std::pair<std::vector<uint32_t>, uint64_t>> Dut::get(const std::string &sig_name) {
   if (signalMapping.count(sig_name) == 0 ||
       !signalMapping[sig_name].get.has_value()) {
     return nullopt;
