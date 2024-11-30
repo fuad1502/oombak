@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.14)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+project(dut)
+find_package(verilator HINTS ${VERILATOR_ROOT})
+add_library(dut SHARED dut.cpp dut_bind.cpp setters.cpp getters.cpp)
+verilate(dut SOURCES dut.sv VERILATOR_ARGS --timing)

@@ -1,0 +1,16 @@
+#ifndef DUT_BIND_H
+#define DUT_BIND_H
+
+#include <cstdint>
+
+typedef enum {
+  OK = 0,
+  ERR = -1,
+} RESULT;
+
+extern "C" char **query();
+extern "C" RESULT set(char *sig_name, uint32_t *bytes, uint64_t len);
+extern "C" RESULT get(char *sig_name, uint32_t *bytes, uint64_t len);
+extern "C" RESULT run(uint64_t duration, uint64_t *current_time);
+
+#endif // DUT_BIND_H
