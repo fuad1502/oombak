@@ -30,7 +30,8 @@ pair<vector<uint32_t>, uint64_t> Dut::get_sample_DOT_c(Dut *self) {
   self->vDut->_ombak_get_sample_DOT_c(out);
   return {Dut::get_vec_from(out, nBits), nBits};
 }
-pair<vector<uint32_t>, uint64_t> Dut::get_sample_DOT_adder_inst_DOT_d(Dut *self) {
+pair<vector<uint32_t>, uint64_t>
+Dut::get_sample_DOT_adder_inst_DOT_d(Dut *self) {
   svBit out;
   self->vDut->_ombak_get_sample_DOT_adder_inst_DOT_d(&out);
   return {vector<uint32_t>(1, out), 1};
