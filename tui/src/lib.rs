@@ -90,11 +90,11 @@ impl DutLib {
         &self,
         sig_name: *const c_char,
         words: *const u32,
-        len: u64,
+        num_of_words: u64,
     ) -> Result<c_int, libloading::Error> {
         let f: Symbol<unsafe extern "C" fn(*const c_char, *const u32, u64) -> c_int> =
             unsafe { self.lib.get(b"set")? };
-        Ok(unsafe { f(sig_name, words, len) })
+        Ok(unsafe { f(sig_name, words, num_of_words) })
     }
 
     fn get(

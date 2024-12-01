@@ -18,8 +18,7 @@ bool Dut::set(const std::string &sig_name, const std::vector<uint32_t> &words) {
       !signalMapping[sig_name].set.has_value()) {
     return false;
   }
-  signalMapping[sig_name].set.value()(this, words);
-  return true;
+  return signalMapping[sig_name].set.value()(this, words);
 }
 
 std::optional<std::pair<std::vector<uint32_t>, uint64_t>>
@@ -45,11 +44,11 @@ optional<uint64_t> Dut::run(uint64_t duration) {
   return context->time();
 }
 
-vector<uint32_t> Dut::get_words_vec_from(svBitVecVal *out, int nBits) {
+vector<uint32_t> Dut::get_words_vec_from(svBitVecVal *out, int n_bits) {
   vector<uint32_t> res;
-  for (int i = 0; i < nBits;) {
+  for (int i = 0; i < n_bits;) {
     svBitVecVal val;
-    int w = min(32, nBits - i);
+    int w = min(32, n_bits - i);
     svGetPartselBit(&val, out, i, w);
     i += w;
     res.push_back(val);
@@ -57,14 +56,17 @@ vector<uint32_t> Dut::get_words_vec_from(svBitVecVal *out, int nBits) {
   return res;
 }
 
-void Dut::set_from_words_vec(svBitVecVal *in, const vector<uint32_t> &words,
-                             int nBits) {
-  for (int i = 0; i < nBits;) {
+bool Dut::set_from_words_vec(svBitVecVal *in, const vector<uint32_t> &words,
+                             int n_bits) {
+  if (words.size() * 32 < n_bits)
+    return false;
+  for (int i = 0; i < n_bits;) {
     svBitVec32 val = words[i / 32];
-    int w = min(32, nBits - i);
+    int w = min(32, n_bits - i);
     svPutPartselBit(in, val, i, w);
     i += w;
   }
+  return true;
 }
 
 void Dut::set_signal_mappings(std::map<std::string, Signal> &signalMapping) {

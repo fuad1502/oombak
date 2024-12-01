@@ -8,9 +8,9 @@ static uint32_t *g_words;
 
 char **query() { return NULL; }
 
-RESULT set(char *sig_name, uint32_t *words, uint64_t len) {
+RESULT set(char *sig_name, uint32_t *words, uint64_t num_of_words) {
   vector<uint32_t> v_words;
-  for (int i = 0; i < len; i++)
+  for (int i = 0; i < num_of_words; i++)
     v_words.push_back(words[i]);
   if (dut.set(std::string(sig_name), v_words)) {
     return OK;
