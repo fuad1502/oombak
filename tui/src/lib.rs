@@ -50,19 +50,23 @@ impl Dut {
     }
 
     pub fn get(&self, sig_name: &str) -> Result<BitVec<u32>, Error> {
-        let c_str = CString::new(sig_name).unwrap();
-        let mut len: u64 = 0;
-        let res = self.lib.get(c_str.as_ptr(), &mut len as *mut u64)?;
-        if res == std::ptr::null() {
+        let sig_name = CString::new(sig_name).unwrap();
+        let mut n_bits: u64 = 0;
+        let words_ptr = self.lib.get(sig_name.as_ptr(), &mut n_bits as *mut u64)?;
+        if words_ptr == std::ptr::null() {
             return Err(Error {
                 _message: "failed to get".to_string(),
             });
         }
-        let slice_len = len as usize / 32 + if len % 32 != 0 { 1 } else { 0 };
-        let slice = unsafe { std::slice::from_raw_parts(res, slice_len) };
+        Ok(Self::bitvec_from(words_ptr, n_bits as usize))
+    }
+
+    fn bitvec_from(words_ptr: *const u32, n_bits: usize) -> BitVec<u32> {
+        let num_of_words = n_bits / 32 + if n_bits % 32 != 0 { 1 } else { 0 };
+        let slice = unsafe { std::slice::from_raw_parts(words_ptr, num_of_words) };
         let mut bit_vec = BitVec::from_slice(slice);
-        bit_vec.truncate(len as usize);
-        Ok(bit_vec)
+        bit_vec.truncate(n_bits);
+        bit_vec
     }
 }
 
@@ -93,9 +97,13 @@ impl DutLib {
         Ok(unsafe { f(sig_name, words, len) })
     }
 
-    fn get(&self, sig_name: *const c_char, len: *mut u64) -> Result<*const u32, libloading::Error> {
+    fn get(
+        &self,
+        sig_name: *const c_char,
+        n_bits: *mut u64,
+    ) -> Result<*const u32, libloading::Error> {
         let f: Symbol<unsafe extern "C" fn(*const c_char, *mut u64) -> *mut u32> =
             unsafe { self.lib.get(b"get")? };
-        Ok(unsafe { f(sig_name, len) })
+        Ok(unsafe { f(sig_name, n_bits) })
     }
 }

@@ -4,7 +4,7 @@
 using namespace std;
 
 static Dut dut;
-static uint32_t *get_res;
+static uint32_t *g_words;
 
 char **query() { return NULL; }
 
@@ -19,18 +19,18 @@ RESULT set(char *sig_name, uint32_t *words, uint64_t len) {
   }
 }
 
-uint32_t *get(char *sig_name, uint64_t *len) {
+uint32_t *get(char *sig_name, uint64_t *n_bits) {
   auto res = dut.get(std::string(sig_name));
   if (!res.has_value()) {
     return NULL;
   }
   auto words_v = res.value().first;
-  *len = res.value().second;
-  free(get_res);
-  get_res = (uint32_t *)malloc((*len / 32) + (*len % 32 != 0));
+  *n_bits = res.value().second;
+  free(g_words);
+  g_words = (uint32_t *)malloc((*n_bits / 32) + (*n_bits % 32 != 0));
   for (int i = 0; i < words_v.size(); i++)
-    get_res[i] = words_v[i];
-  return get_res;
+    g_words[i] = words_v[i];
+  return g_words;
 }
 
 RESULT run(uint64_t duration, uint64_t *current_time) {
