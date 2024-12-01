@@ -9,7 +9,7 @@ typedef enum {
 } RESULT;
 
 extern "C" char **query();
-extern "C" RESULT set(char *sig_name, uint32_t *bytes, uint64_t len);
+extern "C" RESULT set(char *sig_name, uint32_t *words, uint64_t len);
 extern "C" uint32_t *get(char *sig_name, uint64_t *len);
 extern "C" RESULT run(uint64_t duration, uint64_t *current_time);
 

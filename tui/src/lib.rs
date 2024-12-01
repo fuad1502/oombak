@@ -1,6 +1,6 @@
+use bitvec::vec::BitVec;
 use libloading::{Library, Symbol};
 use std::ffi::{c_char, c_int, CString};
-use bitvec::vec::BitVec;
 
 #[derive(Debug)]
 pub struct Error {
@@ -85,12 +85,12 @@ impl DutLib {
     fn set(
         &self,
         sig_name: *const c_char,
-        bytes: *const u32,
+        words: *const u32,
         len: u64,
     ) -> Result<c_int, libloading::Error> {
         let f: Symbol<unsafe extern "C" fn(*const c_char, *const u32, u64) -> c_int> =
             unsafe { self.lib.get(b"set")? };
-        Ok(unsafe { f(sig_name, bytes, len) })
+        Ok(unsafe { f(sig_name, words, len) })
     }
 
     fn get(&self, sig_name: *const c_char, len: *mut u64) -> Result<*const u32, libloading::Error> {
