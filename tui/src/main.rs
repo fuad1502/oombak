@@ -11,6 +11,8 @@ fn main() {
 
     let dut = Dut::new(&lib_path).unwrap();
 
+    // Query available signals
+    println!("{:?}", dut.query().unwrap());
     // Setup input signals
     dut.set("in", &BitVec::from_slice(&[16])).unwrap();
     dut.set("rst_n", &BitVec::from_slice(&[1])).unwrap();

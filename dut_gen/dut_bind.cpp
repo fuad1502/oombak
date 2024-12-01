@@ -5,8 +5,15 @@ using namespace std;
 
 static Dut dut;
 static uint32_t *g_words;
+extern sig_t signals[];
+extern uint64_t num_of_signals;
+static const char *name_1 = "in";
+static const char *name_2 = "clk";
 
-char **query() { return NULL; }
+sig_t *query(uint64_t *_num_of_signals) {
+  *_num_of_signals = num_of_signals;
+  return signals;
+}
 
 RESULT set(char *sig_name, uint32_t *words, uint64_t num_of_words) {
   vector<uint32_t> v_words;
