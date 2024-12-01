@@ -1,8 +1,6 @@
 use libloading::{Library, Symbol};
-use std::{
-    ffi::{c_char, c_int, CString},
-    ptr::null,
-};
+use std::ffi::{c_char, c_int, CString};
+use bitvec::vec::BitVec;
 
 #[derive(Debug)]
 pub struct Error {
@@ -37,11 +35,12 @@ impl Dut {
         }
     }
 
-    pub fn set(&self, sig_name: &str, bytes: Vec<u32>) -> Result<(), Error> {
+    pub fn set(&self, sig_name: &str, bit_vec: &BitVec<u32>) -> Result<(), Error> {
         let c_str = CString::new(sig_name).unwrap();
+        let words = bit_vec.as_raw_slice();
         match self
             .lib
-            .set(c_str.as_ptr(), bytes.as_ptr(), bytes.len() as u64)?
+            .set(c_str.as_ptr(), words.as_ptr(), words.len() as u64)?
         {
             0 => Ok(()),
             _ => Err(Error {
@@ -50,7 +49,7 @@ impl Dut {
         }
     }
 
-    pub fn get(&self, sig_name: &str) -> Result<Vec<u32>, Error> {
+    pub fn get(&self, sig_name: &str) -> Result<BitVec<u32>, Error> {
         let c_str = CString::new(sig_name).unwrap();
         let mut len: u64 = 0;
         let res = self.lib.get(c_str.as_ptr(), &mut len as *mut u64)?;
@@ -59,9 +58,11 @@ impl Dut {
                 _message: "failed to get".to_string(),
             });
         }
-        let vec_size = len as usize / 32 + if len % 32 != 0 { 1 } else { 0 };
-        let res = unsafe { std::slice::from_raw_parts(res, vec_size) };
-        Ok(Vec::from(res))
+        let slice_len = len as usize / 32 + if len % 32 != 0 { 1 } else { 0 };
+        let slice = unsafe { std::slice::from_raw_parts(res, slice_len) };
+        let mut bit_vec = BitVec::from_slice(slice);
+        bit_vec.truncate(len as usize);
+        Ok(bit_vec)
     }
 }
 

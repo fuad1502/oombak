@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use bitvec::vec::BitVec;
 
 use tui::Dut;
 
@@ -9,16 +10,16 @@ fn main() {
 
     let dut = Dut::new(&lib_path).unwrap();
 
-    dut.set("in", vec![16, 0, 0, 0]).unwrap();
-    dut.set("rst_n", vec![1]).unwrap();
+    dut.set("in", &BitVec::from_slice(&[16])).unwrap();
+    dut.set("rst_n", &BitVec::from_slice(&[1])).unwrap();
     for _i in 1..5 {
-        dut.set("clk", vec![0]).unwrap();
+        dut.set("clk", &BitVec::from_slice(&[0])).unwrap();
         dut.run(1).unwrap();
-        dut.set("clk", vec![1]).unwrap();
+        dut.set("clk", &BitVec::from_slice(&[1])).unwrap();
         dut.run(1).unwrap();
-        println!("in = {:?}", dut.get("in").unwrap());
-        println!("out = {:?}", dut.get("out").unwrap());
-        println!("sample.c = {:?}", dut.get("sample.c").unwrap());
-        println!("sample.adder_inst.d = {:?}", dut.get("sample.adder_inst.d").unwrap());
+        println!("in = {}", dut.get("in").unwrap());
+        println!("out = {}", dut.get("out").unwrap());
+        println!("sample.c = {}", dut.get("sample.c").unwrap());
+        println!("sample.adder_inst.d = {}", dut.get("sample.adder_inst.d").unwrap());
     }
 }
