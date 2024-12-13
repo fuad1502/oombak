@@ -1,0 +1,69 @@
+use libloading::{Library, Symbol};
+use std::ffi::CStr;
+use std::ffi::{c_char, c_int};
+
+use super::Signal;
+use crate::error::OmbakResult;
+
+pub struct DutLib {
+    lib: Library,
+}
+
+impl DutLib {
+    pub fn new(lib_path: &str) -> OmbakResult<Self> {
+        let lib = unsafe { Library::new(lib_path)? };
+        Ok(DutLib { lib })
+    }
+
+    pub fn query(&self, num_of_signals: *mut u64) -> OmbakResult<*const SigT> {
+        let f: Symbol<unsafe extern "C" fn(*mut u64) -> *const SigT> =
+            unsafe { self.lib.get(b"query")? };
+        Ok(unsafe { f(num_of_signals) })
+    }
+
+    pub fn run(&self, duration: u64, current_time_o: *const u64) -> OmbakResult<c_int> {
+        let f: Symbol<unsafe extern "C" fn(u64, *const u64) -> c_int> =
+            unsafe { self.lib.get(b"run")? };
+        Ok(unsafe { f(duration, current_time_o) })
+    }
+
+    pub fn set(
+        &self,
+        sig_name: *const c_char,
+        words: *const u32,
+        num_of_words: u64,
+    ) -> OmbakResult<c_int> {
+        let f: Symbol<unsafe extern "C" fn(*const c_char, *const u32, u64) -> c_int> =
+            unsafe { self.lib.get(b"set")? };
+        Ok(unsafe { f(sig_name, words, num_of_words) })
+    }
+
+    pub fn get(&self, sig_name: *const c_char, n_bits: *mut u64) -> OmbakResult<*const u32> {
+        let f: Symbol<unsafe extern "C" fn(*const c_char, *mut u64) -> *mut u32> =
+            unsafe { self.lib.get(b"get")? };
+        Ok(unsafe { f(sig_name, n_bits) })
+    }
+}
+
+#[repr(C)]
+pub struct SigT {
+    name: *const c_char,
+    width: u64,
+    get: u8,
+    set: u8,
+}
+
+impl From<&SigT> for Signal {
+    fn from(value: &SigT) -> Self {
+        let name =
+            String::from_utf8_lossy((unsafe { CStr::from_ptr(value.name) }).to_bytes()).to_string();
+        let get = value.get == 1;
+        let set = value.set == 1;
+        Signal {
+            name,
+            width: value.width,
+            get,
+            set,
+        }
+    }
+}

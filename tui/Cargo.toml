@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 bitvec = "1.0.1"
 libloading = "0.8.5"
+thiserror = "2.0.6"
