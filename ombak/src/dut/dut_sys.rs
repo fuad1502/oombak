@@ -1,8 +1,6 @@
 use libloading::{Library, Symbol};
-use std::ffi::CStr;
 use std::ffi::{c_char, c_int};
 
-use super::Signal;
 use crate::error::OmbakResult;
 
 pub struct DutLib {
@@ -47,23 +45,8 @@ impl DutLib {
 
 #[repr(C)]
 pub struct SigT {
-    name: *const c_char,
-    width: u64,
-    get: u8,
-    set: u8,
-}
-
-impl From<&SigT> for Signal {
-    fn from(value: &SigT) -> Self {
-        let name =
-            String::from_utf8_lossy((unsafe { CStr::from_ptr(value.name) }).to_bytes()).to_string();
-        let get = value.get == 1;
-        let set = value.set == 1;
-        Signal {
-            _name: name,
-            _width: value.width,
-            _get: get,
-            _set: set,
-        }
-    }
+    pub name: *const c_char,
+    pub width: u64,
+    pub get: u8,
+    pub set: u8,
 }

@@ -1,5 +1,6 @@
 use bitvec::vec::BitVec;
-use std::ffi::CString;
+use dut_sys::SigT;
+use std::ffi::{CStr, CString};
 use thiserror::Error;
 
 use crate::error::OmbakResult;
@@ -86,4 +87,19 @@ pub struct Signal {
     _width: u64,
     _get: bool,
     _set: bool,
+}
+
+impl From<&SigT> for Signal {
+    fn from(value: &SigT) -> Self {
+        let name =
+            String::from_utf8_lossy((unsafe { CStr::from_ptr(value.name) }).to_bytes()).to_string();
+        let get = value.get == 1;
+        let set = value.set == 1;
+        Signal {
+            _name: name,
+            _width: value.width,
+            _get: get,
+            _set: set,
+        }
+    }
 }
