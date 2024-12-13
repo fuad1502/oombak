@@ -37,6 +37,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ombak"
+version = "0.1.0"
+dependencies = [
+ "bitvec",
+ "libloading",
+ "thiserror",
+]
+
+[[package]]
 name = "proc-macro2"
 version = "1.0.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -95,15 +104,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "tui"
-version = "0.1.0"
-dependencies = [
- "bitvec",
- "libloading",
- "thiserror",
 ]
 
 [[package]]
