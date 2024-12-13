@@ -60,10 +60,10 @@ impl From<&SigT> for Signal {
         let get = value.get == 1;
         let set = value.set == 1;
         Signal {
-            name,
-            width: value.width,
-            get,
-            set,
+            _name: name,
+            _width: value.width,
+            _get: get,
+            _set: set,
         }
     }
 }

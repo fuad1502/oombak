@@ -4,7 +4,7 @@ pub type OmbakResult<T> = Result<T, Box<dyn OmbakError>>;
 
 pub trait OmbakError {
     fn kind(&self) -> &ErrorKind;
-    fn inner(&self) -> &Box<dyn std::error::Error>;
+    fn inner(&self) -> &dyn std::error::Error;
 }
 
 impl std::fmt::Display for Box<dyn OmbakError> {
@@ -51,8 +51,8 @@ impl OmbakError for SimpleOmbakError {
         &self.kind
     }
 
-    fn inner(&self) -> &Box<dyn std::error::Error> {
-        &self.inner
+    fn inner(&self) -> &dyn std::error::Error {
+        &*self.inner
     }
 }
 

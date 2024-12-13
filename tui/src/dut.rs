@@ -60,7 +60,7 @@ impl Dut {
         let words_ptr = self
             .lib
             .get(sig_name_cstr.as_ptr(), &mut n_bits as *mut u64)?;
-        if words_ptr == std::ptr::null() {
+        if words_ptr.is_null() {
             return Err(DutError::Get(sig_name.to_string()).into());
         }
         Ok(Self::bitvec_from(words_ptr, n_bits as usize))
@@ -75,15 +75,15 @@ impl Dut {
     }
 
     fn signals_from(sig_t_ptr: *const dut_sys::SigT, num_of_signals: usize) -> Vec<Signal> {
-        let sig_t_slice = unsafe { std::slice::from_raw_parts(sig_t_ptr, num_of_signals as usize) };
-        sig_t_slice.iter().map(|s| Signal::from(s)).collect()
+        let sig_t_slice = unsafe { std::slice::from_raw_parts(sig_t_ptr, num_of_signals) };
+        sig_t_slice.iter().map(Signal::from).collect()
     }
 }
 
 #[derive(Debug)]
 pub struct Signal {
-    name: String,
-    width: u64,
-    get: bool,
-    set: bool,
+    _name: String,
+    _width: u64,
+    _get: bool,
+    _set: bool,
 }
