@@ -1,21 +1,27 @@
+use bitvec::vec::BitVec;
 use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
 
+use crate::utils::bitvec_str;
+
 pub struct Waveform {
-    values: Vec<String>,
+    values: Vec<BitVec>,
     height: u16,
     width: u8,
+    option: bitvec_str::Option,
 }
 
 impl Waveform {
-    pub fn new(values: Vec<String>, height: u16, width: u8) -> Self {
+    pub fn new(values: Vec<BitVec>, height: u16, width: u8, option: bitvec_str::Option) -> Self {
         Self {
             values,
             height,
             width,
+            option,
         }
     }
 
-    fn format(&self, value: &str) -> Vec<char> {
+    fn format(&self, value: &BitVec) -> Vec<char> {
+        let value = bitvec_str::from(value, &self.option);
         let width = self.width as usize;
         let res = if width >= value.len() {
             format!("{:^1$}", value, width)

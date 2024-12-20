@@ -4,5 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+bitvec = "1.0.1"
 crossterm = "0.28.1"
 ratatui = "0.29.0"

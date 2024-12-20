@@ -2,12 +2,15 @@ use std::sync::mpsc::Sender;
 
 use crate::component::Component;
 use crate::render::Message;
+use crate::utils::bitvec_str;
 use crate::widgets::Waveform;
 
 use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::layout::Rect;
 use ratatui::Frame;
+
+use bitvec::vec::BitVec;
 
 pub struct Root {
     message_tx: Sender<Message>,
@@ -35,11 +38,16 @@ impl Root {
 
 impl Component for Root {
     fn render(&mut self, f: &mut Frame, rect: Rect) {
+        let option = bitvec_str::Option {
+            width: 8,
+            ..Default::default()
+        };
         f.render_widget(
             Waveform::new(
-                vec!["fuad ismail".to_string(), "sri umay".to_string()],
+                vec![BitVec::from_slice(&[0xaa]), BitVec::from_slice(&[0xfa])],
                 self.height,
                 self.width,
+                option,
             ),
             rect,
         );
