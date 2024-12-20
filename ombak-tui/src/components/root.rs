@@ -2,23 +2,25 @@ use std::sync::mpsc::Sender;
 
 use crate::component::Component;
 use crate::render::Message;
+use crate::widgets::Waveform;
 
 use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::layout::Rect;
-use ratatui::widgets::Paragraph;
 use ratatui::Frame;
 
 pub struct Root {
     message_tx: Sender<Message>,
-    count: i32,
+    width: u8,
+    height: u16,
 }
 
 impl Root {
     pub fn new(message_tx: Sender<Message>) -> Self {
         Self {
             message_tx,
-            count: 0,
+            width: 3,
+            height: 1,
         }
     }
 
@@ -34,15 +36,17 @@ impl Root {
 impl Component for Root {
     fn render(&mut self, f: &mut Frame, rect: Rect) {
         f.render_widget(
-            Paragraph::new(format!("Hello, world! {}", self.count)),
+            Waveform::new(vec!["fuad ismail".to_string()], self.height, self.width),
             rect,
         );
     }
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) {
         match key_event.code {
-            KeyCode::Up => self.count += 1,
-            KeyCode::Down => self.count -= 1,
+            KeyCode::Up => self.height = u16::saturating_add(self.height, 1),
+            KeyCode::Down => self.height = u16::saturating_sub(self.height, 1),
+            KeyCode::Right => self.width = u8::saturating_add(self.width, 1),
+            KeyCode::Left => self.width = u8::saturating_sub(self.width, 1),
             KeyCode::Char('q') => {
                 self.notify_quit();
                 return;
