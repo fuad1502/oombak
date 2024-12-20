@@ -36,7 +36,11 @@ impl Root {
 impl Component for Root {
     fn render(&mut self, f: &mut Frame, rect: Rect) {
         f.render_widget(
-            Waveform::new(vec!["fuad ismail".to_string()], self.height, self.width),
+            Waveform::new(
+                vec!["fuad ismail".to_string(), "sri umay".to_string()],
+                self.height,
+                self.width,
+            ),
             rect,
         );
     }

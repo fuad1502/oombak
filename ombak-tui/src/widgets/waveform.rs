@@ -35,8 +35,9 @@ impl Widget for Waveform {
     {
         let style = Style::default();
         let height = self.height as usize;
-        let mut lines = vec![String::new(); height * 2 + 1];
-        for value in &self.values {
+        let mut lines = vec![String::new(); 2 * height + 1];
+        for (c, value) in self.values.iter().enumerate() {
+            let is_end_value = c == self.values.len() - 1;
             let word = self.format(value);
             for i in 0..height + 1 {
                 for (j, line) in lines.iter_mut().enumerate() {
@@ -64,7 +65,8 @@ impl Widget for Waveform {
                     }
                 }
             }
-            for i in 0..height + 1 {
+            let tail_length = if is_end_value { height + 1 } else { height };
+            for i in 0..tail_length {
                 for (j, line) in lines.iter_mut().enumerate() {
                     if i == height && j == height {
                         *line += "\u{2573}";
@@ -78,8 +80,9 @@ impl Widget for Waveform {
                 }
             }
         }
-        for i in 0..(self.height * 2 + 1) {
-            buf.set_string(area.x, area.y + i, lines[i as usize].clone(), style);
+        for (i, line) in lines.iter().enumerate() {
+            let i = i as u16;
+            buf.set_string(area.x, area.y + i, line, style);
         }
     }
 }
