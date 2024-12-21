@@ -44,7 +44,11 @@ impl Component for Root {
         };
         f.render_widget(
             Waveform::new(
-                vec![BitVec::from_slice(&[0xaa]), BitVec::from_slice(&[0xfa])],
+                vec![
+                    BitVec::from_slice(&[0xaa]),
+                    BitVec::from_slice(&[0xfa]),
+                    BitVec::from_slice(&[0xfa]),
+                ],
                 self.height,
                 self.width,
                 option,
