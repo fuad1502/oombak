@@ -20,7 +20,7 @@ impl Component for WaveViewer {
                 BitVec::from_slice(&[0xfa]),
             ],
             1,
-            10,
+            1,
             option,
         )
         .block(block);

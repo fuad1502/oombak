@@ -32,13 +32,13 @@ impl<'a> Waveform<'a> {
         let value = bitvec_str::from(value, &self.option);
         let width = self.width as usize;
         let height = self.height as usize;
-        let str_width = (width * count) + (2 * height + 1) * (count - 1);
-        let res = if str_width >= value.len() {
+        let str_width = (width * count) + (2 * height + 1) * count;
+        let res = if str_width - 2 >= value.len() {
             format!("{:^1$}", value, str_width)
         } else {
             let snip_size = usize::saturating_sub(str_width, 3);
             let snip = &value[0..snip_size];
-            format!("{snip}...")
+            format!(" {snip}~ ")
         };
         res.chars().take(str_width).collect()
     }
@@ -60,11 +60,14 @@ impl<'a> Waveform<'a> {
         values.into_iter().zip(counts).collect()
     }
 
-    fn draw_opening(lines: &mut [String], height: usize) {
-        for i in 0..height + 1 {
+    fn draw_opening(lines: &mut [String], word: &[char], height: usize) {
+        let head_length = height + 1;
+        for (i, c) in word.iter().take(head_length).enumerate() {
             for (j, line) in lines.iter_mut().enumerate() {
                 if i == 0 && j == height {
                     *line += "\u{2573}";
+                } else if i > 0 && j == height {
+                    *line += &format!("{}", c);
                 } else if i > 0 && j == height - i {
                     *line += "\u{2571}";
                 } else if i > 0 && j == height + i {
@@ -76,12 +79,20 @@ impl<'a> Waveform<'a> {
         }
     }
 
-    fn draw_tail(lines: &mut [String], height: usize, is_end_value: bool) {
+    fn draw_tail(lines: &mut [String], word: &[char], height: usize, is_end_value: bool) {
+        let head_length = height + 1;
         let tail_length = if is_end_value { height + 1 } else { height };
-        for i in 0..tail_length {
+        for (i, c) in word
+            .iter()
+            .skip(word.len() - head_length)
+            .take(tail_length)
+            .enumerate()
+        {
             for (j, line) in lines.iter_mut().enumerate() {
                 if i == height && j == height {
                     *line += "\u{2573}";
+                } else if i < height && j == height {
+                    *line += &format!("{}", c);
                 } else if i < height && j == i {
                     *line += "\u{2572}";
                 } else if i < height && j == 2 * height - i {
@@ -93,8 +104,10 @@ impl<'a> Waveform<'a> {
         }
     }
 
-    fn draw_body(lines: &mut [String], word: &Vec<char>, height: usize) {
-        for c in word {
+    fn draw_body(lines: &mut [String], word: &[char], height: usize) {
+        let head_length = height + 1;
+        let body_length = word.len() - 2 * head_length;
+        for c in word.iter().skip(head_length).take(body_length) {
             for (j, line) in lines.iter_mut().enumerate() {
                 if j == height {
                     *line += &format!("{}", c);
@@ -127,9 +140,9 @@ impl<'a> Widget for Waveform<'a> {
         for (c, (value, count)) in value_count_pair.iter().enumerate() {
             let is_end_value = c == value_count_pair.len() - 1;
             let word = self.format(value, *count);
-            Self::draw_opening(&mut lines, height);
+            Self::draw_opening(&mut lines, &word, height);
             Self::draw_body(&mut lines, &word, height);
-            Self::draw_tail(&mut lines, height, is_end_value);
+            Self::draw_tail(&mut lines, &word, height, is_end_value);
         }
         self.block.render(area, buf);
         let area = self.block.inner_if_some(area);
