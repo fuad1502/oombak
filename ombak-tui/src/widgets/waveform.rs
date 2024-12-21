@@ -1,22 +1,30 @@
 use bitvec::vec::BitVec;
-use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::Widget};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    prelude::BlockExt,
+    style::Style,
+    widgets::{Block, Widget},
+};
 
 use crate::utils::bitvec_str;
 
-pub struct Waveform {
+pub struct Waveform<'a> {
     values: Vec<BitVec>,
     height: u16,
     width: u8,
     option: bitvec_str::Option,
+    block: Option<Block<'a>>,
 }
 
-impl Waveform {
+impl<'a> Waveform<'a> {
     pub fn new(values: Vec<BitVec>, height: u16, width: u8, option: bitvec_str::Option) -> Self {
         Self {
             values,
             height,
             width,
             option,
+            block: None,
         }
     }
 
@@ -100,9 +108,14 @@ impl Waveform {
             }
         }
     }
+
+    pub fn block(mut self, block: Block<'a>) -> Self {
+        self.block = Some(block);
+        self
+    }
 }
 
-impl Widget for Waveform {
+impl<'a> Widget for Waveform<'a> {
     fn render(self, area: Rect, buf: &mut Buffer)
     where
         Self: Sized,
@@ -118,6 +131,8 @@ impl Widget for Waveform {
             Self::draw_body(&mut lines, &word, height);
             Self::draw_tail(&mut lines, height, is_end_value);
         }
+        self.block.render(area, buf);
+        let area = self.block.inner_if_some(area);
         for (i, line) in lines.iter().enumerate() {
             let i = i as u16;
             buf.set_string(area.x, area.y + i, line, style);

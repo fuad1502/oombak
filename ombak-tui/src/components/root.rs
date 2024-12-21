@@ -2,28 +2,28 @@ use std::sync::mpsc::Sender;
 
 use crate::component::Component;
 use crate::render::Message;
-use crate::utils::bitvec_str;
-use crate::widgets::Waveform;
 
 use crossterm::event::{KeyCode, KeyEvent};
 
-use ratatui::layout::Rect;
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::Frame;
 
-use bitvec::vec::BitVec;
+use super::{SignalsViewer, Toolbar, WaveViewer};
 
 pub struct Root {
     message_tx: Sender<Message>,
-    width: u8,
-    height: u16,
+    toolbar: Toolbar,
+    signals_viewer: SignalsViewer,
+    wave_viewer: WaveViewer,
 }
 
 impl Root {
     pub fn new(message_tx: Sender<Message>) -> Self {
         Self {
             message_tx,
-            width: 3,
-            height: 1,
+            toolbar: Toolbar::default(),
+            wave_viewer: WaveViewer::default(),
+            signals_viewer: SignalsViewer::default(),
         }
     }
 
@@ -38,36 +38,23 @@ impl Root {
 
 impl Component for Root {
     fn render(&mut self, f: &mut Frame, rect: Rect) {
-        let option = bitvec_str::Option {
-            width: 8,
-            ..Default::default()
-        };
-        f.render_widget(
-            Waveform::new(
-                vec![
-                    BitVec::from_slice(&[0xaa]),
-                    BitVec::from_slice(&[0xfa]),
-                    BitVec::from_slice(&[0xfa]),
-                ],
-                self.height,
-                self.width,
-                option,
-            ),
-            rect,
-        );
+        let layout_0 = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(vec![Constraint::Length(3), Constraint::Min(0)])
+            .split(rect);
+        let layout_1 = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(vec![Constraint::Percentage(25), Constraint::Percentage(75)])
+            .split(layout_0[1]);
+        self.toolbar.render(f, layout_0[0]);
+        self.signals_viewer.render(f, layout_1[0]);
+        self.wave_viewer.render(f, layout_1[1]);
     }
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) {
-        match key_event.code {
-            KeyCode::Up => self.height = u16::saturating_add(self.height, 1),
-            KeyCode::Down => self.height = u16::saturating_sub(self.height, 1),
-            KeyCode::Right => self.width = u8::saturating_add(self.width, 1),
-            KeyCode::Left => self.width = u8::saturating_sub(self.width, 1),
-            KeyCode::Char('q') => {
-                self.notify_quit();
-                return;
-            }
-            _ => (),
+        if let KeyCode::Char('q') = key_event.code {
+            self.notify_quit();
+            return;
         }
         self.notify_render();
     }
