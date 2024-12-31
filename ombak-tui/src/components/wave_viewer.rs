@@ -1,6 +1,6 @@
 use ratatui::{
     layout::{Constraint, Direction, Layout},
-    widgets::Block,
+    widgets::{Block, Borders},
 };
 
 use crate::{backend::Wave, component::Component, utils::bitvec_str, widgets::Waveform};
@@ -40,7 +40,7 @@ impl WaveViewer {
 
 impl Component for WaveViewer {
     fn render(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
-        let block = Block::bordered().title("Waveform");
+        let block = Block::new().borders(Borders::TOP);
         let inner = block.inner(rect);
         let layout = Layout::default()
             .direction(Direction::Vertical)

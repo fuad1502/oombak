@@ -37,7 +37,7 @@ impl SignalsViewer {
 
 impl Component for SignalsViewer {
     fn render(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
-        let block = Block::bordered().title("Signals");
+        let block = Block::new().borders(Borders::TOP | Borders::RIGHT);
         let inner = block.inner(rect);
         let layout = Layout::vertical(vec![
             Constraint::Length(2 * self.height + 1);
