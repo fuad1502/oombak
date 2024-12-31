@@ -40,7 +40,7 @@ impl Component for SignalsViewer {
         let block = Block::new().borders(Borders::TOP | Borders::RIGHT);
         let inner = block.inner(rect);
         let layout = Layout::vertical(vec![
-            Constraint::Length(2 * self.height + 1);
+            Constraint::Length(2 * self.height + 2);
             self.waves.len()
         ])
         .split(inner);

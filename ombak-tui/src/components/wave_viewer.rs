@@ -45,7 +45,7 @@ impl Component for WaveViewer {
         let layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![
-                Constraint::Length(2 * self.height + 1);
+                Constraint::Length(2 * self.height + 2);
                 self.waves.len()
             ])
             .split(inner);
@@ -54,8 +54,10 @@ impl Component for WaveViewer {
                 width: wave.width,
                 ..Default::default()
             };
+            let block = Block::new().borders(Borders::BOTTOM);
             let waveform = Waveform::new(&wave.values, self.height, self.zoom, option);
-            f.render_widget(waveform, layout[i]);
+            f.render_widget(waveform, block.inner(layout[i]));
+            f.render_widget(block, layout[i]);
         }
         f.render_widget(block, rect);
     }
