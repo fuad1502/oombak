@@ -1,8 +1,10 @@
 use std::sync::mpsc::Sender;
 
+use crate::backend::Wave;
 use crate::component::Component;
 use crate::render::Message;
 
+use bitvec::vec::BitVec;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
@@ -22,7 +24,7 @@ impl Root {
         Self {
             message_tx,
             toolbar: Toolbar::default(),
-            wave_viewer: WaveViewer::default(),
+            wave_viewer: WaveViewer::default().waves(Self::get_waves()).zoom(10),
             signals_viewer: SignalsViewer::default(),
         }
     }
@@ -33,6 +35,38 @@ impl Root {
 
     fn notify_quit(&self) {
         self.message_tx.send(Message::Quit).unwrap();
+    }
+
+    fn get_waves() -> Vec<Wave> {
+        vec![
+            Wave {
+                signal_name: "sig_1".to_string(),
+                width: 2,
+                values: vec![
+                    BitVec::from_slice(&[0x0]),
+                    BitVec::from_slice(&[0x1]),
+                    BitVec::from_slice(&[0x2]),
+                ],
+            },
+            Wave {
+                signal_name: "sig_2".to_string(),
+                width: 8,
+                values: vec![
+                    BitVec::from_slice(&[0xaa]),
+                    BitVec::from_slice(&[0xfa]),
+                    BitVec::from_slice(&[0xfa]),
+                ],
+            },
+            Wave {
+                signal_name: "sig_3".to_string(),
+                width: 8,
+                values: vec![
+                    BitVec::from_slice(&[0xaa]),
+                    BitVec::from_slice(&[0xaa]),
+                    BitVec::from_slice(&[0xaa]),
+                ],
+            },
+        ]
     }
 }
 

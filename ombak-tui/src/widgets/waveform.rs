@@ -10,7 +10,7 @@ use ratatui::{
 use crate::utils::bitvec_str;
 
 pub struct Waveform<'a> {
-    values: Vec<BitVec>,
+    values: &'a Vec<BitVec>,
     height: u16,
     width: u8,
     option: bitvec_str::Option,
@@ -18,7 +18,12 @@ pub struct Waveform<'a> {
 }
 
 impl<'a> Waveform<'a> {
-    pub fn new(values: Vec<BitVec>, height: u16, width: u8, option: bitvec_str::Option) -> Self {
+    pub fn new(
+        values: &'a Vec<BitVec>,
+        height: u16,
+        width: u8,
+        option: bitvec_str::Option,
+    ) -> Self {
         Self {
             values,
             height,
@@ -128,7 +133,7 @@ impl<'a> Waveform<'a> {
     }
 }
 
-impl<'a> Widget for Waveform<'a> {
+impl Widget for Waveform<'_> {
     fn render(self, area: Rect, buf: &mut Buffer)
     where
         Self: Sized,
@@ -136,7 +141,7 @@ impl<'a> Widget for Waveform<'a> {
         let style = Style::default();
         let height = self.height as usize;
         let mut lines = vec![String::new(); 2 * height + 1];
-        let value_count_pair = Self::compact_vec(&self.values);
+        let value_count_pair = Self::compact_vec(self.values);
         for (c, (value, count)) in value_count_pair.iter().enumerate() {
             let is_end_value = c == value_count_pair.len() - 1;
             let word = self.format(value, *count);
