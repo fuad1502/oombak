@@ -30,8 +30,13 @@ impl SignalsViewer {
         self
     }
 
-    fn format(wave: &Wave) -> String {
-        format!("{} [{}:0]", wave.signal_name, wave.width)
+    fn format(&self, wave: &Wave) -> String {
+        let vertical_alignments =
+            std::iter::repeat_n("\n", self.height as usize).collect::<String>();
+        format!(
+            "{vertical_alignments}{} [{}:0]",
+            wave.signal_name, wave.width
+        )
     }
 }
 
@@ -46,7 +51,7 @@ impl Component for SignalsViewer {
         .split(inner);
         for (i, wave) in self.waves.iter().enumerate() {
             let block = Block::new().borders(Borders::BOTTOM);
-            let text = Self::format(wave);
+            let text = self.format(wave);
             let paragraph = Paragraph::new(text).right_aligned().block(block);
             f.render_widget(paragraph, layout[i]);
         }
