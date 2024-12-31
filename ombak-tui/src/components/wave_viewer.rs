@@ -3,38 +3,27 @@ use ratatui::{
     widgets::{Block, Borders},
 };
 
-use crate::{backend::Wave, component::Component, utils::bitvec_str, widgets::Waveform};
+use crate::{component::Component, widgets::Waveform};
 
+use super::models::SimulationSpec;
+
+#[derive(Default)]
 pub struct WaveViewer {
-    waves: Vec<Wave>,
-    height: u16,
-    zoom: u8,
-}
-
-impl Default for WaveViewer {
-    fn default() -> Self {
-        Self {
-            waves: vec![],
-            height: 1,
-            zoom: 1,
-        }
-    }
+    simulation: SimulationSpec,
 }
 
 impl WaveViewer {
-    pub fn waves(mut self, waves: Vec<Wave>) -> Self {
-        self.waves = waves;
+    pub fn simulation(mut self, simulation: SimulationSpec) -> Self {
+        self.simulation = simulation;
         self
     }
 
-    pub fn height(mut self, height: u16) -> Self {
-        self.height = height;
-        self
-    }
-
-    pub fn zoom(mut self, zoom: u8) -> Self {
-        self.zoom = zoom;
-        self
+    fn get_layout_constraints(&self) -> Vec<Constraint> {
+        self.simulation
+            .wave_specs
+            .iter()
+            .map(|spec| Constraint::Length(spec.height * 2 + 2))
+            .collect()
     }
 }
 
@@ -44,18 +33,11 @@ impl Component for WaveViewer {
         let inner = block.inner(rect);
         let layout = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(vec![
-                Constraint::Length(2 * self.height + 2);
-                self.waves.len()
-            ])
+            .constraints(self.get_layout_constraints())
             .split(inner);
-        for (i, wave) in self.waves.iter().enumerate() {
-            let option = bitvec_str::Option {
-                width: wave.width,
-                ..Default::default()
-            };
+        for (i, wave_spec) in self.simulation.wave_specs.iter().enumerate() {
             let block = Block::new().borders(Borders::BOTTOM);
-            let waveform = Waveform::new(&wave.values, self.height, self.zoom, option);
+            let waveform = Waveform::from(wave_spec).width(self.simulation.zoom);
             f.render_widget(waveform, block.inner(layout[i]));
             f.render_widget(block, layout[i]);
         }

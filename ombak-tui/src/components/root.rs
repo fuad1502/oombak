@@ -3,6 +3,7 @@ use std::sync::mpsc::Sender;
 use crate::backend::Wave;
 use crate::component::Component;
 use crate::render::Message;
+use crate::utils::bitvec_str;
 
 use bitvec::vec::BitVec;
 use crossterm::event::{KeyCode, KeyEvent};
@@ -10,6 +11,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::Frame;
 
+use super::models::{SimulationSpec, WaveSpec};
 use super::{SignalsViewer, Toolbar, WaveViewer};
 
 pub struct Root {
@@ -24,8 +26,8 @@ impl Root {
         Self {
             message_tx,
             toolbar: Toolbar::default(),
-            wave_viewer: WaveViewer::default().waves(Self::get_waves()).zoom(10),
-            signals_viewer: SignalsViewer::default().waves(Self::get_waves()),
+            wave_viewer: WaveViewer::default().simulation(Self::get_waves()),
+            signals_viewer: SignalsViewer::default().simulation(Self::get_waves()),
         }
     }
 
@@ -37,8 +39,8 @@ impl Root {
         self.message_tx.send(Message::Quit).unwrap();
     }
 
-    fn get_waves() -> Vec<Wave> {
-        vec![
+    fn get_waves() -> SimulationSpec {
+        let waves = vec![
             Wave {
                 signal_name: "sig_1".to_string(),
                 width: 2,
@@ -66,7 +68,21 @@ impl Root {
                     BitVec::from_slice(&[0xaa]),
                 ],
             },
-        ]
+        ];
+        let wave_specs = waves
+            .into_iter()
+            .map(|wave| WaveSpec {
+                wave,
+                height: 1,
+                format: bitvec_str::Format::Binary,
+                signed: true,
+            })
+            .collect();
+        SimulationSpec {
+            wave_specs,
+            time_step_ps: 10,
+            zoom: 10,
+        }
     }
 }
 

@@ -7,7 +7,7 @@ use ratatui::{
     widgets::{Block, Widget},
 };
 
-use crate::utils::bitvec_str;
+use crate::{components::models::WaveSpec, utils::bitvec_str};
 
 pub struct Waveform<'a> {
     values: &'a Vec<BitVec>,
@@ -15,6 +15,19 @@ pub struct Waveform<'a> {
     width: u8,
     option: bitvec_str::Option,
     block: Option<Block<'a>>,
+}
+
+impl<'a> From<&'a WaveSpec> for Waveform<'a> {
+    fn from(wave_spec: &'a WaveSpec) -> Self {
+        let option = bitvec_str::Option::from(wave_spec);
+        Self {
+            values: &wave_spec.wave.values,
+            height: wave_spec.height,
+            width: 0,
+            option,
+            block: None,
+        }
+    }
 }
 
 impl<'a> Waveform<'a> {
@@ -31,6 +44,11 @@ impl<'a> Waveform<'a> {
             option,
             block: None,
         }
+    }
+
+    pub fn width(mut self, width: u8) -> Self {
+        self.width = width;
+        self
     }
 
     fn format(&self, value: &BitVec, count: usize) -> Vec<char> {

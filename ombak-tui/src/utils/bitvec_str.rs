@@ -1,11 +1,15 @@
 use bitvec::prelude::BitVec;
 
+use crate::components::models;
+
+#[derive(Clone)]
 pub struct Option {
     pub format: Format,
     pub width: usize,
     pub twos_complement: bool,
 }
 
+#[derive(Copy, Clone)]
 pub enum Format {
     Binary,
 }
@@ -22,6 +26,16 @@ impl Default for Option {
             format: Format::Binary,
             width: 0,
             twos_complement: false,
+        }
+    }
+}
+
+impl From<&models::WaveSpec> for Option {
+    fn from(wave_spec: &models::WaveSpec) -> Self {
+        Self {
+            width: wave_spec.wave.width,
+            format: wave_spec.format,
+            twos_complement: wave_spec.signed,
         }
     }
 }

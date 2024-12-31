@@ -1,4 +1,5 @@
 mod button;
+pub mod models;
 mod root;
 mod signals_viewer;
 mod toolbar;
