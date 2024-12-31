@@ -25,7 +25,7 @@ impl Root {
             message_tx,
             toolbar: Toolbar::default(),
             wave_viewer: WaveViewer::default().waves(Self::get_waves()).zoom(10),
-            signals_viewer: SignalsViewer::default(),
+            signals_viewer: SignalsViewer::default().waves(Self::get_waves()),
         }
     }
 
