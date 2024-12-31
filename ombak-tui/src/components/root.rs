@@ -19,6 +19,7 @@ pub struct Root {
     toolbar: Toolbar,
     signals_viewer: SignalsViewer,
     wave_viewer: WaveViewer,
+    highlight_idx: u16,
 }
 
 impl Root {
@@ -28,6 +29,7 @@ impl Root {
             toolbar: Toolbar::default(),
             wave_viewer: WaveViewer::default().simulation(Self::get_waves()),
             signals_viewer: SignalsViewer::default().simulation(Self::get_waves()),
+            highlight_idx: 0,
         }
     }
 
@@ -96,15 +98,22 @@ impl Component for Root {
             .direction(Direction::Horizontal)
             .constraints(vec![Constraint::Percentage(25), Constraint::Percentage(75)])
             .split(layout_0[1]);
+        self.signals_viewer.set_highlight(self.highlight_idx);
+        self.wave_viewer.set_highlight(self.highlight_idx);
         self.toolbar.render(f, layout_0[0]);
         self.signals_viewer.render(f, layout_1[0]);
         self.wave_viewer.render(f, layout_1[1]);
     }
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) {
-        if let KeyCode::Char('q') = key_event.code {
-            self.notify_quit();
-            return;
+        match key_event.code {
+            KeyCode::Char('q') => {
+                self.notify_quit();
+                return;
+            }
+            KeyCode::Right => self.highlight_idx = u16::saturating_add(self.highlight_idx, 1),
+            KeyCode::Left => self.highlight_idx = u16::saturating_sub(self.highlight_idx, 1),
+            _ => return,
         }
         self.notify_render();
     }

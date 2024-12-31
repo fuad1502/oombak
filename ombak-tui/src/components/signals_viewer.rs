@@ -13,7 +13,7 @@ use super::models::{SimulationSpec, WaveSpec};
 #[derive(Default)]
 pub struct SignalsViewer {
     simulation: SimulationSpec,
-    highlight_idx: usize,
+    highlight_idx: u16,
 }
 
 impl SignalsViewer {
@@ -22,16 +22,26 @@ impl SignalsViewer {
         self
     }
 
+    pub fn set_highlight(&mut self, idx: u16) {
+        self.highlight_idx = idx;
+    }
+
     fn format(&self, wave_spec: &WaveSpec) -> String {
-        let value = &wave_spec.wave.values[self.highlight_idx / (self.simulation.zoom as usize)];
-        let option = bitvec_str::Option::from(wave_spec);
-        let value = utils::bitvec_str::from(value, &option);
         let vertical_alignments =
             std::iter::repeat_n("\n", wave_spec.height as usize).collect::<String>();
         format!(
-            "{vertical_alignments}{} [{}:0] ({value})",
-            wave_spec.wave.signal_name, wave_spec.wave.width
+            "{vertical_alignments}{} [{}:0] ({})",
+            wave_spec.wave.signal_name,
+            wave_spec.wave.width,
+            self.get_highlighted_value(wave_spec)
         )
+    }
+
+    fn get_highlighted_value(&self, wave_spec: &WaveSpec) -> String {
+        let waveform_length = wave_spec.height * 2 + 1 + self.simulation.zoom as u16;
+        let value = &wave_spec.wave.values[self.highlight_idx as usize / waveform_length as usize];
+        let option = bitvec_str::Option::from(wave_spec);
+        utils::bitvec_str::from(value, &option)
     }
 
     fn get_layout_constraints(&self) -> Vec<Constraint> {
