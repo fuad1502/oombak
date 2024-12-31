@@ -37,7 +37,10 @@ impl<'a> Waveform<'a> {
         let value = bitvec_str::from(value, &self.option);
         let width = self.width as usize;
         let height = self.height as usize;
-        let str_width = (width * count) + (2 * height + 1) * count;
+        let body_length = width * count;
+        let head_tail_lengths = 2 * (height + 1) * count;
+        let overlaps = count - 1;
+        let str_width = body_length + head_tail_lengths - overlaps;
         let res = if str_width - 2 >= value.len() {
             format!("{:^1$}", value, str_width)
         } else {
