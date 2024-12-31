@@ -3,7 +3,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     prelude::BlockExt,
-    style::Style,
+    style::{Style, Stylize},
     widgets::{Block, Widget},
 };
 
@@ -13,6 +13,7 @@ pub struct Waveform<'a> {
     values: &'a Vec<BitVec>,
     height: u16,
     width: u8,
+    highlighted_idx: u16,
     option: bitvec_str::Option,
     block: Option<Block<'a>>,
 }
@@ -24,6 +25,7 @@ impl<'a> From<&'a WaveSpec> for Waveform<'a> {
             values: &wave_spec.wave.values,
             height: wave_spec.height,
             width: 0,
+            highlighted_idx: 0,
             option,
             block: None,
         }
@@ -41,6 +43,7 @@ impl<'a> Waveform<'a> {
             values,
             height,
             width,
+            highlighted_idx: 0,
             option,
             block: None,
         }
@@ -48,6 +51,11 @@ impl<'a> Waveform<'a> {
 
     pub fn width(mut self, width: u8) -> Self {
         self.width = width;
+        self
+    }
+
+    pub fn highlight(mut self, idx: u16) -> Self {
+        self.highlighted_idx = idx;
         self
     }
 
@@ -176,5 +184,9 @@ impl Widget for Waveform<'_> {
             let i = i as u16;
             buf.set_string(area.x, area.y + i, line, style);
         }
+        buf.set_style(
+            Rect::new(area.x + self.highlighted_idx, area.y, 1, lines.len() as u16),
+            Style::default().on_red(),
+        );
     }
 }
