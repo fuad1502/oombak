@@ -36,12 +36,11 @@ impl Component for WaveViewer {
     fn render(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
         let layout = Layout::vertical(self.get_layout_constraints()).split(rect);
         for (i, wave_spec) in self.simulation.wave_specs.iter().enumerate() {
-            let block = Block::new().borders(Borders::BOTTOM);
             let waveform = Waveform::from(wave_spec)
                 .width(self.simulation.zoom)
-                .highlight(self.highlight_idx);
-            f.render_widget(waveform, block.inner(layout[i]));
-            f.render_widget(block, layout[i]);
+                .highlight(self.highlight_idx)
+                .block(Block::new().borders(Borders::BOTTOM));
+            f.render_widget(waveform, layout[i]);
         }
     }
 
