@@ -34,9 +34,9 @@ impl Component for CommandLine {
         let paragraph = match self.state {
             State::Active => Paragraph::new(self.text.clone()).black().on_light_yellow(),
             State::NotActive => match self.result_history.last() {
-                Some(Ok(res)) => Paragraph::new(res.clone()).green().on_white(),
-                Some(Err(res)) => Paragraph::new(res.clone()).red().on_white(),
-                _ => Paragraph::new(""),
+                Some(Ok(res)) => Paragraph::new(res.clone()).green(),
+                Some(Err(res)) => Paragraph::new(res.clone()).red(),
+                _ => Paragraph::new("").green(),
             },
         };
         f.render_widget(paragraph, rect);
@@ -46,6 +46,7 @@ impl Component for CommandLine {
         match key_event.code {
             KeyCode::Esc => {
                 self.state = State::NotActive;
+                self.notify_render();
                 false
             }
             KeyCode::Enter => {
@@ -54,7 +55,7 @@ impl Component for CommandLine {
                 self.notify_render();
                 false
             }
-            KeyCode::Char(c) if c == ':' => {
+            KeyCode::Char(':') => {
                 self.state = State::Active;
                 self.text = ":".to_string();
                 self.notify_render();
