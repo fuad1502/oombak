@@ -21,6 +21,11 @@ pub struct Root {
     wave_viewer: WaveViewer,
     command_line: CommandLine,
     highlight_idx: u16,
+    focused_child: Option<Child>,
+}
+
+enum Child {
+    CommandLine,
 }
 
 impl Root {
@@ -31,6 +36,7 @@ impl Root {
             signals_viewer: SignalsViewer::default().simulation(Self::get_waves()),
             command_line: CommandLine::default(),
             highlight_idx: 0,
+            focused_child: Some(Child::CommandLine),
         }
     }
 
@@ -118,6 +124,20 @@ impl Component for Root {
         }
         self.notify_render();
         true
+    }
+
+    fn set_focus(&mut self) {
+        self.focused_child = None;
+    }
+
+    fn get_focused_child(&mut self) -> Option<&mut dyn Component> {
+        if let Some(child) = &self.focused_child {
+            match child {
+                Child::CommandLine => Some(&mut self.command_line),
+            }
+        } else {
+            None
+        }
     }
 }
 

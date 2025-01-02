@@ -11,15 +11,16 @@ pub trait Component {
     fn render(&mut self, f: &mut Frame, rect: Rect);
 
     fn handle_event(&mut self, event: &Event) -> bool {
-        if let Event::Key(key_event) = event {
-            self.handle_key_event(key_event)
+        if !self.propagate_event(event) {
+            self.set_focus();
+            if let Event::Key(key_event) = event {
+                self.handle_key_event(key_event)
+            } else {
+                false
+            }
         } else {
-            false
+            true
         }
-    }
-
-    fn handle_key_event(&mut self, _key_event: &KeyEvent) -> bool {
-        false
     }
 
     fn propagate_event(&mut self, event: &Event) -> bool {
@@ -30,7 +31,9 @@ pub trait Component {
         }
     }
 
-    fn get_focused_child(&mut self) -> Option<Box<&mut dyn Component>> {
-        None
-    }
+    fn handle_key_event(&mut self, key_event: &KeyEvent) -> bool;
+
+    fn set_focus(&mut self);
+
+    fn get_focused_child(&mut self) -> Option<&mut dyn Component>;
 }

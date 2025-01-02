@@ -63,4 +63,14 @@ impl Component for SignalsViewer {
             f.render_widget(paragraph, layout[i]);
         }
     }
+
+    fn handle_key_event(&mut self, _key_event: &crossterm::event::KeyEvent) -> bool {
+        false
+    }
+
+    fn set_focus(&mut self) {}
+
+    fn get_focused_child(&mut self) -> Option<&mut dyn Component> {
+        None
+    }
 }
