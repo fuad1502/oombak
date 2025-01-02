@@ -6,7 +6,7 @@ use crate::render::Message;
 use crate::utils::bitvec_str;
 
 use bitvec::vec::BitVec;
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{Event, KeyCode, KeyEvent};
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::widgets::{Block, Borders};
@@ -36,7 +36,7 @@ impl Root {
             signals_viewer: SignalsViewer::default().simulation(Self::get_waves()),
             command_line: CommandLine::new(message_tx),
             highlight_idx: 0,
-            focused_child: Some(Child::CommandLine),
+            focused_child: None,
         }
     }
 
@@ -120,6 +120,10 @@ impl Component for Root {
             }
             KeyCode::Right => self.highlight_idx = u16::saturating_add(self.highlight_idx, 1),
             KeyCode::Left => self.highlight_idx = u16::saturating_sub(self.highlight_idx, 1),
+            KeyCode::Char(':') => {
+                self.focused_child = Some(Child::CommandLine);
+                self.propagate_event(&Event::Key(*key_event));
+            }
             _ => return false,
         }
         self.notify_render();
