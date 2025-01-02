@@ -1,5 +1,5 @@
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
+    layout::{Constraint, Layout},
     widgets::{Block, Borders},
 };
 
@@ -34,12 +34,7 @@ impl WaveViewer {
 
 impl Component for WaveViewer {
     fn render(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
-        let block = Block::new().borders(Borders::BOTTOM);
-        let inner = block.inner(rect);
-        let layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints(self.get_layout_constraints())
-            .split(inner);
+        let layout = Layout::vertical(self.get_layout_constraints()).split(rect);
         for (i, wave_spec) in self.simulation.wave_specs.iter().enumerate() {
             let block = Block::new().borders(Borders::BOTTOM);
             let waveform = Waveform::from(wave_spec)
@@ -48,7 +43,6 @@ impl Component for WaveViewer {
             f.render_widget(waveform, block.inner(layout[i]));
             f.render_widget(block, layout[i]);
         }
-        f.render_widget(block, rect);
     }
 
     fn handle_key_event(&mut self, _key_event: &crossterm::event::KeyEvent) {

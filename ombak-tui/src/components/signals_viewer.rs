@@ -55,16 +55,13 @@ impl SignalsViewer {
 
 impl Component for SignalsViewer {
     fn render(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
-        let block = Block::new().borders(Borders::BOTTOM | Borders::RIGHT);
-        let inner = block.inner(rect);
-        let layout = Layout::vertical(self.get_layout_constraints()).split(inner);
+        let layout = Layout::vertical(self.get_layout_constraints()).split(rect);
         for (i, wave_spec) in self.simulation.wave_specs.iter().enumerate() {
             let block = Block::new().borders(Borders::BOTTOM);
             let text = self.format(wave_spec);
             let paragraph = Paragraph::new(text).right_aligned().block(block);
             f.render_widget(paragraph, layout[i]);
         }
-        f.render_widget(block, rect);
     }
 
     fn handle_key_event(&mut self, _key_event: &crossterm::event::KeyEvent) {
