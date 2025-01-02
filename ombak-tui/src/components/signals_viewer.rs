@@ -55,7 +55,7 @@ impl SignalsViewer {
 
 impl Component for SignalsViewer {
     fn render(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
-        let block = Block::new().borders(Borders::TOP | Borders::RIGHT);
+        let block = Block::new().borders(Borders::BOTTOM | Borders::RIGHT);
         let inner = block.inner(rect);
         let layout = Layout::vertical(self.get_layout_constraints()).split(inner);
         for (i, wave_spec) in self.simulation.wave_specs.iter().enumerate() {

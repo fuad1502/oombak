@@ -34,7 +34,7 @@ impl WaveViewer {
 
 impl Component for WaveViewer {
     fn render(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
-        let block = Block::new().borders(Borders::TOP);
+        let block = Block::new().borders(Borders::BOTTOM);
         let inner = block.inner(rect);
         let layout = Layout::default()
             .direction(Direction::Vertical)

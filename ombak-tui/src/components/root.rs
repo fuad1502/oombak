@@ -12,13 +12,13 @@ use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::Frame;
 
 use super::models::{SimulationSpec, WaveSpec};
-use super::{SignalsViewer, Toolbar, WaveViewer};
+use super::{CommandLine, SignalsViewer, WaveViewer};
 
 pub struct Root {
     message_tx: Sender<Message>,
-    toolbar: Toolbar,
     signals_viewer: SignalsViewer,
     wave_viewer: WaveViewer,
+    command_line: CommandLine,
     highlight_idx: u16,
 }
 
@@ -26,9 +26,9 @@ impl Root {
     pub fn new(message_tx: Sender<Message>) -> Self {
         Self {
             message_tx,
-            toolbar: Toolbar::default(),
             wave_viewer: WaveViewer::default().simulation(Self::get_waves()),
             signals_viewer: SignalsViewer::default().simulation(Self::get_waves()),
+            command_line: CommandLine::default(),
             highlight_idx: 0,
         }
     }
@@ -92,17 +92,17 @@ impl Component for Root {
     fn render(&mut self, f: &mut Frame, rect: Rect) {
         let layout_0 = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(vec![Constraint::Length(3), Constraint::Min(0)])
+            .constraints(vec![Constraint::Min(0), Constraint::Length(1)])
             .split(rect);
         let layout_1 = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(vec![Constraint::Percentage(25), Constraint::Percentage(75)])
-            .split(layout_0[1]);
+            .split(layout_0[0]);
         self.signals_viewer.set_highlight(self.highlight_idx);
         self.wave_viewer.set_highlight(self.highlight_idx);
-        self.toolbar.render(f, layout_0[0]);
         self.signals_viewer.render(f, layout_1[0]);
         self.wave_viewer.render(f, layout_1[1]);
+        self.command_line.render(f, layout_0[1]);
     }
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) {
