@@ -31,10 +31,10 @@ enum Child {
 impl Root {
     pub fn new(message_tx: Sender<Message>) -> Self {
         Self {
-            message_tx,
+            message_tx: message_tx.clone(),
             wave_viewer: WaveViewer::default().simulation(Self::get_waves()),
             signals_viewer: SignalsViewer::default().simulation(Self::get_waves()),
-            command_line: CommandLine::default(),
+            command_line: CommandLine::new(message_tx),
             highlight_idx: 0,
             focused_child: Some(Child::CommandLine),
         }
