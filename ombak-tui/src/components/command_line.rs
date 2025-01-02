@@ -10,6 +10,4 @@ impl Component for CommandLine {
         let paragraph = Paragraph::new(":cmd line");
         f.render_widget(paragraph, rect);
     }
-
-    fn handle_key_event(&mut self, _key_event: &crossterm::event::KeyEvent) {}
 }

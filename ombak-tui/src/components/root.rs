@@ -106,17 +106,18 @@ impl Component for Root {
         self.render_command_line(f, main_layout_v[1]);
     }
 
-    fn handle_key_event(&mut self, key_event: &KeyEvent) {
+    fn handle_key_event(&mut self, key_event: &KeyEvent) -> bool {
         match key_event.code {
             KeyCode::Char('q') => {
                 self.notify_quit();
-                return;
+                return true;
             }
             KeyCode::Right => self.highlight_idx = u16::saturating_add(self.highlight_idx, 1),
             KeyCode::Left => self.highlight_idx = u16::saturating_sub(self.highlight_idx, 1),
-            _ => return,
+            _ => return false,
         }
         self.notify_render();
+        true
     }
 }
 

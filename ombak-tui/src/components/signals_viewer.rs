@@ -63,8 +63,4 @@ impl Component for SignalsViewer {
             f.render_widget(paragraph, layout[i]);
         }
     }
-
-    fn handle_key_event(&mut self, _key_event: &crossterm::event::KeyEvent) {
-        todo!()
-    }
 }
