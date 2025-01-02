@@ -47,32 +47,28 @@ impl Component for CommandLine {
             KeyCode::Esc => {
                 self.state = State::NotActive;
                 self.notify_render();
-                false
+                return false;
             }
             KeyCode::Enter => {
                 self.state = State::NotActive;
                 self.execute_command();
                 self.notify_render();
-                false
+                return false;
             }
             KeyCode::Char(':') => {
                 self.state = State::Active;
                 self.text = ":".to_string();
-                self.notify_render();
-                true
             }
             KeyCode::Char(c) if self.state == State::Active => {
                 self.text += &format!("{c}");
-                self.notify_render();
-                true
             }
             KeyCode::Backspace if self.state == State::Active && self.text.len() > 1 => {
                 self.text.pop();
-                self.notify_render();
-                true
             }
-            _ => true,
-        }
+            _ => (),
+        };
+        self.notify_render();
+        true
     }
 
     fn set_focus(&mut self) {}
