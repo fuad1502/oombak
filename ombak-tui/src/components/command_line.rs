@@ -34,9 +34,9 @@ impl Component for CommandLine {
         let paragraph = match self.state {
             State::Active => Paragraph::new(self.text.clone()).black().on_light_yellow(),
             State::NotActive => match self.result_history.last() {
-                Some(Ok(res)) => Paragraph::new(res.clone()).green(),
-                Some(Err(res)) => Paragraph::new(res.clone()).red(),
-                _ => Paragraph::new("").green(),
+                Some(Ok(res)) => Paragraph::new(res.clone()).green().on_black(),
+                Some(Err(res)) => Paragraph::new(res.clone()).red().on_black(),
+                _ => Paragraph::new("").on_black(),
             },
         };
         f.render_widget(paragraph, rect);

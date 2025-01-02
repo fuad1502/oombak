@@ -147,12 +147,11 @@ impl Component for Root {
 
 impl Root {
     fn render_signals_viewer(&mut self, f: &mut Frame, rect: Rect) {
-        let block = Block::new().borders(Borders::BOTTOM);
-        self.signals_viewer.render_with_block(f, rect, block);
+        self.signals_viewer.render(f, rect);
     }
 
     fn render_wave_viewer(&mut self, f: &mut Frame, rect: Rect) {
-        let block = Block::new().borders(Borders::BOTTOM | Borders::LEFT);
+        let block = Block::new().borders(Borders::LEFT);
         self.wave_viewer.render_with_block(f, rect, block);
     }
 
