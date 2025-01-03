@@ -14,7 +14,7 @@ pub struct Simulator {
 }
 
 pub trait Listener {
-    fn on_receive_message(&mut self, message: Message);
+    fn on_receive_message(&mut self, message: &Message);
 }
 
 pub enum Request {
@@ -23,7 +23,6 @@ pub enum Request {
     Terminate,
 }
 
-#[derive(Clone)]
 pub enum Message {
     RunResult(Result<(), String>),
     LoadResult(Result<(), String>),
@@ -96,7 +95,7 @@ impl RequestServer {
 
     fn notify_listeners(&self, message: Message) {
         for listener in self.listeners.lock().unwrap().iter() {
-            listener.lock().unwrap().on_receive_message(message.clone());
+            listener.lock().unwrap().on_receive_message(&message);
         }
     }
 }
