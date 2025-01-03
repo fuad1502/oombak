@@ -33,7 +33,7 @@ impl WaveViewer {
 }
 
 impl Component for WaveViewer {
-    fn render(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
+    fn render(&self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
         let layout = Layout::vertical(self.get_layout_constraints()).split(rect);
         for (i, wave_spec) in self.simulation.wave_specs.iter().enumerate() {
             let waveform = Waveform::from(wave_spec)

@@ -39,7 +39,7 @@ impl CommandLine {
 }
 
 impl Component for CommandLine {
-    fn render(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
+    fn render(&self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
         let paragraph = match self.state {
             State::Active => Paragraph::new(self.text.clone()).black().on_light_yellow(),
             State::NotActive => match self.result_history.last() {

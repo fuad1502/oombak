@@ -97,7 +97,7 @@ impl Root {
 }
 
 impl Component for Root {
-    fn render(&mut self, f: &mut Frame, rect: Rect) {
+    fn render(&self, f: &mut Frame, rect: Rect) {
         let main_layout_v = Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![Constraint::Min(0), Constraint::Length(1)])
@@ -106,8 +106,6 @@ impl Component for Root {
             .direction(Direction::Horizontal)
             .constraints(vec![Constraint::Percentage(25), Constraint::Percentage(75)])
             .split(main_layout_v[0]);
-        self.signals_viewer.set_highlight(self.highlight_idx);
-        self.wave_viewer.set_highlight(self.highlight_idx);
         self.render_signals_viewer(f, sub_layout_h[0]);
         self.render_wave_viewer(f, sub_layout_h[1]);
         self.render_command_line(f, main_layout_v[1]);
@@ -119,8 +117,14 @@ impl Component for Root {
                 self.notify_quit();
                 return true;
             }
-            KeyCode::Right => self.highlight_idx = u16::saturating_add(self.highlight_idx, 1),
-            KeyCode::Left => self.highlight_idx = u16::saturating_sub(self.highlight_idx, 1),
+            KeyCode::Right => {
+                self.highlight_idx = u16::saturating_add(self.highlight_idx, 1);
+                self.set_highlight();
+            }
+            KeyCode::Left => {
+                self.highlight_idx = u16::saturating_sub(self.highlight_idx, 1);
+                self.set_highlight();
+            }
             KeyCode::Char(':') => {
                 self.focused_child = Some(Child::CommandLine);
                 self.propagate_event(&Event::Key(*key_event));
@@ -151,16 +155,21 @@ impl Component for Root {
 }
 
 impl Root {
-    fn render_signals_viewer(&mut self, f: &mut Frame, rect: Rect) {
+    fn set_highlight(&mut self) {
+        self.signals_viewer.set_highlight(self.highlight_idx);
+        self.wave_viewer.set_highlight(self.highlight_idx);
+    }
+
+    fn render_signals_viewer(&self, f: &mut Frame, rect: Rect) {
         self.signals_viewer.render(f, rect);
     }
 
-    fn render_wave_viewer(&mut self, f: &mut Frame, rect: Rect) {
+    fn render_wave_viewer(&self, f: &mut Frame, rect: Rect) {
         let block = Block::new().borders(Borders::LEFT);
         self.wave_viewer.render_with_block(f, rect, block);
     }
 
-    fn render_command_line(&mut self, f: &mut Frame, rect: Rect) {
-        self.command_line.write().unwrap().render(f, rect);
+    fn render_command_line(&self, f: &mut Frame, rect: Rect) {
+        self.command_line.read().unwrap().render(f, rect);
     }
 }
