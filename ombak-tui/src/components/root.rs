@@ -1,6 +1,6 @@
 use std::sync::mpsc::Sender;
+use std::sync::{Arc, Mutex};
 
-use crate::backend::simulator::Listener;
 use crate::backend::Wave;
 use crate::component::Component;
 use crate::render::Message;
@@ -20,7 +20,7 @@ pub struct Root {
     message_tx: Sender<Message>,
     signals_viewer: SignalsViewer,
     wave_viewer: WaveViewer,
-    command_line: CommandLine,
+    command_line: Arc<Mutex<CommandLine>>,
     highlight_idx: u16,
     focused_child: Option<Child>,
 }
@@ -30,12 +30,12 @@ enum Child {
 }
 
 impl Root {
-    pub fn new(message_tx: Sender<Message>) -> Self {
+    pub fn new(message_tx: Sender<Message>, command_line: Arc<Mutex<CommandLine>>) -> Self {
         Self {
             message_tx: message_tx.clone(),
             wave_viewer: WaveViewer::default().simulation(Self::get_waves()),
             signals_viewer: SignalsViewer::default().simulation(Self::get_waves()),
-            command_line: CommandLine::new(message_tx),
+            command_line,
             highlight_idx: 0,
             focused_child: None,
         }
@@ -135,14 +135,18 @@ impl Component for Root {
         self.focused_child = None;
     }
 
-    fn get_focused_child(&mut self) -> Option<&mut dyn Component> {
+    fn propagate_event(&mut self, event: &Event) -> bool {
         if let Some(child) = &self.focused_child {
             match child {
-                Child::CommandLine => Some(&mut self.command_line),
+                Child::CommandLine => self.command_line.lock().unwrap().handle_event(event),
             }
         } else {
-            None
+            false
         }
+    }
+
+    fn get_focused_child(&mut self) -> Option<&mut dyn Component> {
+        None
     }
 }
 
@@ -157,11 +161,6 @@ impl Root {
     }
 
     fn render_command_line(&mut self, f: &mut Frame, rect: Rect) {
-        self.command_line.render(f, rect);
-    }
-}
-
-impl Listener for Root {
-    fn on_receive_message(&mut self, _message: crate::backend::simulator::Message) {
+        self.command_line.lock().unwrap().render(f, rect);
     }
 }

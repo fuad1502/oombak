@@ -1,5 +1,6 @@
 use bitvec::vec::BitVec;
 
+pub mod interpreter;
 pub mod simulator;
 
 #[derive(Clone)]

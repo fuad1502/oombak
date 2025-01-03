@@ -3,10 +3,18 @@ use std::sync::mpsc::Sender;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{style::Stylize, widgets::Paragraph};
 
-use crate::{component::Component, render::Message};
+use crate::{
+    backend::{
+        interpreter,
+        simulator::{self, Request},
+    },
+    component::Component,
+    render::Message,
+};
 
 pub struct CommandLine {
     message_tx: Sender<Message>,
+    request_tx: Sender<Request>,
     text: String,
     result_history: Vec<Result<String, String>>,
     state: State,
@@ -19,9 +27,10 @@ enum State {
 }
 
 impl CommandLine {
-    pub fn new(message_tx: Sender<Message>) -> Self {
+    pub fn new(message_tx: Sender<Message>, request_tx: Sender<Request>) -> Self {
         Self {
             message_tx,
+            request_tx,
             text: "".to_string(),
             result_history: vec![],
             state: State::NotActive,
@@ -80,11 +89,37 @@ impl Component for CommandLine {
 
 impl CommandLine {
     fn execute_command(&mut self) {
-        self.result_history
-            .push(Ok(format!("executed: {}", &self.text[1..])));
+        let command_string = &self.text[1..];
+        match interpreter::interpret(command_string) {
+            Ok(command) => {
+                match command {
+                    interpreter::Command::Run(x) => self.request_tx.send(Request::Run(x)).unwrap(),
+                    interpreter::Command::Load(x) => {
+                        self.request_tx.send(Request::Load(x)).unwrap()
+                    }
+                    interpreter::Command::Noop => return,
+                }
+                self.result_history
+                    .push(Ok(format!("executed: {command_string}")));
+            }
+            Err(message) => self.result_history.push(Err(message)),
+        }
     }
 
     fn notify_render(&self) {
         self.message_tx.send(Message::Render).unwrap();
+    }
+}
+
+impl simulator::Listener for CommandLine {
+    fn on_receive_message(&mut self, message: simulator::Message) {
+        let result = match message {
+            simulator::Message::RunResult(Ok(_)) => Ok("run: success".to_string()),
+            simulator::Message::RunResult(Err(e)) => Err(e),
+            simulator::Message::LoadResult(Ok(_)) => Ok("load: success".to_string()),
+            simulator::Message::LoadResult(Err(e)) => Err(e),
+        };
+        self.result_history.push(result);
+        self.notify_render();
     }
 }
