@@ -1,5 +1,6 @@
 use std::sync::mpsc::Sender;
 
+use crate::backend::simulator::Listener;
 use crate::backend::Wave;
 use crate::component::Component;
 use crate::render::Message;
@@ -157,5 +158,10 @@ impl Root {
 
     fn render_command_line(&mut self, f: &mut Frame, rect: Rect) {
         self.command_line.render(f, rect);
+    }
+}
+
+impl Listener for Root {
+    fn on_receive_message(&mut self, _message: crate::backend::simulator::Message) {
     }
 }

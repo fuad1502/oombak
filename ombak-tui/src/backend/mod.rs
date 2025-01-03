@@ -1,5 +1,7 @@
 use bitvec::vec::BitVec;
 
+pub mod simulator;
+
 #[derive(Clone)]
 pub struct Wave {
     pub signal_name: String,
