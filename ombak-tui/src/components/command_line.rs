@@ -93,10 +93,8 @@ impl CommandLine {
         match interpreter::interpret(command_string) {
             Ok(command) => {
                 match command {
-                    interpreter::Command::Run(x) => self.request_tx.send(Request::Run(x)).unwrap(),
-                    interpreter::Command::Load(x) => {
-                        self.request_tx.send(Request::Load(x)).unwrap()
-                    }
+                    interpreter::Command::Run(x) => self.request(Request::Run(x)),
+                    interpreter::Command::Load(x) => self.request(Request::Load(x)),
                     interpreter::Command::Noop => return,
                 }
                 self.result_history
@@ -104,6 +102,10 @@ impl CommandLine {
             }
             Err(message) => self.result_history.push(Err(message)),
         }
+    }
+
+    fn request(&self, request: Request) {
+        self.request_tx.send(request).unwrap();
     }
 
     fn notify_render(&self) {
