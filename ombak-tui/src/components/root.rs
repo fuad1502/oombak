@@ -1,5 +1,5 @@
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, RwLock};
 
 use crate::backend::Wave;
 use crate::component::Component;
@@ -20,7 +20,7 @@ pub struct Root {
     message_tx: Sender<Message>,
     signals_viewer: SignalsViewer,
     wave_viewer: WaveViewer,
-    command_line: Arc<Mutex<CommandLine>>,
+    command_line: Arc<RwLock<CommandLine>>,
     highlight_idx: u16,
     focused_child: Option<Child>,
 }
@@ -30,7 +30,7 @@ enum Child {
 }
 
 impl Root {
-    pub fn new(message_tx: Sender<Message>, command_line: Arc<Mutex<CommandLine>>) -> Self {
+    pub fn new(message_tx: Sender<Message>, command_line: Arc<RwLock<CommandLine>>) -> Self {
         Self {
             message_tx: message_tx.clone(),
             wave_viewer: WaveViewer::default().simulation(Self::get_waves()),
@@ -138,7 +138,7 @@ impl Component for Root {
     fn propagate_event(&mut self, event: &Event) -> bool {
         if let Some(child) = &self.focused_child {
             match child {
-                Child::CommandLine => self.command_line.lock().unwrap().handle_event(event),
+                Child::CommandLine => self.command_line.write().unwrap().handle_event(event),
             }
         } else {
             false
@@ -161,6 +161,6 @@ impl Root {
     }
 
     fn render_command_line(&mut self, f: &mut Frame, rect: Rect) {
-        self.command_line.lock().unwrap().render(f, rect);
+        self.command_line.write().unwrap().render(f, rect);
     }
 }

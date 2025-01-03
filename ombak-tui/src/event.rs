@@ -3,15 +3,15 @@ use crate::{component::Component, error::OmbakResult};
 use crossterm::event::Event;
 
 use std::{
-    sync::{mpsc, Arc, Mutex},
+    sync::{mpsc, Arc, RwLock},
     thread::{self, JoinHandle},
     time::Duration,
 };
 
-static LISTENERS: Mutex<Vec<Arc<Mutex<dyn Component + Send>>>> = Mutex::new(vec![]);
+static LISTENERS: RwLock<Vec<Arc<RwLock<dyn Component>>>> = RwLock::new(vec![]);
 
-pub fn register_event_listener(listener: Arc<Mutex<dyn Component + Send>>) {
-    LISTENERS.lock().unwrap().push(listener);
+pub fn register_event_listener(listener: Arc<RwLock<dyn Component>>) {
+    LISTENERS.write().unwrap().push(listener);
 }
 
 pub fn spawn_event_loop() -> (JoinHandle<OmbakResult<()>>, mpsc::Sender<()>) {
@@ -28,8 +28,8 @@ pub fn spawn_event_loop() -> (JoinHandle<OmbakResult<()>>, mpsc::Sender<()>) {
 }
 
 fn notify_event_listeners(event: &Event) {
-    let listeners = LISTENERS.lock().unwrap();
+    let listeners = LISTENERS.read().unwrap();
     for listener in listeners.iter() {
-        listener.lock().unwrap().handle_event(event);
+        listener.write().unwrap().handle_event(event);
     }
 }

@@ -2,7 +2,7 @@ use ombak_tui::{
     backend::simulator::{Request, Simulator},
     components, event, render, tui,
 };
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Arc, RwLock};
 
 fn main() {
     let terminal = tui::init_terminal().unwrap();
@@ -12,12 +12,12 @@ fn main() {
 
     let command_line =
         components::CommandLine::new(message_tx.clone(), simulator.get_request_channel());
-    let command_line = Arc::new(Mutex::new(command_line));
+    let command_line = Arc::new(RwLock::new(command_line));
     let command_line_clone = Arc::clone(&command_line);
     simulator.register_listener(command_line_clone);
 
     let root = components::Root::new(message_tx, command_line);
-    let root = Arc::new(Mutex::new(root));
+    let root = Arc::new(RwLock::new(root));
     let root_clone = Arc::clone(&root);
 
     event::register_event_listener(root);

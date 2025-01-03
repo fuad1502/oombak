@@ -1,7 +1,7 @@
 use std::{
     sync::{
         mpsc::{self, Receiver, Sender},
-        Arc, Mutex,
+        Arc, RwLock,
     },
     thread,
 };
@@ -10,10 +10,10 @@ use ombak::{dut::Dut, error::OmbakResult};
 
 pub struct Simulator {
     request_tx: Sender<Request>,
-    listeners: Arc<Mutex<Vec<Arc<Mutex<dyn Listener + Send>>>>>,
+    listeners: Arc<RwLock<Vec<Arc<RwLock<dyn Listener>>>>>,
 }
 
-pub trait Listener {
+pub trait Listener: Send + Sync {
     fn on_receive_message(&mut self, message: &Message);
 }
 
@@ -30,7 +30,7 @@ pub enum Message {
 
 impl Simulator {
     pub fn new() -> OmbakResult<Simulator> {
-        let listeners = Arc::new(Mutex::new(vec![]));
+        let listeners = Arc::new(RwLock::new(vec![]));
         let (request_tx, request_rx) = mpsc::channel();
         Self::spawn_request_server(Arc::clone(&listeners), request_rx);
         Ok(Simulator {
@@ -39,8 +39,8 @@ impl Simulator {
         })
     }
 
-    pub fn register_listener(&mut self, listener: Arc<Mutex<dyn Listener + Send>>) {
-        self.listeners.lock().unwrap().push(listener);
+    pub fn register_listener(&mut self, listener: Arc<RwLock<dyn Listener>>) {
+        self.listeners.write().unwrap().push(listener);
     }
 
     pub fn get_request_channel(&self) -> Sender<Request> {
@@ -48,7 +48,7 @@ impl Simulator {
     }
 
     fn spawn_request_server(
-        listeners: Arc<Mutex<Vec<Arc<Mutex<dyn Listener + Send>>>>>,
+        listeners: Arc<RwLock<Vec<Arc<RwLock<dyn Listener>>>>>,
         request_rx: Receiver<Request>,
     ) {
         let mut server = RequestServer {
@@ -69,7 +69,7 @@ impl Simulator {
 
 struct RequestServer {
     dut: Option<Dut>,
-    listeners: Arc<Mutex<Vec<Arc<Mutex<dyn Listener + Send>>>>>,
+    listeners: Arc<RwLock<Vec<Arc<RwLock<dyn Listener>>>>>,
 }
 
 impl RequestServer {
@@ -94,8 +94,8 @@ impl RequestServer {
     }
 
     fn notify_listeners(&self, message: Message) {
-        for listener in self.listeners.lock().unwrap().iter() {
-            listener.lock().unwrap().on_receive_message(&message);
+        for listener in self.listeners.read().unwrap().iter() {
+            listener.write().unwrap().on_receive_message(&message);
         }
     }
 }

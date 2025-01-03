@@ -1,7 +1,7 @@
 use crossterm::event::{Event, KeyEvent};
 use ratatui::{layout::Rect, widgets::Block, Frame};
 
-pub trait Component {
+pub trait Component: Send + Sync {
     fn render_with_block(&mut self, f: &mut Frame, rect: Rect, block: Block) {
         let inner = block.inner(rect);
         self.render(f, inner);
