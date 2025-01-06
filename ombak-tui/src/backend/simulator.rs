@@ -6,6 +6,8 @@ use std::{
     thread,
 };
 
+use bitvec::vec::BitVec;
+
 use ombak::{dut::Dut, error::OmbakResult};
 
 pub struct Simulator {
@@ -22,12 +24,14 @@ pub trait Listener: Send + Sync {
 pub enum Request {
     Run(u64),
     Load(String),
+    GetSimulationResult,
     Terminate,
 }
 
 pub enum Response {
     RunResult(Result<(), String>),
     LoadResult(Result<(), String>),
+    SimulationResult(Result<SimulationResult, String>),
 }
 
 impl Simulator {
@@ -49,10 +53,7 @@ impl Simulator {
         self.request_tx.clone()
     }
 
-    fn spawn_request_server(
-        listeners: Arc<RwLock<Listeners>>,
-        request_rx: Receiver<Request>,
-    ) {
+    fn spawn_request_server(listeners: Arc<RwLock<Listeners>>, request_rx: Receiver<Request>) {
         let mut server = RequestServer {
             dut: None,
             listeners,
@@ -62,6 +63,7 @@ impl Simulator {
                 match request_rx.recv().map_err(|e| e.to_string())? {
                     Request::Run(duration) => server.serve_run(duration),
                     Request::Load(lib_path) => server.serve_load(&lib_path),
+                    Request::GetSimulationResult => server.serve_simulation_result(),
                     Request::Terminate => break (Ok(())),
                 }
             }
@@ -95,9 +97,24 @@ impl RequestServer {
         self.notify_listeners(message);
     }
 
+    fn serve_simulation_result(&mut self) {}
+
     fn notify_listeners(&self, message: Response) {
         for listener in self.listeners.read().unwrap().iter() {
             listener.write().unwrap().on_receive_reponse(&message);
         }
     }
+}
+
+#[derive(Clone, Default)]
+pub struct SimulationResult {
+    pub waves: Vec<Wave>,
+    pub time_step_ps: usize,
+}
+
+#[derive(Clone)]
+pub struct Wave {
+    pub signal_name: String,
+    pub width: usize,
+    pub values: Vec<BitVec>,
 }

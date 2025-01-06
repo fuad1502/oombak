@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
-use crate::backend::Wave;
+use crate::backend::simulator::Wave;
 use crate::component::Component;
 use crate::render::Message;
 use crate::utils::bitvec_str;

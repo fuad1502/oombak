@@ -1,4 +1,4 @@
-use crate::{backend::Wave, utils::bitvec_str};
+use crate::{backend::simulator::Wave, utils::bitvec_str};
 
 #[derive(Default)]
 pub struct SimulationSpec {

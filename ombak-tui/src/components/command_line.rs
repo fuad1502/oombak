@@ -120,6 +120,7 @@ impl simulator::Listener for CommandLine {
             simulator::Response::LoadResult(Ok(_)) => Ok("load: success".to_string()),
             simulator::Response::RunResult(Err(e)) => Err(format!("run: {e}")),
             simulator::Response::LoadResult(Err(e)) => Err(format!("load: {e}")),
+            simulator::Response::SimulationResult(_) => return,
         };
         self.result_history.push(result);
         self.notify_render();
