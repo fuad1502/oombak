@@ -83,10 +83,10 @@ impl Dut {
 
 #[derive(Debug)]
 pub struct Signal {
-    _name: String,
-    _width: u64,
-    _get: bool,
-    _set: bool,
+    pub name: String,
+    pub width: u64,
+    pub get: bool,
+    pub set: bool,
 }
 
 impl From<&SigT> for Signal {
@@ -96,10 +96,10 @@ impl From<&SigT> for Signal {
         let get = value.get == 1;
         let set = value.set == 1;
         Signal {
-            _name: name,
-            _width: value.width,
-            _get: get,
-            _set: set,
+            name,
+            width: value.width,
+            get,
+            set,
         }
     }
 }
