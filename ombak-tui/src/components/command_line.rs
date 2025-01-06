@@ -114,12 +114,12 @@ impl CommandLine {
 }
 
 impl simulator::Listener for CommandLine {
-    fn on_receive_message(&mut self, message: &simulator::Message) {
-        let result = match message {
-            simulator::Message::RunResult(Ok(_)) => Ok("run: success".to_string()),
-            simulator::Message::LoadResult(Ok(_)) => Ok("load: success".to_string()),
-            simulator::Message::RunResult(Err(e)) => Err(format!("run: {e}")),
-            simulator::Message::LoadResult(Err(e)) => Err(format!("load: {e}")),
+    fn on_receive_reponse(&mut self, response: &simulator::Response) {
+        let result = match response {
+            simulator::Response::RunResult(Ok(_)) => Ok("run: success".to_string()),
+            simulator::Response::LoadResult(Ok(_)) => Ok("load: success".to_string()),
+            simulator::Response::RunResult(Err(e)) => Err(format!("run: {e}")),
+            simulator::Response::LoadResult(Err(e)) => Err(format!("load: {e}")),
         };
         self.result_history.push(result);
         self.notify_render();

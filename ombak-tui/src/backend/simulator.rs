@@ -14,7 +14,7 @@ pub struct Simulator {
 }
 
 pub trait Listener: Send + Sync {
-    fn on_receive_message(&mut self, message: &Message);
+    fn on_receive_reponse(&mut self, response: &Response);
 }
 
 pub enum Request {
@@ -23,7 +23,7 @@ pub enum Request {
     Terminate,
 }
 
-pub enum Message {
+pub enum Response {
     RunResult(Result<(), String>),
     LoadResult(Result<(), String>),
 }
@@ -75,9 +75,9 @@ struct RequestServer {
 impl RequestServer {
     fn serve_run(&self, _duration: u64) {
         let message = if let Some(_dut) = &self.dut {
-            Message::RunResult(Ok(()))
+            Response::RunResult(Ok(()))
         } else {
-            Message::RunResult(Err("DUT not loaded".to_string()))
+            Response::RunResult(Err("DUT not loaded".to_string()))
         };
         self.notify_listeners(message);
     }
@@ -86,16 +86,16 @@ impl RequestServer {
         let message = match Dut::new(lib_path) {
             Ok(dut) => {
                 self.dut = Some(dut);
-                Message::LoadResult(Ok(()))
+                Response::LoadResult(Ok(()))
             }
-            Err(e) => Message::LoadResult(Err(e.to_string())),
+            Err(e) => Response::LoadResult(Err(e.to_string())),
         };
         self.notify_listeners(message);
     }
 
-    fn notify_listeners(&self, message: Message) {
+    fn notify_listeners(&self, message: Response) {
         for listener in self.listeners.read().unwrap().iter() {
-            listener.write().unwrap().on_receive_message(&message);
+            listener.write().unwrap().on_receive_reponse(&message);
         }
     }
 }
