@@ -10,8 +10,10 @@ use ombak::{dut::Dut, error::OmbakResult};
 
 pub struct Simulator {
     request_tx: Sender<Request>,
-    listeners: Arc<RwLock<Vec<Arc<RwLock<dyn Listener>>>>>,
+    listeners: Arc<RwLock<Listeners>>,
 }
+
+type Listeners = Vec<Arc<RwLock<dyn Listener>>>;
 
 pub trait Listener: Send + Sync {
     fn on_receive_reponse(&mut self, response: &Response);
@@ -48,7 +50,7 @@ impl Simulator {
     }
 
     fn spawn_request_server(
-        listeners: Arc<RwLock<Vec<Arc<RwLock<dyn Listener>>>>>,
+        listeners: Arc<RwLock<Listeners>>,
         request_rx: Receiver<Request>,
     ) {
         let mut server = RequestServer {
@@ -69,7 +71,7 @@ impl Simulator {
 
 struct RequestServer {
     dut: Option<Dut>,
-    listeners: Arc<RwLock<Vec<Arc<RwLock<dyn Listener>>>>>,
+    listeners: Arc<RwLock<Listeners>>,
 }
 
 impl RequestServer {
