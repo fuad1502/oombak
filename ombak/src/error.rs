@@ -73,3 +73,9 @@ impl From<dut::DutError> for Box<dyn OmbakError> {
         })
     }
 }
+
+impl From<Box<dyn OmbakError>> for String {
+    fn from(error: Box<dyn OmbakError>) -> Self {
+        error.to_string()
+    }
+}
