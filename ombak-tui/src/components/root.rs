@@ -1,28 +1,29 @@
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
-use crate::backend::simulator::Wave;
+use crate::backend::simulator::{self, SimulationResult};
 use crate::component::Component;
 use crate::render::Message;
-use crate::utils::bitvec_str;
 
-use bitvec::vec::BitVec;
 use crossterm::event::{Event, KeyCode, KeyEvent};
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::widgets::{Block, Borders};
 use ratatui::Frame;
 
-use super::models::{SimulationSpec, WaveSpec};
+use super::models::SimulationSpec;
 use super::{CommandLine, SignalsViewer, WaveViewer};
 
 pub struct Root {
     message_tx: Sender<Message>,
+    request_tx: Sender<simulator::Request>,
     signals_viewer: SignalsViewer,
     wave_viewer: WaveViewer,
     command_line: Arc<RwLock<CommandLine>>,
     highlight_idx: u16,
     focused_child: Option<Child>,
+    simulation_spec: SimulationSpec,
+    reload_simulation: bool,
 }
 
 enum Child {
@@ -30,14 +31,22 @@ enum Child {
 }
 
 impl Root {
-    pub fn new(message_tx: Sender<Message>, command_line: Arc<RwLock<CommandLine>>) -> Self {
+    pub fn new(
+        message_tx: Sender<Message>,
+        request_tx: Sender<simulator::Request>,
+        command_line: Arc<RwLock<CommandLine>>,
+    ) -> Self {
+        let simulation_spec = SimulationSpec::default();
         Self {
-            message_tx: message_tx.clone(),
-            wave_viewer: WaveViewer::default().simulation(Self::get_waves()),
-            signals_viewer: SignalsViewer::default().simulation(Self::get_waves()),
+            message_tx,
+            request_tx,
+            wave_viewer: WaveViewer::default().simulation(simulation_spec.clone()),
+            signals_viewer: SignalsViewer::default().simulation(simulation_spec.clone()),
             command_line,
             highlight_idx: 0,
             focused_child: None,
+            simulation_spec,
+            reload_simulation: false,
         }
     }
 
@@ -47,52 +56,6 @@ impl Root {
 
     fn notify_quit(&self) {
         self.message_tx.send(Message::Quit).unwrap();
-    }
-
-    fn get_waves() -> SimulationSpec {
-        let waves = vec![
-            Wave {
-                signal_name: "sig_1".to_string(),
-                width: 2,
-                values: vec![
-                    BitVec::from_slice(&[0x0]),
-                    BitVec::from_slice(&[0x1]),
-                    BitVec::from_slice(&[0x2]),
-                ],
-            },
-            Wave {
-                signal_name: "sig_2".to_string(),
-                width: 8,
-                values: vec![
-                    BitVec::from_slice(&[0xaa]),
-                    BitVec::from_slice(&[0xfa]),
-                    BitVec::from_slice(&[0xfa]),
-                ],
-            },
-            Wave {
-                signal_name: "sig_3".to_string(),
-                width: 8,
-                values: vec![
-                    BitVec::from_slice(&[0xaa]),
-                    BitVec::from_slice(&[0xaa]),
-                    BitVec::from_slice(&[0xaa]),
-                ],
-            },
-        ];
-        let wave_specs = waves
-            .into_iter()
-            .map(|wave| WaveSpec {
-                wave,
-                height: 1,
-                format: bitvec_str::Format::Binary,
-                signed: true,
-            })
-            .collect();
-        SimulationSpec {
-            wave_specs,
-            time_step_ps: 10,
-            zoom: 10,
-        }
     }
 }
 
@@ -171,5 +134,42 @@ impl Root {
 
     fn render_command_line(&self, f: &mut Frame, rect: Rect) {
         self.command_line.read().unwrap().render(f, rect);
+    }
+}
+
+impl simulator::Listener for Root {
+    fn on_receive_reponse(&mut self, response: &simulator::Response) {
+        match response {
+            simulator::Response::RunResult(Ok(_)) => self.request_simulation_result(),
+            simulator::Response::LoadResult(Ok(_)) => {
+                self.request_simulation_result();
+                self.reload_simulation = true;
+            }
+            simulator::Response::SimulationResult(Ok(simulation_result)) => {
+                self.update_simulation_spec(simulation_result);
+                self.notify_render();
+            }
+            _ => (),
+        }
+    }
+}
+
+impl Root {
+    fn update_simulation_spec(&mut self, simulation_result: &SimulationResult) {
+        if self.reload_simulation {
+            self.simulation_spec = SimulationSpec::new(simulation_result);
+        } else {
+            self.simulation_spec.update(simulation_result);
+        }
+        self.signals_viewer
+            .set_simulation(self.simulation_spec.clone());
+        self.wave_viewer
+            .set_simulation(self.simulation_spec.clone());
+    }
+
+    fn request_simulation_result(&self) {
+        self.request_tx
+            .send(simulator::Request::GetSimulationResult)
+            .unwrap();
     }
 }

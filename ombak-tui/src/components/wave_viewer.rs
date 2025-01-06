@@ -19,6 +19,10 @@ impl WaveViewer {
         self
     }
 
+    pub fn set_simulation(&mut self, simulation: SimulationSpec) {
+        self.simulation = simulation;
+    }
+
     pub fn set_highlight(&mut self, idx: u16) {
         self.highlight_idx = idx;
     }
