@@ -10,7 +10,7 @@ use ratatui::{
 use crate::{components::models::WaveSpec, utils::bitvec_str};
 
 pub struct Waveform<'a> {
-    values: &'a Vec<BitVec>,
+    values: &'a Vec<BitVec<u32>>,
     height: u16,
     width: u8,
     highlighted_idx: u16,
@@ -34,7 +34,7 @@ impl<'a> From<&'a WaveSpec> for Waveform<'a> {
 
 impl<'a> Waveform<'a> {
     pub fn new(
-        values: &'a Vec<BitVec>,
+        values: &'a Vec<BitVec<u32>>,
         height: u16,
         width: u8,
         option: bitvec_str::Option,
@@ -59,7 +59,7 @@ impl<'a> Waveform<'a> {
         self
     }
 
-    fn format(&self, value: &BitVec, count: usize) -> Vec<char> {
+    fn format(&self, value: &BitVec<u32>, count: usize) -> Vec<char> {
         let value = bitvec_str::from(value, &self.option);
         let width = self.width as usize;
         let height = self.height as usize;
@@ -77,7 +77,7 @@ impl<'a> Waveform<'a> {
         res.chars().take(str_width).collect()
     }
 
-    fn compact_vec(values: &[BitVec]) -> Vec<(BitVec, usize)> {
+    fn compact_vec(values: &[BitVec<u32>]) -> Vec<(BitVec<u32>, usize)> {
         let (_, values, counts) = values.iter().fold(
             (None, vec![], vec![]),
             |(prev, mut values, mut counts), x| {

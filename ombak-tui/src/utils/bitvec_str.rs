@@ -14,7 +14,7 @@ pub enum Format {
     Binary,
 }
 
-pub fn from(bit_vec: &BitVec, option: &Option) -> String {
+pub fn from(bit_vec: &BitVec<u32>, option: &Option) -> String {
     match option.format {
         Format::Binary => binary(bit_vec, option.width, option.twos_complement),
     }
@@ -40,12 +40,12 @@ impl From<&models::WaveSpec> for Option {
     }
 }
 
-fn binary(bit_vec: &BitVec, width: usize, twos_complement: bool) -> String {
+fn binary(bit_vec: &BitVec<u32>, width: usize, twos_complement: bool) -> String {
     let bit_vec = get_resized_bitvec(bit_vec, width, twos_complement);
     String::from_iter(bit_vec.iter().rev().map(|b| if *b { "1" } else { "0" }))
 }
 
-fn get_resized_bitvec(bit_vec: &BitVec, width: usize, twos_complement: bool) -> BitVec {
+fn get_resized_bitvec(bit_vec: &BitVec<u32>, width: usize, twos_complement: bool) -> BitVec<u32> {
     let mut bit_vec = bit_vec.clone();
     let fills = if twos_complement {
         *bit_vec.first().as_deref().unwrap_or(&false)

@@ -116,8 +116,10 @@ impl CommandLine {
 impl simulator::Listener for CommandLine {
     fn on_receive_reponse(&mut self, response: &simulator::Response) {
         let result = match response {
-            simulator::Response::RunResult(Ok(_)) => Ok("run: success".to_string()),
-            simulator::Response::LoadResult(Ok(_)) => Ok("load: success".to_string()),
+            simulator::Response::RunResult(Ok(curr_time)) => {
+                Ok(format!("run: current time = {curr_time}"))
+            }
+            simulator::Response::LoadResult(Ok(())) => Ok("load: success".to_string()),
             simulator::Response::RunResult(Err(e)) => Err(format!("run: {e}")),
             simulator::Response::LoadResult(Err(e)) => Err(format!("load: {e}")),
             simulator::Response::SimulationResult(_) => return,
