@@ -95,6 +95,7 @@ impl CommandLine {
                 match command {
                     interpreter::Command::Run(x) => self.request(Request::Run(x)),
                     interpreter::Command::Load(x) => self.request(Request::Load(x)),
+                    interpreter::Command::Set(_sig_name, _bit_vec) => todo!(),
                     interpreter::Command::Noop => return,
                 }
                 self.result_history

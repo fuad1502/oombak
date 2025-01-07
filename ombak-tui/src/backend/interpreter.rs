@@ -1,6 +1,11 @@
+use bitvec::vec::BitVec;
+
+use crate::utils::bitvec_str;
+
 pub enum Command {
     Run(u64),
     Load(String),
+    Set(String, BitVec<u32>),
     Noop,
 }
 
@@ -13,6 +18,7 @@ pub fn interpret(command_string: &str) -> Result<Command, String> {
     match command[0] {
         "run" => parse_run(args),
         "load" => parse_load(args),
+        "set" => parse_set(args),
         _ => Err(format!("unknown command \"{}\"", command[0])),
     }
 }
@@ -33,5 +39,15 @@ fn parse_load(args: &[&str]) -> Result<Command, String> {
         Err("expected 1 argument (lib_path: String)".to_string())
     } else {
         Ok(Command::Load(args[0].to_string()))
+    }
+}
+
+fn parse_set(args: &[&str]) -> Result<Command, String> {
+    if args.len() != 2 {
+        return Err("expected 2 argument (sigal_name: String, value: String)".to_string());
+    }
+    match bitvec_str::parse(args[1]) {
+        Ok(value) => Ok(Command::Set(args[0].to_string(), value)),
+        Err(e) => Err(e),
     }
 }
