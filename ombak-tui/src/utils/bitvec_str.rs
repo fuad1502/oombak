@@ -22,7 +22,7 @@ pub fn from(bit_vec: &BitVec<u32>, option: &Option) -> String {
 
 pub fn parse(value: &str) -> Result<BitVec<u32>, String> {
     let chars: Vec<char> = value.chars().collect();
-    if chars.len() == 0 {
+    if chars.is_empty() {
         return Err("cannot parse empty value".to_string());
     }
     if chars[0] == '0' && chars.len() > 1 {
