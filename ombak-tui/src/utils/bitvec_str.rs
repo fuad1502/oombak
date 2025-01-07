@@ -77,7 +77,7 @@ fn parse_non_decimal(chars: &[char]) -> Result<BitVec<u32>, String> {
 
 fn parse_binary(chars: &[char]) -> Result<BitVec<u32>, String> {
     let mut result = bitvec::bitvec![u32, Lsb0;];
-    for c in chars {
+    for c in chars.iter().rev() {
         match c {
             '0' => result.push(false),
             '1' => result.push(true),
