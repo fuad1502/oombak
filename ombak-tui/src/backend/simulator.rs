@@ -23,6 +23,7 @@ pub trait Listener: Send + Sync {
 
 pub enum Request {
     Run(u64),
+    SetSignal(String, BitVec<u32>),
     Load(String),
     GetSimulationResult,
     Terminate,
@@ -30,6 +31,7 @@ pub enum Request {
 
 pub enum Response<'a> {
     RunResult(Result<u64, String>),
+    SetSignalResult(Result<(), String>),
     LoadResult(Result<(), String>),
     SimulationResult(Result<&'a SimulationResult, String>),
 }
@@ -59,6 +61,9 @@ impl Simulator {
             loop {
                 match request_rx.recv().map_err(|e| e.to_string())? {
                     Request::Run(duration) => server.serve_run(duration),
+                    Request::SetSignal(signal_name, value) => {
+                        server.serve_set_signal(&signal_name, &value)
+                    }
                     Request::Load(lib_path) => server.serve_load(&lib_path),
                     Request::GetSimulationResult => server.serve_simulation_result(),
                     Request::Terminate => break (Ok(())),
@@ -91,6 +96,14 @@ impl RequestServer {
         let response = match self.run(duration) {
             Ok(duration) => Response::RunResult(Ok(duration)),
             Err(e) => Response::RunResult(Err(e)),
+        };
+        self.notify_listeners(response);
+    }
+
+    fn serve_set_signal(&self, signal_name: &str, value: &BitVec<u32>) {
+        let response = match self.set_signal(signal_name, value) {
+            Ok(_) => Response::SetSignalResult(Ok(())),
+            Err(e) => Response::SetSignalResult(Err(e)),
         };
         self.notify_listeners(response);
     }
@@ -166,6 +179,10 @@ impl RequestServer {
             new_values.push(new_value);
         }
         Ok(new_values)
+    }
+
+    fn set_signal(&self, signal_name: &str, value: &BitVec<u32>) -> Result<(), String> {
+        Ok(self.dut()?.set(signal_name, value)?)
     }
 
     fn notify_listeners(&self, message: Response) {

@@ -95,7 +95,9 @@ impl CommandLine {
                 match command {
                     interpreter::Command::Run(x) => self.request(Request::Run(x)),
                     interpreter::Command::Load(x) => self.request(Request::Load(x)),
-                    interpreter::Command::Set(_sig_name, _bit_vec) => todo!(),
+                    interpreter::Command::Set(sig_name, value) => {
+                        self.request(Request::SetSignal(sig_name, value))
+                    }
                     interpreter::Command::Noop => return,
                 }
                 self.result_history
@@ -120,8 +122,10 @@ impl simulator::Listener for CommandLine {
             simulator::Response::RunResult(Ok(curr_time)) => {
                 Ok(format!("run: current time = {curr_time}"))
             }
+            simulator::Response::SetSignalResult(Ok(())) => Ok("set: success".to_string()),
             simulator::Response::LoadResult(Ok(())) => Ok("load: success".to_string()),
             simulator::Response::RunResult(Err(e)) => Err(format!("run: {e}")),
+            simulator::Response::SetSignalResult(Err(e)) => Err(format!("set: {e}")),
             simulator::Response::LoadResult(Err(e)) => Err(format!("load: {e}")),
             simulator::Response::SimulationResult(_) => return,
         };
