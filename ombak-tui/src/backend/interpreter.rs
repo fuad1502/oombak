@@ -1,10 +1,12 @@
+use std::path::PathBuf;
+
 use bitvec::vec::BitVec;
 
 use crate::utils::bitvec_str;
 
 pub enum Command {
     Run(u64),
-    Load(String),
+    Load(PathBuf),
     Set(String, BitVec<u32>),
     Noop,
 }
@@ -36,9 +38,9 @@ fn parse_run(args: &[&str]) -> Result<Command, String> {
 
 fn parse_load(args: &[&str]) -> Result<Command, String> {
     if args.len() != 1 {
-        Err("expected 1 argument (lib_path: String)".to_string())
+        Err("expected 1 argument (sv_path: String)".to_string())
     } else {
-        Ok(Command::Load(args[0].to_string()))
+        Ok(Command::Load(PathBuf::from(args[0])))
     }
 }
 

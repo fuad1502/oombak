@@ -1,4 +1,5 @@
 use std::{
+    path::{Path, PathBuf},
     sync::{
         mpsc::{self, Receiver, Sender},
         Arc, RwLock,
@@ -24,7 +25,7 @@ pub trait Listener: Send + Sync {
 pub enum Request {
     Run(u64),
     SetSignal(String, BitVec<u32>),
-    Load(String),
+    Load(PathBuf),
     GetSimulationResult,
     Terminate,
 }
@@ -64,7 +65,7 @@ impl Simulator {
                     Request::SetSignal(signal_name, value) => {
                         server.serve_set_signal(&signal_name, &value)
                     }
-                    Request::Load(lib_path) => server.serve_load(&lib_path),
+                    Request::Load(sv_path) => server.serve_load(&sv_path),
                     Request::GetSimulationResult => server.serve_simulation_result(),
                     Request::Terminate => break (Ok(())),
                 }
@@ -108,12 +109,9 @@ impl RequestServer {
         self.notify_listeners(response);
     }
 
-    fn serve_load(&mut self, lib_path: &str) {
-        let response = match Dut::new(lib_path) {
-            Ok(dut) => match self.load_new_dut(dut) {
-                Ok(()) => Response::LoadResult(Ok(())),
-                Err(e) => Response::LoadResult(Err(e.to_string())),
-            },
+    fn serve_load(&mut self, sv_path: &Path) {
+        let response = match self.load_file(sv_path) {
+            Ok(()) => Response::LoadResult(Ok(())),
             Err(e) => Response::LoadResult(Err(e.to_string())),
         };
         self.notify_listeners(response);
@@ -124,9 +122,12 @@ impl RequestServer {
         self.notify_listeners(response);
     }
 
-    fn load_new_dut(&mut self, dut: Dut) -> Result<(), String> {
-        self.simulation_result = SimulationResult::default();
+    fn load_file(&mut self, sv_path: &Path) -> Result<(), String> {
+        let lib_path = dut_gen::build(sv_path)?;
+        let lib_path = lib_path.to_str().unwrap();
+        let dut = Dut::new(lib_path)?;
         self.dut = Some(dut);
+        self.simulation_result = SimulationResult::default();
         self.load_signal_names_to_simulation_result()?;
         Ok(())
     }

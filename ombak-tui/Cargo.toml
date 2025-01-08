@@ -8,3 +8,4 @@ bitvec = "1.0.1"
 crossterm = "0.28.1"
 ratatui = "0.29.0"
 ombak = { version="0.1.0", path="../ombak" }
+dut_gen = { version="0.1.0", path="../dut_gen" }
