@@ -1,0 +1,7 @@
+module ombak_dut ();
+  // TEMPLATED: signals
+  // TEMPLATED: dut
+  // TEMPLATED: setters
+  // TEMPLATED: getters
+endmodule
+

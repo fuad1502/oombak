@@ -1,0 +1,5 @@
+#include "dut_bind.h"
+
+uint64_t num_of_signals = // TEMPLATED: num_of_signals
+
+// TEMPLATED: signals

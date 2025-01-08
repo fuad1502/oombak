@@ -7,8 +7,6 @@ static Dut dut;
 static uint32_t *g_words;
 extern sig_t signals[];
 extern uint64_t num_of_signals;
-static const char *name_1 = "in";
-static const char *name_2 = "clk";
 
 sig_t *query(uint64_t *_num_of_signals) {
   *_num_of_signals = num_of_signals;
