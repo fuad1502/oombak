@@ -5,7 +5,7 @@ pub type DutGenResult<T> = Result<T, DutGenError>;
 #[derive(Error, Debug)]
 pub enum DutGenError {
     #[error("IO error: {}", _0)]
-    Io(std::io::Error)
+    Io(std::io::Error),
 }
 
 impl From<std::io::Error> for DutGenError {

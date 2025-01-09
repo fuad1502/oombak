@@ -1,6 +1,6 @@
+mod error;
 mod generator;
 mod parser;
-mod error;
 
 use std::path::{Path, PathBuf};
 
