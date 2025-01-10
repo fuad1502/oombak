@@ -145,24 +145,26 @@ macro_rules! multi_bit_dpc_getter_template {
     };
 }
 
-pub fn generate(_sv_path: &Path, probe: &parser::Probe) -> DutGenResult<PathBuf> {
-    Generator::new(probe).generate()
+pub fn generate(sv_path: &Path, probe: &parser::Probe) -> DutGenResult<PathBuf> {
+    Generator::new(probe, sv_path).generate()
 }
 
 struct Generator<'a> {
     temp_dir: PathBuf,
     probe: &'a parser::Probe,
+    sv_path: &'a Path,
 }
 
 impl<'a> Generator<'a> {
-    fn new(probe: &'a parser::Probe) -> Self {
+    fn new(probe: &'a parser::Probe, sv_path: &'a Path) -> Self {
         Generator {
             temp_dir: PathBuf::new(),
             probe,
+            sv_path,
         }
     }
 
-    fn generate(&mut self) -> DutGenResult<PathBuf> {
+    fn generate(mut self) -> DutGenResult<PathBuf> {
         self.create_temp_dir()?;
         self.put_dut_bind_cpp()?;
         self.put_dut_bind_h()?;
@@ -172,7 +174,8 @@ impl<'a> Generator<'a> {
         self.put_setters_cpp()?;
         self.put_signals_cpp()?;
         self.put_ombak_dut_sv()?;
-        Ok(PathBuf::new())
+        self.put_cmakelists_txt()?;
+        Ok(self.temp_dir)
     }
 
     fn create_temp_dir(&mut self) -> DutGenResult<()> {
@@ -284,6 +287,14 @@ impl<'a> Generator<'a> {
         let content = content.replace("// TEMPLATED: setters", &dpc_setters);
         let content = content.replace("// TEMPLATED: getters", &dpc_getters);
         self.put_file("ombak_dut.sv", content.as_bytes())?;
+        Ok(())
+    }
+
+    fn put_cmakelists_txt(&self) -> DutGenResult<()> {
+        let sv_dir = self.sv_path.parent().unwrap();
+        let content = include_str!("templates/CMakeLists.txt.templated");
+        let content = content.replace("/*OMBAK_INCLUDE_DIRS*/", sv_dir.to_str().unwrap());
+        self.put_file("CMakeLists.txt", content.as_bytes())?;
         Ok(())
     }
 
