@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Vdut.h"
+#include "Vombak_dut.h"
 #include "verilated.h"
 #include <cstdint>
 #include <memory>
@@ -26,7 +26,7 @@ public:
 
 private:
   std::unique_ptr<VerilatedContext> context;
-  std::unique_ptr<Vdut> vDut;
+  std::unique_ptr<Vombak_dut> vDut;
   std::map<std::string, Signal> signalMapping;
 
   static std::vector<uint32_t> get_words_vec_from(svBitVecVal *out, int n_bits);

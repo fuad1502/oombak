@@ -3,7 +3,7 @@
 
 using namespace std;
 
-Dut::Dut() : context(new VerilatedContext), vDut(new Vdut) {
+Dut::Dut() : context(new VerilatedContext), vDut(new Vombak_dut) {
   vDut->eval();
   const svScope scope = svGetScopeFromName("TOP.dut");
   assert(scope);
