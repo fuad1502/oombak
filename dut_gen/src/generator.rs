@@ -107,6 +107,7 @@ impl<'a> Generator<'a> {
         self.put_getters_cpp()?;
         self.put_setters_cpp()?;
         self.put_signals_cpp()?;
+        self.put_ombak_dut_sv()?;
         Ok(PathBuf::new())
     }
 
@@ -208,6 +209,16 @@ impl<'a> Generator<'a> {
         Ok(())
     }
 
+    fn put_ombak_dut_sv(&self) -> DutGenResult<()> {
+        let content = include_str!("templates/ombak_dut.sv.templated");
+        let top_level_signal_declarations = self.generate_top_level_signal_declarations();
+        let top_level_module_instantiation = self.generate_top_level_module_instantiation();
+        let content = content.replace("// TEMPLATED: signals", &top_level_signal_declarations);
+        let content = content.replace("// TEMPLATED: dut", &top_level_module_instantiation);
+        self.put_file("ombak_dut.sv", content.as_bytes())?;
+        Ok(())
+    }
+
     fn generate_signals_array(&self) -> String {
         let mut signals_array = format!("sig_t signals[{}] = {{\n", self.probe.signals.len());
         for signal in self.probe.signals.iter() {
@@ -220,6 +231,37 @@ impl<'a> Generator<'a> {
         }
         signals_array += "};";
         signals_array
+    }
+
+    fn generate_top_level_signal_declarations(&self) -> String {
+        self.probe
+            .signals
+            .iter()
+            .filter(|s| s.top_level)
+            .fold(String::from(""), |prev, s| {
+                let width = if s.width > 1 {
+                    format!("[{}:0]", s.width - 1)
+                } else {
+                    "".to_string()
+                };
+                prev + &format!("logic {width} {};\n", s.name)
+            })
+    }
+
+    fn generate_top_level_module_instantiation(&self) -> String {
+        let pin_assignments = self
+            .probe
+            .signals
+            .iter()
+            .filter(|s| s.top_level)
+            .fold(String::from(""), |prev, s| {
+                prev + &format!(".{0}({0}),\n", s.name)
+            });
+        format!(
+            "{0} {0} (\n{1}\n);",
+            self.probe.module_name,
+            &pin_assignments[..pin_assignments.len() - 2]
+        )
     }
 
     fn put_file(&self, file_name: &str, content: &[u8]) -> DutGenResult<()> {
