@@ -10,7 +10,7 @@ macro_rules! generate_lines_from_name_template {
     ($template:expr, $signals:expr) => {{
         let signals: Box<dyn Iterator<Item = &crate::parser::Signal>> = Box::new($signals);
         signals
-            .map(|s| format!($template, s.name))
+            .map(|s| format!($template, s.get_dot_replaced_name()))
             .collect::<Vec<String>>()
             .join("\n")
     }};
@@ -20,7 +20,7 @@ macro_rules! generate_lines_from_name_width_template {
     ($template:expr, $signals:expr) => {{
         let signals: Box<dyn Iterator<Item = &crate::parser::Signal>> = Box::new($signals);
         signals
-            .map(|s| format!($template, s.name, s.width))
+            .map(|s| format!($template, s.get_dot_replaced_name(), s.width))
             .collect::<Vec<String>>()
             .join("\n")
     }};

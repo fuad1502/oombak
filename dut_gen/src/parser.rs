@@ -13,6 +13,12 @@ pub struct Signal {
     pub top_level: bool,
 }
 
+impl Signal {
+    pub fn get_dot_replaced_name(&self) -> String {
+        self.name.clone().replace(".", "_DOT_")
+    }
+}
+
 pub fn parse(_sv_path: &Path) -> Result<Probe, String> {
     // temporarility return sample dut signals
     let signals = vec![
@@ -45,14 +51,14 @@ pub fn parse(_sv_path: &Path) -> Result<Probe, String> {
             top_level: true,
         },
         Signal {
-            name: "sample_DOT_c".to_string(),
+            name: "sample.c".to_string(),
             width: 6,
             get: true,
             set: false,
             top_level: false,
         },
         Signal {
-            name: "sample_DOT_adder_inst_DOT_d".to_string(),
+            name: "sample.adder_inst.d".to_string(),
             width: 1,
             get: true,
             set: false,
