@@ -26,6 +26,26 @@ macro_rules! generate_lines_from_name_width_template {
     }};
 }
 
+macro_rules! generate_lines_from_dot_replaced_name_name {
+    ($template:expr, $signals:expr) => {{
+        let signals: Box<dyn Iterator<Item = &crate::parser::Signal>> = Box::new($signals);
+        signals
+            .map(|s| format!($template, s.get_dot_replaced_name(), s.name))
+            .collect::<Vec<String>>()
+            .join("\n")
+    }};
+}
+
+macro_rules! generate_lines_from_dot_replaced_name_name_width {
+    ($template:expr, $signals:expr) => {{
+        let signals: Box<dyn Iterator<Item = &crate::parser::Signal>> = Box::new($signals);
+        signals
+            .map(|s| format!($template, s.get_dot_replaced_name(), s.name, s.width - 1))
+            .collect::<Vec<String>>()
+            .join("\n")
+    }};
+}
+
 macro_rules! single_bit_getter_template {
     () => {
         concat!(
@@ -77,6 +97,50 @@ macro_rules! multi_bit_setter_template {
             "  }}\n",
             "  return false;\n",
             "}}\n",
+        )
+    };
+}
+
+macro_rules! single_bit_dpc_setter_template {
+    () => {
+        concat!(
+            "export \"DPI-C\" function v_sample_set_{0};\n",
+            "function automatic void v_sample_set_{0}(input bit _in);\n",
+            "  {1} = _in;\n",
+            "endfunction\n"
+        )
+    };
+}
+
+macro_rules! multi_bit_dpc_setter_template {
+    () => {
+        concat!(
+            "export \"DPI-C\" function v_sample_set_{0};\n",
+            "function automatic void v_sample_set_{0}(input bit [{2}:0] _in);\n",
+            "  {1} = _in;\n",
+            "endfunction\n"
+        )
+    };
+}
+
+macro_rules! single_bit_dpc_getter_template {
+    () => {
+        concat!(
+            "export \"DPI-C\" function v_sample_get_{0};\n",
+            "function automatic void v_sample_get_{0}(output bit _out);\n",
+            "  _out = {1};\n",
+            "endfunction\n"
+        )
+    };
+}
+
+macro_rules! multi_bit_dpc_getter_template {
+    () => {
+        concat!(
+            "export \"DPI-C\" function v_sample_get_{0};\n",
+            "function automatic void v_sample_get_{0}(output bit [{2}:0] _out);\n",
+            "  _out = {1};\n",
+            "endfunction\n"
         )
     };
 }
@@ -213,8 +277,12 @@ impl<'a> Generator<'a> {
         let content = include_str!("templates/ombak_dut.sv.templated");
         let top_level_signal_declarations = self.generate_top_level_signal_declarations();
         let top_level_module_instantiation = self.generate_top_level_module_instantiation();
+        let dpc_setters = self.generate_dpc_setters();
+        let dpc_getters = self.generate_dpc_getters();
         let content = content.replace("// TEMPLATED: signals", &top_level_signal_declarations);
         let content = content.replace("// TEMPLATED: dut", &top_level_module_instantiation);
+        let content = content.replace("// TEMPLATED: setters", &dpc_setters);
+        let content = content.replace("// TEMPLATED: getters", &dpc_getters);
         self.put_file("ombak_dut.sv", content.as_bytes())?;
         Ok(())
     }
@@ -262,6 +330,34 @@ impl<'a> Generator<'a> {
             self.probe.module_name,
             &pin_assignments[..pin_assignments.len() - 2]
         )
+    }
+
+    fn generate_dpc_setters(&self) -> String {
+        let single_bit_signals = self.probe.signals.iter().filter(|s| s.width == 1 && s.set);
+        let multi_bit_signals = self.probe.signals.iter().filter(|s| s.width > 1 && s.set);
+        let single_bit_setters = generate_lines_from_dot_replaced_name_name!(
+            single_bit_dpc_setter_template!(),
+            single_bit_signals
+        );
+        let multi_bit_setters = generate_lines_from_dot_replaced_name_name_width!(
+            multi_bit_dpc_setter_template!(),
+            multi_bit_signals
+        );
+        single_bit_setters + &multi_bit_setters
+    }
+
+    fn generate_dpc_getters(&self) -> String {
+        let single_bit_signals = self.probe.signals.iter().filter(|s| s.width == 1 && s.get);
+        let multi_bit_signals = self.probe.signals.iter().filter(|s| s.width > 1 && s.get);
+        let single_bit_getters = generate_lines_from_dot_replaced_name_name!(
+            single_bit_dpc_getter_template!(),
+            single_bit_signals
+        );
+        let multi_bit_getters = generate_lines_from_dot_replaced_name_name_width!(
+            multi_bit_dpc_getter_template!(),
+            multi_bit_signals
+        );
+        single_bit_getters + &multi_bit_getters
     }
 
     fn put_file(&self, file_name: &str, content: &[u8]) -> DutGenResult<()> {
