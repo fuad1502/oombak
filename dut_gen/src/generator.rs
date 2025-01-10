@@ -106,6 +106,7 @@ impl<'a> Generator<'a> {
         self.put_dut_hpp()?;
         self.put_getters_cpp()?;
         self.put_setters_cpp()?;
+        self.put_signals_cpp()?;
         Ok(PathBuf::new())
     }
 
@@ -193,6 +194,32 @@ impl<'a> Generator<'a> {
         );
         self.put_file("setters.cpp", content.as_bytes())?;
         Ok(())
+    }
+
+    fn put_signals_cpp(&self) -> DutGenResult<()> {
+        let content = include_str!("templates/signals.cpp.templated");
+        let content = content.replace(
+            "// TEMPLATED: num_of_signals",
+            &format!("{};", &self.probe.signals.len()),
+        );
+        let signals = self.generate_signals_array();
+        let content = content.replace("// TEMPLATED: signals", &signals);
+        self.put_file("signals.cpp", content.as_bytes())?;
+        Ok(())
+    }
+
+    fn generate_signals_array(&self) -> String {
+        let mut signals_array = format!("sig_t signals[{}] = {{\n", self.probe.signals.len());
+        for signal in self.probe.signals.iter() {
+            let get = if signal.get { 1 } else { 0 };
+            let set = if signal.get { 1 } else { 0 };
+            signals_array += &format!(
+                "    {{ \"{}\", {}, {}, {} }},\n",
+                signal.name, signal.width, get, set
+            );
+        }
+        signals_array += "};";
+        signals_array
     }
 
     fn put_file(&self, file_name: &str, content: &[u8]) -> DutGenResult<()> {
