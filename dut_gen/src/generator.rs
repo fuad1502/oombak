@@ -198,12 +198,12 @@ impl<'a> Generator<'a> {
 
     fn put_dut_cpp(&self) -> DutGenResult<()> {
         let content = include_str!("templates/dut.cpp.templated");
-        let setters = generate_lines_from_name_template!(
-            "signalMapping[\"{0}\"].set = set_{0};",
+        let setters = generate_lines_from_dot_replaced_name_name!(
+            "signalMapping[\"{1}\"].set = set_{0};",
             self.probe.signals.iter().filter(|s| s.set)
         );
-        let getters = generate_lines_from_name_template!(
-            "signalMapping[\"{0}\"].get = get_{0};",
+        let getters = generate_lines_from_dot_replaced_name_name!(
+            "signalMapping[\"{1}\"].get = get_{0};",
             self.probe.signals.iter().filter(|s| s.get)
         );
         let content = content.replace("// TEMPLATED: setters", &setters);

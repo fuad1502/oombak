@@ -5,7 +5,7 @@ using namespace std;
 
 Dut::Dut() : context(new VerilatedContext), vDut(new Vombak_dut) {
   vDut->eval();
-  const svScope scope = svGetScopeFromName("TOP.dut");
+  const svScope scope = svGetScopeFromName("TOP.ombak_dut");
   assert(scope);
   svSetScope(scope);
   Dut::set_signal_mappings(signalMapping);
