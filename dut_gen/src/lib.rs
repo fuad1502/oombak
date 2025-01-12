@@ -2,7 +2,10 @@ mod error;
 mod generator;
 mod parser;
 
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 pub fn build(sv_path: &Path) -> Result<PathBuf, String> {
     let probe = parser::parse(sv_path)?;
@@ -10,13 +13,31 @@ pub fn build(sv_path: &Path) -> Result<PathBuf, String> {
 }
 
 pub fn build_with_probe(sv_path: &Path, probe: &parser::Probe) -> Result<PathBuf, String> {
-    let build_path = generator::generate(sv_path, probe)?;
-    cmake_build(&build_path)
+    let source_path = generator::generate(sv_path, probe)?;
+    Ok(cmake(&source_path)?)
 }
 
-fn cmake_build(_build_path: &Path) -> Result<PathBuf, String> {
-    // temporarility return sample dut
-    let mut lib_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    lib_path.push("sample/build/libdut.so");
-    Ok(lib_path)
+fn cmake(source_path: &Path) -> error::DutGenResult<PathBuf> {
+    cmake_configure(source_path)?;
+    cmake_build(source_path)?;
+    let mut so_path = PathBuf::from(source_path);
+    so_path.push("build");
+    so_path.push("libdut.so");
+    Ok(so_path)
+}
+
+fn cmake_configure(source_path: &Path) -> error::DutGenResult<()> {
+    Command::new("cmake")
+        .current_dir(source_path)
+        .args(["-S", ".", "-B", "build"])
+        .output()?;
+    Ok(())
+}
+
+fn cmake_build(source_path: &Path) -> error::DutGenResult<()> {
+    Command::new("cmake")
+        .current_dir(source_path)
+        .args(["--build", "build"])
+        .output()?;
+    Ok(())
 }
