@@ -1,19 +1,19 @@
 use crate::dut;
 
-pub type OmbakResult<T> = Result<T, Box<dyn OmbakError>>;
+pub type OombakResult<T> = Result<T, Box<dyn OombakError>>;
 
-pub trait OmbakError {
+pub trait OombakError {
     fn kind(&self) -> &ErrorKind;
     fn inner(&self) -> &dyn std::error::Error;
 }
 
-impl std::fmt::Display for Box<dyn OmbakError> {
+impl std::fmt::Display for Box<dyn OombakError> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "ombak: {}: {}", self.kind(), self.inner())
     }
 }
 
-impl std::fmt::Debug for Box<dyn OmbakError> {
+impl std::fmt::Debug for Box<dyn OombakError> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -24,7 +24,7 @@ impl std::fmt::Debug for Box<dyn OmbakError> {
     }
 }
 
-impl std::error::Error for Box<dyn OmbakError> {}
+impl std::error::Error for Box<dyn OombakError> {}
 
 #[derive(Debug)]
 pub enum ErrorKind {
@@ -46,7 +46,7 @@ struct SimpleOmbakError {
     inner: Box<dyn std::error::Error>,
 }
 
-impl OmbakError for SimpleOmbakError {
+impl OombakError for SimpleOmbakError {
     fn kind(&self) -> &ErrorKind {
         &self.kind
     }
@@ -56,7 +56,7 @@ impl OmbakError for SimpleOmbakError {
     }
 }
 
-impl From<libloading::Error> for Box<dyn OmbakError> {
+impl From<libloading::Error> for Box<dyn OombakError> {
     fn from(error: libloading::Error) -> Self {
         Box::new(SimpleOmbakError {
             kind: ErrorKind::LibLoading,
@@ -65,7 +65,7 @@ impl From<libloading::Error> for Box<dyn OmbakError> {
     }
 }
 
-impl From<dut::DutError> for Box<dyn OmbakError> {
+impl From<dut::DutError> for Box<dyn OombakError> {
     fn from(error: dut::DutError) -> Self {
         Box::new(SimpleOmbakError {
             kind: ErrorKind::Dut,
@@ -74,8 +74,8 @@ impl From<dut::DutError> for Box<dyn OmbakError> {
     }
 }
 
-impl From<Box<dyn OmbakError>> for String {
-    fn from(error: Box<dyn OmbakError>) -> Self {
+impl From<Box<dyn OombakError>> for String {
+    fn from(error: Box<dyn OombakError>) -> Self {
         error.to_string()
     }
 }

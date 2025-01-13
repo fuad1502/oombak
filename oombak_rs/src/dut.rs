@@ -3,7 +3,7 @@ use dut_sys::SigT;
 use std::ffi::{CStr, CString};
 use thiserror::Error;
 
-use crate::error::OmbakResult;
+use crate::error::OombakResult;
 
 mod dut_sys;
 
@@ -24,18 +24,18 @@ pub struct Dut {
 }
 
 impl Dut {
-    pub fn new(lib_path: &str) -> OmbakResult<Self> {
+    pub fn new(lib_path: &str) -> OombakResult<Self> {
         let lib = dut_sys::DutLib::new(lib_path)?;
         Ok(Dut { lib })
     }
 
-    pub fn query(&self) -> OmbakResult<Vec<Signal>> {
+    pub fn query(&self) -> OombakResult<Vec<Signal>> {
         let mut num_of_signals: u64 = 0;
         let sig_t_ptr = self.lib.query(&mut num_of_signals as *mut u64)?;
         Ok(Self::signals_from(sig_t_ptr, num_of_signals as usize))
     }
 
-    pub fn run(&self, duration: u64) -> OmbakResult<u64> {
+    pub fn run(&self, duration: u64) -> OombakResult<u64> {
         let current_time: u64 = 0;
         match self.lib.run(duration, &current_time)? {
             0 => Ok(current_time),
@@ -43,7 +43,7 @@ impl Dut {
         }
     }
 
-    pub fn set(&self, sig_name: &str, bit_vec: &BitVec<u32>) -> OmbakResult<()> {
+    pub fn set(&self, sig_name: &str, bit_vec: &BitVec<u32>) -> OombakResult<()> {
         let c_str = CString::new(sig_name).unwrap();
         let words = bit_vec.as_raw_slice();
         match self
@@ -55,7 +55,7 @@ impl Dut {
         }
     }
 
-    pub fn get(&self, sig_name: &str) -> OmbakResult<BitVec<u32>> {
+    pub fn get(&self, sig_name: &str) -> OombakResult<BitVec<u32>> {
         let sig_name_cstr = CString::new(sig_name).unwrap();
         let mut n_bits: u64 = 0;
         let words_ptr = self

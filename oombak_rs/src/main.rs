@@ -1,7 +1,7 @@
 use bitvec::vec::BitVec;
 use std::path::PathBuf;
 
-use ombak::dut::Dut;
+use oombak::dut::Dut;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // get lib path
