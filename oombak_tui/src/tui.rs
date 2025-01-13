@@ -1,4 +1,4 @@
-use crate::error::OmbakResult;
+use crate::error::OombakResult;
 
 use crossterm::ExecutableCommand;
 
@@ -8,14 +8,14 @@ use ratatui::Terminal;
 use std::io;
 use std::io::Stdout;
 
-pub fn init_terminal() -> OmbakResult<Terminal<CrosstermBackend<Stdout>>> {
+pub fn init_terminal() -> OombakResult<Terminal<CrosstermBackend<Stdout>>> {
     crossterm::terminal::enable_raw_mode()?;
     io::stdout().execute(crossterm::terminal::EnterAlternateScreen)?;
     let terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
     Ok(terminal)
 }
 
-pub fn restore_terminal() -> OmbakResult<()> {
+pub fn restore_terminal() -> OombakResult<()> {
     io::stdout().execute(crossterm::terminal::LeaveAlternateScreen)?;
     crossterm::terminal::disable_raw_mode()?;
     Ok(())

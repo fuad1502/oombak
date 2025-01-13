@@ -307,7 +307,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ombak-tui"
+name = "oombak_tui"
 version = "0.1.0"
 dependencies = [
  "bitvec",

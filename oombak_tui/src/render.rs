@@ -1,5 +1,5 @@
 use crate::component::Component;
-use crate::error::OmbakResult;
+use crate::error::OombakResult;
 
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
@@ -20,8 +20,8 @@ pub fn spawn_renderer(
     root: Arc<RwLock<dyn Component>>,
     mut terminal: Terminal<CrosstermBackend<Stdout>>,
     message_rx: Receiver<Message>,
-) -> JoinHandle<OmbakResult<()>> {
-    thread::spawn(move || -> OmbakResult<()> {
+) -> JoinHandle<OombakResult<()>> {
+    thread::spawn(move || -> OombakResult<()> {
         let mut message = Message::Render;
         while message != Message::Quit {
             terminal.draw(|frame| root.read().unwrap().render(frame, frame.area()))?;

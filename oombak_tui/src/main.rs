@@ -1,4 +1,4 @@
-use ombak_tui::{
+use oombak_tui::{
     backend::simulator::{Request, Simulator},
     components, event, render, tui,
 };
