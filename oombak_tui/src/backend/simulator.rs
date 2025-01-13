@@ -9,7 +9,7 @@ use std::{
 
 use bitvec::vec::BitVec;
 
-use ombak::{dut::Dut, error::OmbakResult};
+use oombak_rs::{dut::Dut, error::OombakResult};
 
 pub struct Simulator {
     request_tx: Sender<Request>,
@@ -38,7 +38,7 @@ pub enum Response<'a> {
 }
 
 impl Simulator {
-    pub fn new() -> OmbakResult<Simulator> {
+    pub fn new() -> OombakResult<Simulator> {
         let listeners = Arc::new(RwLock::new(vec![]));
         let (request_tx, request_rx) = mpsc::channel();
         Self::spawn_request_server(Arc::clone(&listeners), request_rx);
@@ -123,7 +123,7 @@ impl RequestServer {
     }
 
     fn load_file(&mut self, sv_path: &Path) -> Result<(), String> {
-        let lib_path = dut_gen::build(sv_path)?;
+        let lib_path = oombak_gen::build(sv_path)?;
         let lib_path = lib_path.to_str().unwrap();
         let dut = Dut::new(lib_path)?;
         self.dut = Some(dut);
@@ -206,8 +206,8 @@ pub struct Wave {
     pub values: Vec<BitVec<u32>>,
 }
 
-impl From<ombak::dut::Signal> for Wave {
-    fn from(signal: ombak::dut::Signal) -> Self {
+impl From<oombak_rs::dut::Signal> for Wave {
+    fn from(signal: oombak_rs::dut::Signal) -> Self {
         Wave {
             signal_name: signal.name,
             width: signal.width as usize,
