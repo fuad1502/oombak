@@ -17,7 +17,7 @@ pub fn build_with_probe(sv_path: &Path, probe: &parser::Probe) -> Result<PathBuf
     Ok(cmake(&source_path)?)
 }
 
-fn cmake(source_path: &Path) -> error::DutGenResult<PathBuf> {
+fn cmake(source_path: &Path) -> error::OombakGenResult<PathBuf> {
     cmake_configure(source_path)?;
     cmake_build(source_path)?;
     let mut so_path = PathBuf::from(source_path);
@@ -26,7 +26,7 @@ fn cmake(source_path: &Path) -> error::DutGenResult<PathBuf> {
     Ok(so_path)
 }
 
-fn cmake_configure(source_path: &Path) -> error::DutGenResult<()> {
+fn cmake_configure(source_path: &Path) -> error::OombakGenResult<()> {
     Command::new("cmake")
         .current_dir(source_path)
         .args(["-S", ".", "-B", "build"])
@@ -34,7 +34,7 @@ fn cmake_configure(source_path: &Path) -> error::DutGenResult<()> {
     Ok(())
 }
 
-fn cmake_build(source_path: &Path) -> error::DutGenResult<()> {
+fn cmake_build(source_path: &Path) -> error::OombakGenResult<()> {
     Command::new("cmake")
         .current_dir(source_path)
         .args(["--build", "build"])

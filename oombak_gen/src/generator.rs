@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{error::DutGenResult, parser};
+use crate::{error::OombakGenResult, parser};
 
 macro_rules! generate_lines_from_name_template {
     ($template:expr, $signals:expr) => {{
@@ -145,7 +145,7 @@ macro_rules! multi_bit_dpc_getter_template {
     };
 }
 
-pub fn generate(sv_path: &Path, probe: &parser::Probe) -> DutGenResult<PathBuf> {
+pub fn generate(sv_path: &Path, probe: &parser::Probe) -> OombakGenResult<PathBuf> {
     Generator::new(probe, sv_path).generate()
 }
 
@@ -164,7 +164,7 @@ impl<'a> Generator<'a> {
         }
     }
 
-    fn generate(mut self) -> DutGenResult<PathBuf> {
+    fn generate(mut self) -> OombakGenResult<PathBuf> {
         self.create_temp_dir()?;
         self.put_dut_bind_cpp()?;
         self.put_dut_bind_h()?;
@@ -178,25 +178,25 @@ impl<'a> Generator<'a> {
         Ok(self.temp_dir)
     }
 
-    fn create_temp_dir(&mut self) -> DutGenResult<()> {
+    fn create_temp_dir(&mut self) -> OombakGenResult<()> {
         self.temp_dir = PathBuf::from("dut_gen_temp_dir");
         std::fs::create_dir(&self.temp_dir)?;
         Ok(())
     }
 
-    fn put_dut_bind_cpp(&self) -> DutGenResult<()> {
+    fn put_dut_bind_cpp(&self) -> OombakGenResult<()> {
         let content = include_bytes!("templates/dut_bind.cpp.fixed");
         self.put_file("dut_bind.cpp", content)?;
         Ok(())
     }
 
-    fn put_dut_bind_h(&self) -> DutGenResult<()> {
+    fn put_dut_bind_h(&self) -> OombakGenResult<()> {
         let content = include_bytes!("templates/dut_bind.h.fixed");
         self.put_file("dut_bind.h", content)?;
         Ok(())
     }
 
-    fn put_dut_cpp(&self) -> DutGenResult<()> {
+    fn put_dut_cpp(&self) -> OombakGenResult<()> {
         let content = include_str!("templates/dut.cpp.templated");
         let setters = generate_lines_from_dot_replaced_name_name!(
             "signalMapping[\"{1}\"].set = set_{0};",
@@ -212,7 +212,7 @@ impl<'a> Generator<'a> {
         Ok(())
     }
 
-    fn put_dut_hpp(&self) -> DutGenResult<()> {
+    fn put_dut_hpp(&self) -> OombakGenResult<()> {
         let content = include_str!("templates/dut.hpp.templated");
         let setters = generate_lines_from_name_template!(
             "static bool set_{0}(Dut *self, const std::vector<uint32_t> &words);",
@@ -228,7 +228,7 @@ impl<'a> Generator<'a> {
         Ok(())
     }
 
-    fn put_getters_cpp(&self) -> DutGenResult<()> {
+    fn put_getters_cpp(&self) -> OombakGenResult<()> {
         let content = include_str!("templates/getters.cpp.templated");
         let single_bit_signals = self.probe.signals.iter().filter(|s| s.get && s.width == 1);
         let multi_bit_signals = self.probe.signals.iter().filter(|s| s.get && s.width > 1);
@@ -246,7 +246,7 @@ impl<'a> Generator<'a> {
         Ok(())
     }
 
-    fn put_setters_cpp(&self) -> DutGenResult<()> {
+    fn put_setters_cpp(&self) -> OombakGenResult<()> {
         let content = include_str!("templates/setters.cpp.templated");
         let single_bit_signals = self.probe.signals.iter().filter(|s| s.set && s.width == 1);
         let multi_bit_signals = self.probe.signals.iter().filter(|s| s.set && s.width > 1);
@@ -264,7 +264,7 @@ impl<'a> Generator<'a> {
         Ok(())
     }
 
-    fn put_signals_cpp(&self) -> DutGenResult<()> {
+    fn put_signals_cpp(&self) -> OombakGenResult<()> {
         let content = include_str!("templates/signals.cpp.templated");
         let content = content.replace(
             "// TEMPLATED: num_of_signals",
@@ -276,7 +276,7 @@ impl<'a> Generator<'a> {
         Ok(())
     }
 
-    fn put_ombak_dut_sv(&self) -> DutGenResult<()> {
+    fn put_ombak_dut_sv(&self) -> OombakGenResult<()> {
         let content = include_str!("templates/ombak_dut.sv.templated");
         let top_level_signal_declarations = self.generate_top_level_signal_declarations();
         let top_level_module_instantiation = self.generate_top_level_module_instantiation();
@@ -290,7 +290,7 @@ impl<'a> Generator<'a> {
         Ok(())
     }
 
-    fn put_cmakelists_txt(&self) -> DutGenResult<()> {
+    fn put_cmakelists_txt(&self) -> OombakGenResult<()> {
         let sv_dir = self.sv_path.parent().unwrap();
         let content = include_str!("templates/CMakeLists.txt.templated");
         let content = content.replace("/*OMBAK_INCLUDE_DIRS*/", sv_dir.to_str().unwrap());
@@ -371,7 +371,7 @@ impl<'a> Generator<'a> {
         single_bit_getters + &multi_bit_getters
     }
 
-    fn put_file(&self, file_name: &str, content: &[u8]) -> DutGenResult<()> {
+    fn put_file(&self, file_name: &str, content: &[u8]) -> OombakGenResult<()> {
         let mut file_path = self.temp_dir.clone();
         file_path.push(file_name);
         let mut file = File::create_new(file_path)?;

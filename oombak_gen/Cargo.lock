@@ -3,7 +3,7 @@
 version = 4
 
 [[package]]
-name = "dut_gen"
+name = "oombak_gen"
 version = "0.1.0"
 dependencies = [
  "thiserror",

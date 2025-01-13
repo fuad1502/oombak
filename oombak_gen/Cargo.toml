@@ -1,5 +1,5 @@
 [package]
-name = "dut_gen"
+name = "oombak_gen"
 version = "0.1.0"
 edition = "2021"
 
