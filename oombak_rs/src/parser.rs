@@ -118,6 +118,34 @@ impl TryFrom<&oombak_parser_sys::Signal> for Signal {
     }
 }
 
+impl Signal {
+    pub fn is_top_level(&self) -> bool {
+        match &self.signal_type {
+            SignalType::UnpackedArrPort(_, _) => true,
+            SignalType::UnpackedArrNetVar(_) => false,
+        }
+    }
+
+    pub fn bit_width(&self) -> usize {
+        match &self.signal_type {
+            SignalType::UnpackedArrPort(_, bit_width) => *bit_width,
+            SignalType::UnpackedArrNetVar(bit_width) => *bit_width,
+        }
+    }
+
+    pub fn is_settable(&self) -> bool {
+        match &self.signal_type {
+            SignalType::UnpackedArrPort(Direction::In, _) => true,
+            SignalType::UnpackedArrPort(Direction::Out, _) => false,
+            SignalType::UnpackedArrNetVar(_) => false,
+        }
+    }
+
+    pub fn is_gettable(&self) -> bool {
+        true
+    }
+}
+
 fn string_from_ptr(ptr: *const c_char) -> OombakResult<String> {
     if ptr.is_null() {
         return Err(ParseError::NullDereference.into());
