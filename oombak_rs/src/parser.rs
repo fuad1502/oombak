@@ -4,11 +4,14 @@ use std::{
     ffi::{c_char, CStr, CString},
     sync::{Arc, RwLock, Weak},
 };
+use thiserror::Error;
+
+use crate::error::OombakResult;
 
 pub fn parse(
     source_paths: &[&str],
     top_module_name: &str,
-) -> Result<Arc<RwLock<InstanceNode>>, String> {
+) -> OombakResult<Arc<RwLock<InstanceNode>>> {
     let source_paths = CString::new(source_paths.join(":")).unwrap();
     let top_module_name = CString::new(top_module_name).unwrap();
     let instance_sys = unsafe {
@@ -17,7 +20,7 @@ pub fn parse(
     InstanceNode::try_from(instance_sys)
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct InstanceNode {
     pub name: String,
     pub module_name: String,
@@ -44,18 +47,24 @@ pub enum Direction {
     Out,
 }
 
+#[derive(Debug, Error)]
+pub enum ParseError {
+    #[error("null dereference")]
+    NullDereference,
+}
+
 impl InstanceNode {
     fn try_from(
         ptr: *const oombak_parser_sys::Instance,
-    ) -> Result<Arc<RwLock<InstanceNode>>, String> {
-        let instance = unsafe { deref_instance_ptr(&ptr) };
-        let name = string_from_ptr(instance.name);
-        let module_name = string_from_ptr(instance.module_name);
-        let signals = signals_ptr_to_vec(instance.signals, instance.signals_len as usize);
+    ) -> OombakResult<Arc<RwLock<InstanceNode>>> {
+        let instance = unsafe { deref_instance_ptr(&ptr)? };
+        let name = string_from_ptr(instance.name)?;
+        let module_name = string_from_ptr(instance.module_name)?;
+        let signals = signals_ptr_to_vec(instance.signals, instance.signals_len as usize)?;
         let children = child_instances_ptr_to_vec(
             instance.child_instances,
             instance.child_instances_len as usize,
-        );
+        )?;
         let node = InstanceNode {
             name,
             module_name,
@@ -92,7 +101,7 @@ impl TryFrom<&oombak_parser_sys::Signal> for Signal {
     type Error = String;
 
     fn try_from(value: &oombak_parser_sys::Signal) -> Result<Self, Self::Error> {
-        let name = string_from_ptr(value.name);
+        let name = string_from_ptr(value.name)?;
         let width = value.width as usize;
         let signal_type = match value.signal_type {
             oombak_parser_sys::SignalType::UnpackedArrPortIn => {
@@ -109,34 +118,48 @@ impl TryFrom<&oombak_parser_sys::Signal> for Signal {
     }
 }
 
-fn string_from_ptr(ptr: *const c_char) -> String {
-    unsafe { CStr::from_ptr(ptr) }.to_str().unwrap().to_string()
+fn string_from_ptr(ptr: *const c_char) -> OombakResult<String> {
+    if ptr.is_null() {
+        return Err(ParseError::NullDereference.into());
+    }
+    Ok(unsafe { CStr::from_ptr(ptr) }.to_str().unwrap().to_string())
 }
 
 unsafe fn deref_instance_ptr(
     ptr: &*const oombak_parser_sys::Instance,
-) -> oombak_parser_sys::Instance {
-    unsafe { **ptr }
+) -> OombakResult<oombak_parser_sys::Instance> {
+    if ptr.is_null() {
+        return Err(ParseError::NullDereference.into());
+    }
+    Ok(unsafe { **ptr })
 }
 
 fn signals_ptr_to_vec(
     signals: *const oombak_parser_sys::Signal,
     signals_len: usize,
-) -> Vec<Signal> {
-    unsafe { std::slice::from_raw_parts(signals, signals_len) }
+) -> OombakResult<Vec<Signal>> {
+    if signals.is_null() {
+        return Err(ParseError::NullDereference.into());
+    }
+    Ok(unsafe { std::slice::from_raw_parts(signals, signals_len) }
         .iter()
         .map(|s| Signal::try_from(s).unwrap())
-        .collect()
+        .collect())
 }
 
 fn child_instances_ptr_to_vec(
     child_instances: *const *const oombak_parser_sys::Instance,
     child_instances_len: usize,
-) -> Vec<Arc<RwLock<InstanceNode>>> {
-    unsafe { std::slice::from_raw_parts(child_instances, child_instances_len) }
-        .iter()
-        .map(|c| InstanceNode::try_from(*c).unwrap())
-        .collect()
+) -> OombakResult<Vec<Arc<RwLock<InstanceNode>>>> {
+    if child_instances.is_null() {
+        return Err(ParseError::NullDereference.into());
+    }
+    Ok(
+        unsafe { std::slice::from_raw_parts(child_instances, child_instances_len) }
+            .iter()
+            .map(|c| InstanceNode::try_from(*c).unwrap())
+            .collect(),
+    )
 }
 
 #[cfg(test)]
@@ -145,7 +168,7 @@ mod test {
 
     use crate::parser::Direction;
 
-    use super::{parse, InstanceNode, Signal, SignalType};
+    use super::{oombak_parser_sys::Instance, parse, InstanceNode, Signal, SignalType};
 
     #[test]
     fn test_get_signal() {
@@ -244,5 +267,12 @@ mod test {
             name: "d".to_string(),
             signal_type: SignalType::UnpackedArrNetVar(1)
         }));
+    }
+
+    #[test]
+    fn test_null() {
+        let ptr = 0 as *const Instance;
+        let e = InstanceNode::try_from(ptr).unwrap_err();
+        assert_eq!(&e.to_string(), "ombak: parse: null dereference");
     }
 }

@@ -1,4 +1,4 @@
-use crate::dut;
+use crate::{dut, parser};
 
 pub type OombakResult<T> = Result<T, Box<dyn OombakError>>;
 
@@ -30,6 +30,7 @@ impl std::error::Error for Box<dyn OombakError> {}
 pub enum ErrorKind {
     LibLoading,
     Dut,
+    Parse,
 }
 
 impl std::fmt::Display for ErrorKind {
@@ -37,6 +38,7 @@ impl std::fmt::Display for ErrorKind {
         match self {
             ErrorKind::LibLoading => write!(f, "libloading"),
             ErrorKind::Dut => write!(f, "dut"),
+            ErrorKind::Parse => write!(f, "parse"),
         }
     }
 }
@@ -69,6 +71,15 @@ impl From<dut::DutError> for Box<dyn OombakError> {
     fn from(error: dut::DutError) -> Self {
         Box::new(SimpleOmbakError {
             kind: ErrorKind::Dut,
+            inner: Box::new(error),
+        })
+    }
+}
+
+impl From<parser::ParseError> for Box<dyn OombakError> {
+    fn from(error: parser::ParseError) -> Self {
+        Box::new(SimpleOmbakError {
+            kind: ErrorKind::Parse,
             inner: Box::new(error),
         })
     }
