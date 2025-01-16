@@ -9,7 +9,12 @@ use std::{
 
 use bitvec::vec::BitVec;
 
-use oombak_rs::{dut::Dut, error::OombakResult};
+use oombak_gen::error::OombakGenError;
+use oombak_rs::{
+    dut::Dut,
+    error::{OombakError, OombakResult},
+};
+use thiserror::Error;
 
 pub struct Simulator {
     request_tx: Sender<Request>,
@@ -35,6 +40,30 @@ pub enum Response<'a> {
     SetSignalResult(Result<(), String>),
     LoadResult(Result<(), String>),
     SimulationResult(Result<&'a SimulationResult, String>),
+}
+
+pub type OombakSimResult<T> = Result<T, OombakSimError>;
+
+#[derive(Debug, Error)]
+pub enum OombakSimError {
+    #[error("DUT not loaded")]
+    DutNotLoaded,
+    #[error("oombak_gen: {}", _0)]
+    OombakGen(OombakGenError),
+    #[error("oombak_rs: {}", _0)]
+    Oombak(OombakError),
+}
+
+impl From<OombakGenError> for OombakSimError {
+    fn from(value: OombakGenError) -> Self {
+        Self::OombakGen(value)
+    }
+}
+
+impl From<OombakError> for OombakSimError {
+    fn from(value: OombakError) -> Self {
+        Self::Oombak(value)
+    }
 }
 
 impl Simulator {
@@ -82,8 +111,6 @@ struct RequestServer {
 }
 
 impl RequestServer {
-    const DUT_NOT_LOADED: &str = "DUT not loaded";
-
     fn new(listeners: Arc<RwLock<Listeners>>) -> Self {
         Self {
             dut: None,
@@ -96,7 +123,7 @@ impl RequestServer {
     fn serve_run(&mut self, duration: u64) {
         let response = match self.run(duration) {
             Ok(duration) => Response::RunResult(Ok(duration)),
-            Err(e) => Response::RunResult(Err(e)),
+            Err(e) => Response::RunResult(Err(e.to_string())),
         };
         self.notify_listeners(response);
     }
@@ -104,7 +131,7 @@ impl RequestServer {
     fn serve_set_signal(&self, signal_name: &str, value: &BitVec<u32>) {
         let response = match self.set_signal(signal_name, value) {
             Ok(_) => Response::SetSignalResult(Ok(())),
-            Err(e) => Response::SetSignalResult(Err(e)),
+            Err(e) => Response::SetSignalResult(Err(e.to_string())),
         };
         self.notify_listeners(response);
     }
@@ -122,7 +149,7 @@ impl RequestServer {
         self.notify_listeners(response);
     }
 
-    fn load_file(&mut self, sv_path: &Path) -> Result<(), String> {
+    fn load_file(&mut self, sv_path: &Path) -> OombakSimResult<()> {
         let lib_path = oombak_gen::build(sv_path)?;
         let lib_path = lib_path.to_str().unwrap();
         let dut = Dut::new(lib_path)?;
@@ -132,13 +159,13 @@ impl RequestServer {
         Ok(())
     }
 
-    fn load_signal_names_to_simulation_result(&mut self) -> Result<(), String> {
+    fn load_signal_names_to_simulation_result(&mut self) -> OombakSimResult<()> {
         let waves: Vec<Wave> = self.dut()?.query()?.into_iter().map(Wave::from).collect();
         self.simulation_result.waves = waves;
         Ok(())
     }
 
-    fn run(&mut self, duration: u64) -> Result<u64, String> {
+    fn run(&mut self, duration: u64) -> OombakSimResult<u64> {
         let target_time = self.simulation_time + duration;
         while self.simulation_time != target_time {
             let curr_time = self.dut()?.run(duration)?;
@@ -148,17 +175,17 @@ impl RequestServer {
         Ok(self.simulation_time)
     }
 
-    fn dut(&self) -> Result<&Dut, String> {
+    fn dut(&self) -> OombakSimResult<&Dut> {
         match &self.dut {
             Some(dut) => Ok(dut),
-            None => Err(Self::DUT_NOT_LOADED.to_string()),
+            None => Err(OombakSimError::DutNotLoaded),
         }
     }
 
     fn append_new_values_to_simulation_result_until(
         &mut self,
         end_time: u64,
-    ) -> Result<(), String> {
+    ) -> OombakSimResult<()> {
         let new_values = self.query_new_values()?;
         for (wave, new_value) in self
             .simulation_result
@@ -173,7 +200,7 @@ impl RequestServer {
         Ok(())
     }
 
-    fn query_new_values(&self) -> Result<Vec<BitVec<u32>>, String> {
+    fn query_new_values(&self) -> OombakSimResult<Vec<BitVec<u32>>> {
         let mut new_values = vec![];
         for signal_name in self.simulation_result.waves.iter().map(|w| &w.signal_name) {
             let new_value = self.dut()?.get(signal_name)?;
@@ -182,7 +209,7 @@ impl RequestServer {
         Ok(new_values)
     }
 
-    fn set_signal(&self, signal_name: &str, value: &BitVec<u32>) -> Result<(), String> {
+    fn set_signal(&self, signal_name: &str, value: &BitVec<u32>) -> OombakSimResult<()> {
         Ok(self.dut()?.set(signal_name, value)?)
     }
 

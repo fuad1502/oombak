@@ -9,3 +9,4 @@ crossterm = "0.28.1"
 ratatui = "0.29.0"
 oombak_rs = { version="0.1.0", path="../oombak_rs" }
 oombak_gen = { version="0.1.0", path="../oombak_gen" }
+thiserror = "2.0.11"
