@@ -23,3 +23,21 @@ impl From<libloading::Error> for OombakError {
         OombakError::Libloading(error)
     }
 }
+
+impl<T> From<std::sync::PoisonError<T>> for OombakError {
+    fn from(value: std::sync::PoisonError<T>) -> Self {
+        OombakError::InternalError(value.to_string())
+    }
+}
+
+impl From<std::ffi::NulError> for OombakError {
+    fn from(value: std::ffi::NulError) -> Self {
+        OombakError::InternalError(value.to_string())
+    }
+}
+
+impl From<std::str::Utf8Error> for OombakError {
+    fn from(value: std::str::Utf8Error) -> Self {
+        OombakError::InternalError(value.to_string())
+    }
+}

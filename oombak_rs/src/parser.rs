@@ -12,12 +12,12 @@ pub fn parse(
     source_paths: &[&str],
     top_module_name: &str,
 ) -> OombakResult<Arc<RwLock<InstanceNode>>> {
-    let source_paths = CString::new(source_paths.join(":")).unwrap();
-    let top_module_name = CString::new(top_module_name).unwrap();
+    let source_paths = CString::new(source_paths.join(":"))?;
+    let top_module_name = CString::new(top_module_name)?;
     let instance_sys = unsafe {
         oombak_parser_sys::oombak_parser_parse(source_paths.as_ptr(), top_module_name.as_ptr())
     };
-    InstanceNode::try_from(instance_sys)
+    InstanceNode::try_from(&instance_sys)
 }
 
 #[derive(Default, Debug)]
@@ -61,9 +61,9 @@ impl From<Error> for OombakError {
 
 impl InstanceNode {
     fn try_from(
-        ptr: *const oombak_parser_sys::Instance,
+        ptr: &*const oombak_parser_sys::Instance,
     ) -> OombakResult<Arc<RwLock<InstanceNode>>> {
-        let instance = unsafe { deref_instance_ptr(&ptr)? };
+        let instance = unsafe { deref_instance_ptr(ptr)? };
         let name = string_from_ptr(instance.name)?;
         let module_name = string_from_ptr(instance.module_name)?;
         let signals = signals_ptr_to_vec(instance.signals, instance.signals_len as usize)?;
@@ -81,25 +81,25 @@ impl InstanceNode {
         Ok(Arc::new(RwLock::new(node)))
     }
 
-    pub fn get_signal(&self, name: &str) -> Option<Signal> {
+    pub fn get_signal(&self, name: &str) -> OombakResult<Option<Signal>> {
         if let Some((head, tail)) = name.split_once('.') {
             if self.name != head {
-                return None;
+                return Ok(None);
             }
             for signal in self.signals.iter() {
                 if signal.name == tail {
-                    return Some(signal.clone());
+                    return Ok(Some(signal.clone()));
                 }
             }
             for child in self.children.iter() {
-                let sig = child.read().unwrap().get_signal(tail);
+                let sig = child.read()?.get_signal(tail)?;
                 if sig.is_some() {
-                    return sig;
+                    return Ok(sig);
                 }
             }
-            return None;
+            return Ok(None);
         }
-        None
+        Ok(None)
     }
 
     pub fn get_ports(&self) -> impl Iterator<Item = &Signal> {
@@ -155,7 +155,7 @@ fn string_from_ptr(ptr: *const c_char) -> OombakResult<String> {
     if ptr.is_null() {
         return Err(Error::NullDereference.into());
     }
-    Ok(unsafe { CStr::from_ptr(ptr) }.to_str().unwrap().to_string())
+    Ok(unsafe { CStr::from_ptr(ptr) }.to_str()?.to_string())
 }
 
 unsafe fn deref_instance_ptr(
@@ -174,10 +174,10 @@ fn signals_ptr_to_vec(
     if signals.is_null() {
         return Err(Error::NullDereference.into());
     }
-    Ok(unsafe { std::slice::from_raw_parts(signals, signals_len) }
+    unsafe { std::slice::from_raw_parts(signals, signals_len) }
         .iter()
-        .map(|s| Signal::try_from(s).unwrap())
-        .collect())
+        .map(Signal::try_from)
+        .collect()
 }
 
 fn child_instances_ptr_to_vec(
@@ -187,12 +187,10 @@ fn child_instances_ptr_to_vec(
     if child_instances.is_null() {
         return Err(Error::NullDereference.into());
     }
-    Ok(
-        unsafe { std::slice::from_raw_parts(child_instances, child_instances_len) }
-            .iter()
-            .map(|c| InstanceNode::try_from(*c).unwrap())
-            .collect(),
-    )
+    unsafe { std::slice::from_raw_parts(child_instances, child_instances_len) }
+        .iter()
+        .map(InstanceNode::try_from)
+        .collect()
 }
 
 #[cfg(test)]
@@ -241,6 +239,7 @@ mod test {
             .read()
             .unwrap()
             .get_signal("root.child_1.child_2.sig_1")
+            .unwrap()
             .is_some())
     }
 
@@ -305,7 +304,7 @@ mod test {
     #[test]
     fn test_null() {
         let ptr = 0 as *const Instance;
-        let e = InstanceNode::try_from(ptr).unwrap_err();
+        let e = InstanceNode::try_from(&ptr).unwrap_err();
         assert_eq!(&e.to_string(), "oombak_rs: parse: null dereference");
     }
 }

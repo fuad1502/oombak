@@ -82,7 +82,7 @@ impl Probe {
     }
 
     pub fn add_signal_to_probe(&mut self, path: &str) -> OombakResult<()> {
-        if let Some(signal) = self.root_node.read().unwrap().get_signal(path) {
+        if let Ok(Some(signal)) = self.root_node.read().unwrap().get_signal(path) {
             let probe_point = ProbePoint {
                 path: path.to_string(),
                 signal,
