@@ -1,0 +1,10 @@
+[package]
+name = "oombak_sim"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bitvec = "1.0.1"
+oombak_rs = { version="0.1.0", path="../oombak_rs" }
+oombak_gen = { version="0.1.0", path="../oombak_gen" }
+thiserror = "2.0.11"
