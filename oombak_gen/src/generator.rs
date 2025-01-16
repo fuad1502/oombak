@@ -330,13 +330,13 @@ impl<'a> Generator<'a> {
         self.probe
             .get_top_level_ports()
             .iter()
-            .fold(String::from(""), |prev, s| {
-                let width = if s.bit_width() > 1 {
-                    format!("[{}:0]", s.bit_width() - 1)
+            .fold(String::from(""), |prev, p| {
+                let width = if p.bit_width() > 1 {
+                    format!("[{}:0]", p.bit_width() - 1)
                 } else {
                     "".to_string()
                 };
-                prev + &format!("logic {width} {};\n", s.name)
+                prev + &format!("logic {width} {};\n", p.path())
             })
     }
 
@@ -345,8 +345,8 @@ impl<'a> Generator<'a> {
             .probe
             .get_top_level_ports()
             .iter()
-            .fold(String::from(""), |prev, s| {
-                prev + &format!(".{0}({0}),\n", s.name)
+            .fold(String::from(""), |prev, p| {
+                prev + &format!(".{0}({0}),\n", p.path())
             });
         format!(
             "{0} {0} (\n{1}\n);",

@@ -6,9 +6,10 @@ use std::{
     process::Command,
 };
 
+use error::OombakGenResult;
 use oombak_rs::probe::Probe;
 
-pub fn build(sv_path: &Path) -> Result<PathBuf, String> {
+pub fn build(sv_path: &Path) -> OombakGenResult<PathBuf> {
     let source_paths = [
         "/home/fuad1502/code/oombak_parser/tests/fixtures/sv_sample_1/sample.sv",
         "/home/fuad1502/code/oombak_parser/tests/fixtures/sv_sample_1/adder.sv",
@@ -17,12 +18,12 @@ pub fn build(sv_path: &Path) -> Result<PathBuf, String> {
     build_with_probe(sv_path, &probe)
 }
 
-pub fn build_with_probe(sv_path: &Path, probe: &Probe) -> Result<PathBuf, String> {
+pub fn build_with_probe(sv_path: &Path, probe: &Probe) -> OombakGenResult<PathBuf> {
     let source_path = generator::generate(sv_path, probe)?;
     Ok(cmake(&source_path)?)
 }
 
-fn cmake(source_path: &Path) -> error::OombakGenResult<PathBuf> {
+fn cmake(source_path: &Path) -> OombakGenResult<PathBuf> {
     cmake_configure(source_path)?;
     cmake_build(source_path)?;
     let mut so_path = PathBuf::from(source_path);
@@ -31,7 +32,7 @@ fn cmake(source_path: &Path) -> error::OombakGenResult<PathBuf> {
     Ok(so_path)
 }
 
-fn cmake_configure(source_path: &Path) -> error::OombakGenResult<()> {
+fn cmake_configure(source_path: &Path) -> OombakGenResult<()> {
     Command::new("cmake")
         .current_dir(source_path)
         .args(["-S", ".", "-B", "build"])
@@ -39,7 +40,7 @@ fn cmake_configure(source_path: &Path) -> error::OombakGenResult<()> {
     Ok(())
 }
 
-fn cmake_build(source_path: &Path) -> error::OombakGenResult<()> {
+fn cmake_build(source_path: &Path) -> OombakGenResult<()> {
     Command::new("cmake")
         .current_dir(source_path)
         .args(["--build", "build"])

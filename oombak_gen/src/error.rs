@@ -1,3 +1,4 @@
+use oombak_rs::error::OombakError;
 use thiserror::Error;
 
 pub type OombakGenResult<T> = Result<T, OombakGenError>;
@@ -6,6 +7,8 @@ pub type OombakGenResult<T> = Result<T, OombakGenError>;
 pub enum OombakGenError {
     #[error("IO error: {}", _0)]
     Io(std::io::Error),
+    #[error("oombak_rs: {}", _0)]
+    Oombak(OombakError),
 }
 
 impl From<std::io::Error> for OombakGenError {
@@ -14,8 +17,8 @@ impl From<std::io::Error> for OombakGenError {
     }
 }
 
-impl From<OombakGenError> for String {
-    fn from(value: OombakGenError) -> Self {
-        value.to_string()
+impl From<OombakError> for OombakGenError {
+    fn from(value: OombakError) -> Self {
+        OombakGenError::Oombak(value)
     }
 }
