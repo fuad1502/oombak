@@ -9,7 +9,7 @@ use thiserror::Error;
 use crate::error::{OombakError, OombakResult};
 
 pub fn parse(
-    source_paths: &[&str],
+    source_paths: &[String],
     top_module_name: &str,
 ) -> OombakResult<Arc<RwLock<InstanceNode>>> {
     let source_paths = CString::new(source_paths.join(":"))?;
@@ -246,8 +246,8 @@ mod test {
     #[test]
     fn test_parse() {
         let source_paths = [
-            "/home/fuad1502/code/oombak_parser/tests/fixtures/sv_sample_1/sample.sv",
-            "/home/fuad1502/code/oombak_parser/tests/fixtures/sv_sample_1/adder.sv",
+            "/home/fuad1502/code/oombak_parser/tests/fixtures/sv_sample_1/sample.sv".to_string(),
+            "/home/fuad1502/code/oombak_parser/tests/fixtures/sv_sample_1/adder.sv".to_string(),
         ];
         let root = parse(&source_paths, "sample").unwrap();
         let root_read = root.read().unwrap();

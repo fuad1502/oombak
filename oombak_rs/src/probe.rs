@@ -34,7 +34,7 @@ impl From<Error> for OombakError {
 }
 
 impl Probe {
-    pub fn try_from(source_paths: &[&str], top_module_name: &str) -> OombakResult<Self> {
+    pub fn try_from(source_paths: &[String], top_module_name: &str) -> OombakResult<Self> {
         let instance_node = parser::parse(source_paths, top_module_name)?;
         let points = Self::create_top_level_points(&instance_node)?;
         let top_level_ports = points.clone();
