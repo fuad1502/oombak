@@ -95,6 +95,10 @@ impl InstanceNode {
         }
         None
     }
+
+    pub fn get_ports(&self) -> impl Iterator<Item = &Signal> {
+        self.signals.iter().filter(|s| s.is_port())
+    }
 }
 
 impl TryFrom<&oombak_parser_sys::Signal> for Signal {
@@ -119,11 +123,18 @@ impl TryFrom<&oombak_parser_sys::Signal> for Signal {
 }
 
 impl Signal {
-    pub fn is_top_level(&self) -> bool {
+    pub fn is_port(&self) -> bool {
         match &self.signal_type {
             SignalType::UnpackedArrPort(_, _) => true,
             SignalType::UnpackedArrNetVar(_) => false,
         }
+    }
+
+    pub fn is_input_port(&self) -> bool {
+        matches!(
+            &self.signal_type,
+            SignalType::UnpackedArrPort(Direction::In, _)
+        )
     }
 
     pub fn bit_width(&self) -> usize {
@@ -131,18 +142,6 @@ impl Signal {
             SignalType::UnpackedArrPort(_, bit_width) => *bit_width,
             SignalType::UnpackedArrNetVar(bit_width) => *bit_width,
         }
-    }
-
-    pub fn is_settable(&self) -> bool {
-        match &self.signal_type {
-            SignalType::UnpackedArrPort(Direction::In, _) => true,
-            SignalType::UnpackedArrPort(Direction::Out, _) => false,
-            SignalType::UnpackedArrNetVar(_) => false,
-        }
-    }
-
-    pub fn is_gettable(&self) -> bool {
-        true
     }
 }
 
