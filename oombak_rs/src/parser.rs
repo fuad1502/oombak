@@ -6,7 +6,7 @@ use std::{
 };
 use thiserror::Error;
 
-use crate::error::OombakResult;
+use crate::error::{OombakError, OombakResult};
 
 pub fn parse(
     source_paths: &[&str],
@@ -48,9 +48,15 @@ pub enum Direction {
 }
 
 #[derive(Debug, Error)]
-pub enum ParseError {
+pub enum Error {
     #[error("null dereference")]
     NullDereference,
+}
+
+impl From<Error> for OombakError {
+    fn from(value: Error) -> Self {
+        OombakError::Parser(value)
+    }
 }
 
 impl InstanceNode {
@@ -102,7 +108,7 @@ impl InstanceNode {
 }
 
 impl TryFrom<&oombak_parser_sys::Signal> for Signal {
-    type Error = String;
+    type Error = OombakError;
 
     fn try_from(value: &oombak_parser_sys::Signal) -> Result<Self, Self::Error> {
         let name = string_from_ptr(value.name)?;
@@ -147,7 +153,7 @@ impl Signal {
 
 fn string_from_ptr(ptr: *const c_char) -> OombakResult<String> {
     if ptr.is_null() {
-        return Err(ParseError::NullDereference.into());
+        return Err(Error::NullDereference.into());
     }
     Ok(unsafe { CStr::from_ptr(ptr) }.to_str().unwrap().to_string())
 }
@@ -156,7 +162,7 @@ unsafe fn deref_instance_ptr(
     ptr: &*const oombak_parser_sys::Instance,
 ) -> OombakResult<oombak_parser_sys::Instance> {
     if ptr.is_null() {
-        return Err(ParseError::NullDereference.into());
+        return Err(Error::NullDereference.into());
     }
     Ok(unsafe { **ptr })
 }
@@ -166,7 +172,7 @@ fn signals_ptr_to_vec(
     signals_len: usize,
 ) -> OombakResult<Vec<Signal>> {
     if signals.is_null() {
-        return Err(ParseError::NullDereference.into());
+        return Err(Error::NullDereference.into());
     }
     Ok(unsafe { std::slice::from_raw_parts(signals, signals_len) }
         .iter()
@@ -179,7 +185,7 @@ fn child_instances_ptr_to_vec(
     child_instances_len: usize,
 ) -> OombakResult<Vec<Arc<RwLock<InstanceNode>>>> {
     if child_instances.is_null() {
-        return Err(ParseError::NullDereference.into());
+        return Err(Error::NullDereference.into());
     }
     Ok(
         unsafe { std::slice::from_raw_parts(child_instances, child_instances_len) }
@@ -300,6 +306,6 @@ mod test {
     fn test_null() {
         let ptr = 0 as *const Instance;
         let e = InstanceNode::try_from(ptr).unwrap_err();
-        assert_eq!(&e.to_string(), "ombak: parse: null dereference");
+        assert_eq!(&e.to_string(), "oombak_rs: parse: null dereference");
     }
 }

@@ -3,12 +3,12 @@ use dut_sys::SigT;
 use std::ffi::{CStr, CString};
 use thiserror::Error;
 
-use crate::error::OombakResult;
+use crate::error::{OombakError, OombakResult};
 
 mod dut_sys;
 
 #[derive(Debug, Error)]
-pub enum DutError {
+pub enum Error {
     #[error("failed to query signals")]
     Query,
     #[error("failed to run")]
@@ -17,6 +17,12 @@ pub enum DutError {
     Set(String, BitVec<u32>),
     #[error("failed to get signal {}", _0)]
     Get(String),
+}
+
+impl From<Error> for OombakError {
+    fn from(value: Error) -> Self {
+        OombakError::Dut(value)
+    }
 }
 
 pub struct Dut {
@@ -39,7 +45,7 @@ impl Dut {
         let current_time: u64 = 0;
         match self.lib.run(duration, &current_time)? {
             0 => Ok(current_time),
-            _ => Err(DutError::Run.into()),
+            _ => Err(Error::Run.into()),
         }
     }
 
@@ -51,7 +57,7 @@ impl Dut {
             .set(c_str.as_ptr(), words.as_ptr(), words.len() as u64)?
         {
             0 => Ok(()),
-            _ => Err(DutError::Set(sig_name.to_string(), bit_vec.clone()).into()),
+            _ => Err(Error::Set(sig_name.to_string(), bit_vec.clone()).into()),
         }
     }
 
@@ -62,7 +68,7 @@ impl Dut {
             .lib
             .get(sig_name_cstr.as_ptr(), &mut n_bits as *mut u64)?;
         if words_ptr.is_null() {
-            return Err(DutError::Get(sig_name.to_string()).into());
+            return Err(Error::Get(sig_name.to_string()).into());
         }
         Ok(Self::bitvec_from(words_ptr, n_bits as usize))
     }

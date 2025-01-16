@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 use thiserror::Error;
 
 use crate::{
-    error::OombakResult,
+    error::{OombakError, OombakResult},
     parser::{self, InstanceNode, Signal},
 };
 
@@ -19,9 +19,15 @@ pub struct ProbePoint {
 }
 
 #[derive(Debug, Error)]
-pub enum ProbeError {
+pub enum Error {
     #[error("signal '{}' not available", _0)]
     UnknownSignal(String),
+}
+
+impl From<Error> for OombakError {
+    fn from(value: Error) -> Self {
+        OombakError::Probe(value)
+    }
 }
 
 impl Probe {
@@ -85,7 +91,7 @@ impl Probe {
             self.points.push(probe_point);
             Ok(())
         } else {
-            Err(ProbeError::UnknownSignal(path.to_string()).into())
+            Err(Error::UnknownSignal(path.to_string()).into())
         }
     }
 
