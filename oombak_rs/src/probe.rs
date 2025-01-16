@@ -10,8 +10,11 @@ use crate::{
 pub struct Probe {
     root_node: Arc<RwLock<InstanceNode>>,
     points: Vec<ProbePoint>,
+    top_level_ports: Vec<ProbePoint>,
+    top_level_module_name: String,
 }
 
+#[derive(Clone)]
 pub struct ProbePoint {
     path: String,
     signal: parser::Signal,
@@ -33,10 +36,14 @@ impl From<Error> for OombakError {
 impl Probe {
     pub fn try_from(source_paths: &[&str], top_module_name: &str) -> OombakResult<Self> {
         let instance_node = parser::parse(source_paths, top_module_name)?;
-        let points = Self::create_top_level_points(&instance_node);
+        let points = Self::create_top_level_points(&instance_node)?;
+        let top_level_ports = points.clone();
+        let top_level_module_name = instance_node.read()?.module_name.clone();
         Ok(Self {
             root_node: instance_node,
             points,
+            top_level_ports,
+            top_level_module_name,
         })
     }
 
@@ -44,13 +51,8 @@ impl Probe {
         &self.points
     }
 
-    pub fn get_top_level_ports(&self) -> Vec<parser::Signal> {
-        self.root_node
-            .read()
-            .unwrap()
-            .get_ports()
-            .map(|s| s.to_owned())
-            .collect()
+    pub fn get_top_level_ports(&self) -> &Vec<ProbePoint> {
+        &self.top_level_ports
     }
 
     pub fn get_settable_points(&self) -> impl Iterator<Item = &ProbePoint> {
@@ -82,7 +84,7 @@ impl Probe {
     }
 
     pub fn add_signal_to_probe(&mut self, path: &str) -> OombakResult<()> {
-        if let Ok(Some(signal)) = self.root_node.read().unwrap().get_signal(path) {
+        if let Ok(Some(signal)) = self.root_node.read()?.get_signal(path) {
             let probe_point = ProbePoint {
                 path: path.to_string(),
                 signal,
@@ -95,15 +97,15 @@ impl Probe {
         }
     }
 
-    pub fn top_level_module_name(&self) -> String {
-        let root = &self.root_node.read().unwrap();
-        root.module_name.clone()
+    pub fn top_level_module_name(&self) -> &str {
+        &self.top_level_module_name
     }
 
-    fn create_top_level_points(root_node: &Arc<RwLock<InstanceNode>>) -> Vec<ProbePoint> {
+    fn create_top_level_points(
+        root_node: &Arc<RwLock<InstanceNode>>,
+    ) -> OombakResult<Vec<ProbePoint>> {
         root_node
-            .read()
-            .unwrap()
+            .read()?
             .get_ports()
             .map(|s| {
                 let path = s
@@ -117,11 +119,11 @@ impl Probe {
                     signal_type: s.signal_type.clone(),
                 };
                 let is_top_level_input = signal.is_input_port();
-                ProbePoint {
+                Ok(ProbePoint {
                     path,
                     signal,
                     is_top_level_input,
-                }
+                })
             })
             .collect()
     }
