@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::error::OombakGenResult;
+use crate::error::{OombakGenError, OombakGenResult};
 
 use oombak_rs::probe::{Probe, ProbePoint};
 
@@ -300,9 +300,17 @@ impl<'a> Generator<'a> {
     }
 
     fn put_cmakelists_txt(&self) -> OombakGenResult<()> {
-        let sv_dir = self.sv_path.parent().unwrap();
+        let sv_dir = self
+            .sv_path
+            .parent()
+            .ok_or(OombakGenError::InvalidPath(self.sv_path.to_path_buf()))?;
         let content = include_str!("templates/CMakeLists.txt.templated");
-        let content = content.replace("/*OMBAK_INCLUDE_DIRS*/", sv_dir.to_str().unwrap());
+        let content = content.replace(
+            "/*OMBAK_INCLUDE_DIRS*/",
+            sv_dir
+                .to_str()
+                .ok_or(OombakGenError::InvalidPath(self.sv_path.to_path_buf()))?,
+        );
         self.put_file("CMakeLists.txt", content.as_bytes())?;
         Ok(())
     }

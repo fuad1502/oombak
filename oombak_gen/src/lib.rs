@@ -20,7 +20,7 @@ pub fn build(sv_path: &Path) -> OombakGenResult<PathBuf> {
 
 pub fn build_with_probe(sv_path: &Path, probe: &Probe) -> OombakGenResult<PathBuf> {
     let source_path = generator::generate(sv_path, probe)?;
-    Ok(cmake(&source_path)?)
+    cmake(&source_path)
 }
 
 fn cmake(source_path: &Path) -> OombakGenResult<PathBuf> {
