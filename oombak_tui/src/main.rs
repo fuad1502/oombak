@@ -1,14 +1,12 @@
-use oombak_tui::{
-    backend::simulator::{Request, Simulator},
-    components, event, render, tui,
-};
+use oombak_sim::sim;
+use oombak_tui::{components, event, render, tui};
 use std::sync::{mpsc, Arc, RwLock};
 
 fn main() {
     let terminal = tui::init_terminal().unwrap();
 
     let (message_tx, message_rx) = mpsc::channel();
-    let mut simulator = Simulator::new().unwrap();
+    let mut simulator = sim::Simulator::new().unwrap();
 
     let command_line =
         components::CommandLine::new(message_tx.clone(), simulator.get_request_channel());
@@ -34,7 +32,7 @@ fn main() {
 
     simulator
         .get_request_channel()
-        .send(Request::Terminate)
+        .send(sim::Request::Terminate)
         .unwrap();
     tui::restore_terminal().unwrap();
 }

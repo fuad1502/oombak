@@ -3,18 +3,13 @@ use std::sync::mpsc::Sender;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{style::Stylize, widgets::Paragraph};
 
-use crate::{
-    backend::{
-        interpreter,
-        simulator::{self, Request},
-    },
-    component::Component,
-    render::Message,
-};
+use crate::{backend::interpreter, component::Component, render::Message};
+
+use oombak_sim::sim;
 
 pub struct CommandLine {
     message_tx: Sender<Message>,
-    request_tx: Sender<Request>,
+    request_tx: Sender<sim::Request>,
     text: String,
     result_history: Vec<Result<String, String>>,
     state: State,
@@ -27,7 +22,7 @@ enum State {
 }
 
 impl CommandLine {
-    pub fn new(message_tx: Sender<Message>, request_tx: Sender<Request>) -> Self {
+    pub fn new(message_tx: Sender<Message>, request_tx: Sender<sim::Request>) -> Self {
         Self {
             message_tx,
             request_tx,
@@ -93,10 +88,10 @@ impl CommandLine {
         match interpreter::interpret(command_string) {
             Ok(command) => {
                 match command {
-                    interpreter::Command::Run(x) => self.request(Request::Run(x)),
-                    interpreter::Command::Load(x) => self.request(Request::Load(x)),
+                    interpreter::Command::Run(x) => self.request(sim::Request::Run(x)),
+                    interpreter::Command::Load(x) => self.request(sim::Request::Load(x)),
                     interpreter::Command::Set(sig_name, value) => {
-                        self.request(Request::SetSignal(sig_name, value))
+                        self.request(sim::Request::SetSignal(sig_name, value))
                     }
                     interpreter::Command::Noop => return,
                 }
@@ -107,7 +102,7 @@ impl CommandLine {
         }
     }
 
-    fn request(&self, request: Request) {
+    fn request(&self, request: sim::Request) {
         self.request_tx.send(request).unwrap();
     }
 
@@ -116,18 +111,18 @@ impl CommandLine {
     }
 }
 
-impl simulator::Listener for CommandLine {
-    fn on_receive_reponse(&mut self, response: &simulator::Response) {
+impl sim::Listener for CommandLine {
+    fn on_receive_reponse(&mut self, response: &sim::Response) {
         let result = match response {
-            simulator::Response::RunResult(Ok(curr_time)) => {
+            sim::Response::RunResult(Ok(curr_time)) => {
                 Ok(format!("run: current time = {curr_time}"))
             }
-            simulator::Response::SetSignalResult(Ok(())) => Ok("set: success".to_string()),
-            simulator::Response::LoadResult(Ok(())) => Ok("load: success".to_string()),
-            simulator::Response::RunResult(Err(e)) => Err(format!("run: {e}")),
-            simulator::Response::SetSignalResult(Err(e)) => Err(format!("set: {e}")),
-            simulator::Response::LoadResult(Err(e)) => Err(format!("load: {e}")),
-            simulator::Response::SimulationResult(_) => return,
+            sim::Response::SetSignalResult(Ok(())) => Ok("set: success".to_string()),
+            sim::Response::LoadResult(Ok(())) => Ok("load: success".to_string()),
+            sim::Response::RunResult(Err(e)) => Err(format!("run: {e}")),
+            sim::Response::SetSignalResult(Err(e)) => Err(format!("set: {e}")),
+            sim::Response::LoadResult(Err(e)) => Err(format!("load: {e}")),
+            sim::Response::SimulationResult(_) => return,
         };
         self.result_history.push(result);
         self.notify_render();

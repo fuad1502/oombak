@@ -308,13 +308,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "oombak_sim"
+version = "0.1.0"
+dependencies = [
+ "bitvec",
+ "oombak_gen",
+ "oombak_rs",
+ "thiserror",
+]
+
+[[package]]
 name = "oombak_tui"
 version = "0.1.0"
 dependencies = [
  "bitvec",
  "crossterm",
- "oombak_gen",
- "oombak_rs",
+ "oombak_sim",
  "ratatui",
  "thiserror",
 ]

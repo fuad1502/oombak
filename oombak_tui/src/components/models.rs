@@ -1,7 +1,6 @@
-use crate::{
-    backend::simulator::{SimulationResult, Wave},
-    utils::bitvec_str,
-};
+use crate::utils::bitvec_str;
+
+use oombak_sim::sim::{self, SimulationResult};
 
 #[derive(Default, Clone)]
 pub struct SimulationSpec {
@@ -12,7 +11,7 @@ pub struct SimulationSpec {
 
 #[derive(Clone)]
 pub struct WaveSpec {
-    pub wave: Wave,
+    pub wave: sim::Wave,
     pub height: u16,
     pub format: bitvec_str::Format,
     pub signed: bool,

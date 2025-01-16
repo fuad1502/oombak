@@ -1,9 +1,9 @@
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
-use crate::backend::simulator::{self, SimulationResult};
 use crate::component::Component;
 use crate::render::Message;
+use oombak_sim::sim::{self, SimulationResult};
 
 use crossterm::event::{Event, KeyCode, KeyEvent};
 
@@ -16,7 +16,7 @@ use super::{CommandLine, SignalsViewer, WaveViewer};
 
 pub struct Root {
     message_tx: Sender<Message>,
-    request_tx: Sender<simulator::Request>,
+    request_tx: Sender<sim::Request>,
     signals_viewer: SignalsViewer,
     wave_viewer: WaveViewer,
     command_line: Arc<RwLock<CommandLine>>,
@@ -33,7 +33,7 @@ enum Child {
 impl Root {
     pub fn new(
         message_tx: Sender<Message>,
-        request_tx: Sender<simulator::Request>,
+        request_tx: Sender<sim::Request>,
         command_line: Arc<RwLock<CommandLine>>,
     ) -> Self {
         let simulation_spec = SimulationSpec::default();
@@ -137,15 +137,15 @@ impl Root {
     }
 }
 
-impl simulator::Listener for Root {
-    fn on_receive_reponse(&mut self, response: &simulator::Response) {
+impl sim::Listener for Root {
+    fn on_receive_reponse(&mut self, response: &sim::Response) {
         match response {
-            simulator::Response::RunResult(Ok(_)) => self.request_simulation_result(),
-            simulator::Response::LoadResult(Ok(_)) => {
+            sim::Response::RunResult(Ok(_)) => self.request_simulation_result(),
+            sim::Response::LoadResult(Ok(_)) => {
                 self.request_simulation_result();
                 self.reload_simulation = true;
             }
-            simulator::Response::SimulationResult(Ok(simulation_result)) => {
+            sim::Response::SimulationResult(Ok(simulation_result)) => {
                 self.update_simulation_spec(simulation_result);
                 self.notify_render();
             }
@@ -169,7 +169,7 @@ impl Root {
 
     fn request_simulation_result(&self) {
         self.request_tx
-            .send(simulator::Request::GetSimulationResult)
+            .send(sim::Request::GetSimulationResult)
             .unwrap();
     }
 }
