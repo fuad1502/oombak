@@ -50,7 +50,7 @@ impl Dut {
     }
 
     pub fn set(&self, sig_name: &str, bit_vec: &BitVec<u32>) -> OombakResult<()> {
-        let c_str = CString::new(sig_name).unwrap();
+        let c_str = CString::new(sig_name)?;
         let words = bit_vec.as_raw_slice();
         match self
             .lib
@@ -62,7 +62,7 @@ impl Dut {
     }
 
     pub fn get(&self, sig_name: &str) -> OombakResult<BitVec<u32>> {
-        let sig_name_cstr = CString::new(sig_name).unwrap();
+        let sig_name_cstr = CString::new(sig_name)?;
         let mut n_bits: u64 = 0;
         let words_ptr = self
             .lib
