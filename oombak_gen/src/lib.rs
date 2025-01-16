@@ -1,18 +1,23 @@
 mod error;
 mod generator;
-mod parser;
 
 use std::{
     path::{Path, PathBuf},
     process::Command,
 };
 
+use oombak_rs::probe::Probe;
+
 pub fn build(sv_path: &Path) -> Result<PathBuf, String> {
-    let probe = parser::parse(sv_path)?;
+    let source_paths = [
+        "/home/fuad1502/code/oombak_parser/tests/fixtures/sv_sample_1/sample.sv",
+        "/home/fuad1502/code/oombak_parser/tests/fixtures/sv_sample_1/adder.sv",
+    ];
+    let probe = Probe::try_from(&source_paths, "sample")?;
     build_with_probe(sv_path, &probe)
 }
 
-pub fn build_with_probe(sv_path: &Path, probe: &parser::Probe) -> Result<PathBuf, String> {
+pub fn build_with_probe(sv_path: &Path, probe: &Probe) -> Result<PathBuf, String> {
     let source_path = generator::generate(sv_path, probe)?;
     Ok(cmake(&source_path)?)
 }

@@ -4,13 +4,15 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::{error::OombakGenResult, parser};
+use crate::error::OombakGenResult;
+
+use oombak_rs::probe::{Probe, ProbePoint};
 
 macro_rules! generate_lines_from_name_template {
     ($template:expr, $signals:expr) => {{
-        let signals: Box<dyn Iterator<Item = &crate::parser::Signal>> = Box::new($signals);
+        let signals: Box<dyn Iterator<Item = &ProbePoint>> = Box::new($signals);
         signals
-            .map(|s| format!($template, s.get_dot_replaced_name()))
+            .map(|s| format!($template, s.get_dot_replaced_path()))
             .collect::<Vec<String>>()
             .join("\n")
     }};
@@ -18,9 +20,9 @@ macro_rules! generate_lines_from_name_template {
 
 macro_rules! generate_lines_from_name_width_template {
     ($template:expr, $signals:expr) => {{
-        let signals: Box<dyn Iterator<Item = &crate::parser::Signal>> = Box::new($signals);
+        let signals: Box<dyn Iterator<Item = &ProbePoint>> = Box::new($signals);
         signals
-            .map(|s| format!($template, s.get_dot_replaced_name(), s.width))
+            .map(|s| format!($template, s.get_dot_replaced_path(), s.bit_width()))
             .collect::<Vec<String>>()
             .join("\n")
     }};
@@ -28,9 +30,9 @@ macro_rules! generate_lines_from_name_width_template {
 
 macro_rules! generate_lines_from_dot_replaced_name_name {
     ($template:expr, $signals:expr) => {{
-        let signals: Box<dyn Iterator<Item = &crate::parser::Signal>> = Box::new($signals);
+        let signals: Box<dyn Iterator<Item = &ProbePoint>> = Box::new($signals);
         signals
-            .map(|s| format!($template, s.get_dot_replaced_name(), s.name))
+            .map(|s| format!($template, s.get_dot_replaced_path(), s.path()))
             .collect::<Vec<String>>()
             .join("\n")
     }};
@@ -38,9 +40,16 @@ macro_rules! generate_lines_from_dot_replaced_name_name {
 
 macro_rules! generate_lines_from_dot_replaced_name_name_width {
     ($template:expr, $signals:expr) => {{
-        let signals: Box<dyn Iterator<Item = &crate::parser::Signal>> = Box::new($signals);
+        let signals: Box<dyn Iterator<Item = &ProbePoint>> = Box::new($signals);
         signals
-            .map(|s| format!($template, s.get_dot_replaced_name(), s.name, s.width - 1))
+            .map(|s| {
+                format!(
+                    $template,
+                    s.get_dot_replaced_path(),
+                    s.path(),
+                    s.bit_width() - 1
+                )
+            })
             .collect::<Vec<String>>()
             .join("\n")
     }};
@@ -145,18 +154,18 @@ macro_rules! multi_bit_dpc_getter_template {
     };
 }
 
-pub fn generate(sv_path: &Path, probe: &parser::Probe) -> OombakGenResult<PathBuf> {
+pub fn generate(sv_path: &Path, probe: &Probe) -> OombakGenResult<PathBuf> {
     Generator::new(probe, sv_path).generate()
 }
 
 struct Generator<'a> {
     temp_dir: PathBuf,
-    probe: &'a parser::Probe,
+    probe: &'a Probe,
     sv_path: &'a Path,
 }
 
 impl<'a> Generator<'a> {
-    fn new(probe: &'a parser::Probe, sv_path: &'a Path) -> Self {
+    fn new(probe: &'a Probe, sv_path: &'a Path) -> Self {
         Generator {
             temp_dir: PathBuf::new(),
             probe,
@@ -200,11 +209,11 @@ impl<'a> Generator<'a> {
         let content = include_str!("templates/dut.cpp.templated");
         let setters = generate_lines_from_dot_replaced_name_name!(
             "signalMapping[\"{1}\"].set = set_{0};",
-            self.probe.signals.iter().filter(|s| s.set)
+            self.probe.get_settable_points()
         );
         let getters = generate_lines_from_dot_replaced_name_name!(
             "signalMapping[\"{1}\"].get = get_{0};",
-            self.probe.signals.iter().filter(|s| s.get)
+            self.probe.get_gettable_points()
         );
         let content = content.replace("// TEMPLATED: setters", &setters);
         let content = content.replace("// TEMPLATED: getters", &getters);
@@ -216,11 +225,11 @@ impl<'a> Generator<'a> {
         let content = include_str!("templates/dut.hpp.templated");
         let setters = generate_lines_from_name_template!(
             "static bool set_{0}(Dut *self, const std::vector<uint32_t> &words);",
-            self.probe.signals.iter().filter(|s| s.set)
+            self.probe.get_settable_points()
         );
         let getters = generate_lines_from_name_template!(
             "static std::pair<std::vector<uint32_t>, uint64_t> get_{0}(Dut *self);",
-            self.probe.signals.iter().filter(|s| s.get)
+            self.probe.get_gettable_points()
         );
         let content = content.replace("// TEMPLATED: setters", &setters);
         let content = content.replace("// TEMPLATED: getters", &getters);
@@ -230,8 +239,8 @@ impl<'a> Generator<'a> {
 
     fn put_getters_cpp(&self) -> OombakGenResult<()> {
         let content = include_str!("templates/getters.cpp.templated");
-        let single_bit_signals = self.probe.signals.iter().filter(|s| s.get && s.width == 1);
-        let multi_bit_signals = self.probe.signals.iter().filter(|s| s.get && s.width > 1);
+        let single_bit_signals = self.probe.get_single_bit_gettable_points();
+        let multi_bit_signals = self.probe.get_multibit_gettable_points();
         let single_bit_getters =
             generate_lines_from_name_template!(single_bit_getter_template!(), single_bit_signals);
         let multi_bit_getters = generate_lines_from_name_width_template!(
@@ -248,8 +257,8 @@ impl<'a> Generator<'a> {
 
     fn put_setters_cpp(&self) -> OombakGenResult<()> {
         let content = include_str!("templates/setters.cpp.templated");
-        let single_bit_signals = self.probe.signals.iter().filter(|s| s.set && s.width == 1);
-        let multi_bit_signals = self.probe.signals.iter().filter(|s| s.set && s.width > 1);
+        let single_bit_signals = self.probe.get_single_bit_settable_points();
+        let multi_bit_signals = self.probe.get_multibit_settable_points();
         let single_bit_setters =
             generate_lines_from_name_template!(single_bit_setter_template!(), single_bit_signals);
         let multi_bit_setters = generate_lines_from_name_width_template!(
@@ -268,7 +277,7 @@ impl<'a> Generator<'a> {
         let content = include_str!("templates/signals.cpp.templated");
         let content = content.replace(
             "// TEMPLATED: num_of_signals",
-            &format!("{};", &self.probe.signals.len()),
+            &format!("{};", &self.probe.get_probed_points().len()),
         );
         let signals = self.generate_signals_array();
         let content = content.replace("// TEMPLATED: signals", &signals);
@@ -299,13 +308,18 @@ impl<'a> Generator<'a> {
     }
 
     fn generate_signals_array(&self) -> String {
-        let mut signals_array = format!("sig_t signals[{}] = {{\n", self.probe.signals.len());
-        for signal in self.probe.signals.iter() {
-            let get = if signal.get { 1 } else { 0 };
-            let set = if signal.get { 1 } else { 0 };
+        let num_of_signals = self.probe.get_probed_points().len();
+        let mut signals_array = format!("sig_t signals[{}] = {{\n", num_of_signals);
+        for point in self.probe.get_probed_points() {
+            let get = if point.is_gettable() { 1 } else { 0 };
+            let set = if point.is_settable() { 1 } else { 0 };
+            let width = point.bit_width();
             signals_array += &format!(
                 "    {{ \"{}\", {}, {}, {} }},\n",
-                signal.name, signal.width, get, set
+                point.path(),
+                width,
+                get,
+                set
             );
         }
         signals_array += "};";
@@ -314,12 +328,11 @@ impl<'a> Generator<'a> {
 
     fn generate_top_level_signal_declarations(&self) -> String {
         self.probe
-            .signals
+            .get_top_level_ports()
             .iter()
-            .filter(|s| s.top_level)
             .fold(String::from(""), |prev, s| {
-                let width = if s.width > 1 {
-                    format!("[{}:0]", s.width - 1)
+                let width = if s.bit_width() > 1 {
+                    format!("[{}:0]", s.bit_width() - 1)
                 } else {
                     "".to_string()
                 };
@@ -330,22 +343,21 @@ impl<'a> Generator<'a> {
     fn generate_top_level_module_instantiation(&self) -> String {
         let pin_assignments = self
             .probe
-            .signals
+            .get_top_level_ports()
             .iter()
-            .filter(|s| s.top_level)
             .fold(String::from(""), |prev, s| {
                 prev + &format!(".{0}({0}),\n", s.name)
             });
         format!(
             "{0} {0} (\n{1}\n);",
-            self.probe.module_name,
+            self.probe.top_level_module_name(),
             &pin_assignments[..pin_assignments.len() - 2]
         )
     }
 
     fn generate_dpc_setters(&self) -> String {
-        let single_bit_signals = self.probe.signals.iter().filter(|s| s.width == 1 && s.set);
-        let multi_bit_signals = self.probe.signals.iter().filter(|s| s.width > 1 && s.set);
+        let single_bit_signals = self.probe.get_single_bit_settable_points();
+        let multi_bit_signals = self.probe.get_multibit_settable_points();
         let single_bit_setters = generate_lines_from_dot_replaced_name_name!(
             single_bit_dpc_setter_template!(),
             single_bit_signals
@@ -358,8 +370,8 @@ impl<'a> Generator<'a> {
     }
 
     fn generate_dpc_getters(&self) -> String {
-        let single_bit_signals = self.probe.signals.iter().filter(|s| s.width == 1 && s.get);
-        let multi_bit_signals = self.probe.signals.iter().filter(|s| s.width > 1 && s.get);
+        let single_bit_signals = self.probe.get_single_bit_gettable_points();
+        let multi_bit_signals = self.probe.get_multibit_gettable_points();
         let single_bit_getters = generate_lines_from_dot_replaced_name_name!(
             single_bit_dpc_getter_template!(),
             single_bit_signals
