@@ -1,4 +1,4 @@
-mod error;
+pub mod error;
 mod generator;
 
 use std::{
@@ -6,14 +6,14 @@ use std::{
     process::Command,
 };
 
-use error::OombakGenResult;
+use error::{OombakGenError, OombakGenResult};
 use oombak_rs::probe::Probe;
 
 pub fn build(sv_path: &Path) -> OombakGenResult<PathBuf> {
-    let source_paths = [
-        "/home/fuad1502/code/oombak_parser/tests/fixtures/sv_sample_1/sample.sv",
-        "/home/fuad1502/code/oombak_parser/tests/fixtures/sv_sample_1/adder.sv",
-    ];
+    let source_paths: Vec<String> = source_paths_from_sv_path(sv_path)?
+        .iter()
+        .map(|p| p.to_string_lossy().to_string())
+        .collect();
     let probe = Probe::try_from(&source_paths, "sample")?;
     build_with_probe(sv_path, &probe)
 }
@@ -46,4 +46,24 @@ fn cmake_build(source_path: &Path) -> OombakGenResult<()> {
         .args(["--build", "build"])
         .output()?;
     Ok(())
+}
+
+fn source_paths_from_sv_path(sv_path: &Path) -> OombakGenResult<Vec<PathBuf>> {
+    if !sv_path.exists() || !sv_path.is_file() {
+        return Err(OombakGenError::SvFilePathNotFound(sv_path.to_path_buf()));
+    }
+    let mut source_paths = vec![];
+    source_paths.push(sv_path.to_path_buf());
+    let parent_dir = sv_path
+        .parent()
+        .ok_or(OombakGenError::InvalidPath(sv_path.to_path_buf()))?;
+    for file in std::fs::read_dir(parent_dir)? {
+        let file = file?;
+        if let Some(ext) = file.path().extension() {
+            if ext == "sv" && file.path() != sv_path {
+                source_paths.push(file.path())
+            }
+        }
+    }
+    Ok(source_paths)
 }

@@ -7,6 +7,8 @@ pub type OombakGenResult<T> = Result<T, OombakGenError>;
 
 #[derive(Error, Debug)]
 pub enum OombakGenError {
+    #[error(".sv file path not found: ")]
+    SvFilePathNotFound(PathBuf),
     #[error("invalid path given: {}", _0.to_string_lossy())]
     InvalidPath(PathBuf),
     #[error("IO error: {}", _0)]
