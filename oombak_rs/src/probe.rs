@@ -1,5 +1,3 @@
-use std::sync::{Arc, RwLock};
-
 use thiserror::Error;
 
 use crate::{
@@ -8,7 +6,7 @@ use crate::{
 };
 
 pub struct Probe {
-    root_node: Arc<RwLock<InstanceNode>>,
+    root_node: InstanceNode,
     points: Vec<ProbePoint>,
     top_level_ports: Vec<ProbePoint>,
     top_level_module_name: String,
@@ -35,12 +33,12 @@ impl From<Error> for OombakError {
 
 impl Probe {
     pub fn try_from(source_paths: &[String], top_module_name: &str) -> OombakResult<Self> {
-        let instance_node = parser::parse(source_paths, top_module_name)?;
-        let points = Self::create_top_level_points(&instance_node)?;
+        let root_node = parser::parse(source_paths, top_module_name)?;
+        let points = Self::create_top_level_points(&root_node)?;
         let top_level_ports = points.clone();
-        let top_level_module_name = instance_node.read()?.module_name.clone();
+        let top_level_module_name = root_node.module_name.clone();
         Ok(Self {
-            root_node: instance_node,
+            root_node,
             points,
             top_level_ports,
             top_level_module_name,
@@ -84,7 +82,7 @@ impl Probe {
     }
 
     pub fn add_signal_to_probe(&mut self, path: &str) -> OombakResult<()> {
-        if let Ok(Some(signal)) = self.root_node.read()?.get_signal(path) {
+        if let Ok(Some(signal)) = self.root_node.get_signal(path) {
             let probe_point = ProbePoint {
                 path: path.to_string(),
                 signal,
@@ -101,11 +99,8 @@ impl Probe {
         &self.top_level_module_name
     }
 
-    fn create_top_level_points(
-        root_node: &Arc<RwLock<InstanceNode>>,
-    ) -> OombakResult<Vec<ProbePoint>> {
+    fn create_top_level_points(root_node: &InstanceNode) -> OombakResult<Vec<ProbePoint>> {
         root_node
-            .read()?
             .get_ports()
             .map(|s| {
                 let path = s
