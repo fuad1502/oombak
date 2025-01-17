@@ -8,17 +8,18 @@ use oombak_sim::sim::{self, SimulationResult};
 use crossterm::event::{Event, KeyCode, KeyEvent};
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
-use ratatui::widgets::{Block, Borders};
+use ratatui::widgets::{Block, Borders, Clear};
 use ratatui::Frame;
 
 use super::models::SimulationSpec;
-use super::{CommandLine, SignalsViewer, WaveViewer};
+use super::{CommandLine, InstanceHierViewer, SignalsViewer, WaveViewer};
 
 pub struct Root {
     message_tx: Sender<Message>,
     request_tx: Sender<sim::Request>,
     signals_viewer: SignalsViewer,
     wave_viewer: WaveViewer,
+    instance_hier_viewer: Arc<RwLock<InstanceHierViewer>>,
     command_line: Arc<RwLock<CommandLine>>,
     highlight_idx: u16,
     focused_child: Option<Child>,
@@ -28,6 +29,7 @@ pub struct Root {
 
 enum Child {
     CommandLine,
+    InstanceHierView,
 }
 
 impl Root {
@@ -38,10 +40,13 @@ impl Root {
     ) -> Self {
         let simulation_spec = SimulationSpec::default();
         Self {
-            message_tx,
+            message_tx: message_tx.clone(),
             request_tx,
             wave_viewer: WaveViewer::default().simulation(simulation_spec.clone()),
             signals_viewer: SignalsViewer::default().simulation(simulation_spec.clone()),
+            instance_hier_viewer: Arc::new(RwLock::new(InstanceHierViewer::new(
+                message_tx.clone(),
+            ))),
             command_line,
             highlight_idx: 0,
             focused_child: None,
@@ -72,6 +77,9 @@ impl Component for Root {
         self.render_signals_viewer(f, sub_layout_h[0]);
         self.render_wave_viewer(f, sub_layout_h[1]);
         self.render_command_line(f, main_layout_v[1]);
+        if matches!(self.focused_child, Some(Child::InstanceHierView)) {
+            self.render_instance_hier_viewer(f, rect);
+        }
     }
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult {
@@ -92,6 +100,9 @@ impl Component for Root {
                 self.focused_child = Some(Child::CommandLine);
                 self.try_propagate_event(&Event::Key(*key_event));
             }
+            KeyCode::Char('s') => {
+                self.focused_child = Some(Child::InstanceHierView);
+            }
             _ => return HandleResult::NotHandled,
         }
         self.notify_render();
@@ -99,6 +110,9 @@ impl Component for Root {
     }
 
     fn set_focus_to_self(&mut self) {
+        if matches!(self.focused_child, Some(Child::InstanceHierView)) {
+            self.notify_render();
+        }
         self.focused_child = None;
     }
 
@@ -106,6 +120,11 @@ impl Component for Root {
         if let Some(child) = &self.focused_child {
             match child {
                 Child::CommandLine => self.command_line.write().unwrap().handle_event(event),
+                Child::InstanceHierView => self
+                    .instance_hier_viewer
+                    .write()
+                    .unwrap()
+                    .handle_event(event),
             }
         } else {
             HandleResult::NotHandled
@@ -128,8 +147,34 @@ impl Root {
         self.wave_viewer.render_with_block(f, rect, block);
     }
 
+    fn render_instance_hier_viewer(&self, f: &mut Frame, rect: Rect) {
+        let popup_area = Self::get_popup_area(rect);
+        let block = Block::new().borders(Borders::ALL);
+        f.render_widget(Clear, popup_area);
+        self.instance_hier_viewer
+            .write()
+            .unwrap()
+            .render_mut_with_block(f, popup_area, block);
+    }
+
     fn render_command_line(&self, f: &mut Frame, rect: Rect) {
         self.command_line.read().unwrap().render(f, rect);
+    }
+
+    fn get_popup_area(rect: Rect) -> Rect {
+        let chunks = Layout::vertical(vec![
+            Constraint::Length(2),
+            Constraint::Min(0),
+            Constraint::Length(2),
+        ])
+        .split(rect);
+        let chunks = Layout::horizontal(vec![
+            Constraint::Length(5),
+            Constraint::Min(0),
+            Constraint::Length(5),
+        ])
+        .split(chunks[1]);
+        chunks[1]
     }
 }
 
