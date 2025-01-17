@@ -9,12 +9,9 @@ use std::{
 
 use bitvec::vec::BitVec;
 
-use oombak_gen::error::OombakGenError;
-use oombak_rs::{
-    dut::Dut,
-    error::{OombakError, OombakResult},
-};
-use thiserror::Error;
+use oombak_rs::{dut::Dut, error::OombakResult};
+
+use crate::error::{OombakSimResult, OombakSimError};
 
 pub struct Simulator {
     request_tx: Sender<Request>,
@@ -40,30 +37,6 @@ pub enum Response<'a> {
     SetSignalResult(Result<(), String>),
     LoadResult(Result<(), String>),
     SimulationResult(Result<&'a SimulationResult, String>),
-}
-
-pub type OombakSimResult<T> = Result<T, OombakSimError>;
-
-#[derive(Debug, Error)]
-pub enum OombakSimError {
-    #[error("DUT not loaded")]
-    DutNotLoaded,
-    #[error("oombak_gen: {}", _0)]
-    OombakGen(OombakGenError),
-    #[error("oombak_rs: {}", _0)]
-    Oombak(OombakError),
-}
-
-impl From<OombakGenError> for OombakSimError {
-    fn from(value: OombakGenError) -> Self {
-        Self::OombakGen(value)
-    }
-}
-
-impl From<OombakError> for OombakSimError {
-    fn from(value: OombakError) -> Self {
-        Self::Oombak(value)
-    }
 }
 
 impl Simulator {
