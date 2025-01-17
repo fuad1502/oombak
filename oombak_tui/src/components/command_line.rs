@@ -3,7 +3,11 @@ use std::sync::mpsc::Sender;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{style::Stylize, widgets::Paragraph};
 
-use crate::{backend::interpreter, component::Component, render::Message};
+use crate::{
+    backend::interpreter,
+    component::{Component, HandleResult},
+    render::Message,
+};
 
 use oombak_sim::sim;
 
@@ -46,18 +50,18 @@ impl Component for CommandLine {
         f.render_widget(paragraph, rect);
     }
 
-    fn handle_key_event(&mut self, key_event: &KeyEvent) -> bool {
+    fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult {
         match key_event.code {
             KeyCode::Esc => {
                 self.state = State::NotActive;
                 self.notify_render();
-                return false;
+                return HandleResult::ReleaseFocus;
             }
             KeyCode::Enter => {
                 self.state = State::NotActive;
                 self.execute_command();
                 self.notify_render();
-                return false;
+                return HandleResult::ReleaseFocus;
             }
             KeyCode::Char(':') => {
                 self.state = State::Active;
@@ -72,14 +76,14 @@ impl Component for CommandLine {
             _ => (),
         };
         self.notify_render();
-        true
+        HandleResult::Handled
     }
 
-    fn set_focus(&mut self) {}
-
-    fn get_focused_child(&mut self) -> Option<&mut dyn Component> {
-        None
+    fn try_propagate_event(&mut self, _event: &crossterm::event::Event) -> HandleResult {
+        HandleResult::NotHandled
     }
+
+    fn set_focus_to_self(&mut self) {}
 }
 
 impl CommandLine {

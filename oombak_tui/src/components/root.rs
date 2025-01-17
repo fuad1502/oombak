@@ -1,7 +1,7 @@
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
-use crate::component::Component;
+use crate::component::{Component, HandleResult};
 use crate::render::Message;
 use oombak_sim::sim::{self, SimulationResult};
 
@@ -74,11 +74,11 @@ impl Component for Root {
         self.render_command_line(f, main_layout_v[1]);
     }
 
-    fn handle_key_event(&mut self, key_event: &KeyEvent) -> bool {
+    fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult {
         match key_event.code {
             KeyCode::Char('q') => {
                 self.notify_quit();
-                return true;
+                return HandleResult::Handled;
             }
             KeyCode::Right => {
                 self.highlight_idx = u16::saturating_add(self.highlight_idx, 1);
@@ -90,30 +90,26 @@ impl Component for Root {
             }
             KeyCode::Char(':') => {
                 self.focused_child = Some(Child::CommandLine);
-                self.propagate_event(&Event::Key(*key_event));
+                self.try_propagate_event(&Event::Key(*key_event));
             }
-            _ => return false,
+            _ => return HandleResult::NotHandled,
         }
         self.notify_render();
-        true
+        HandleResult::Handled
     }
 
-    fn set_focus(&mut self) {
+    fn set_focus_to_self(&mut self) {
         self.focused_child = None;
     }
 
-    fn propagate_event(&mut self, event: &Event) -> bool {
+    fn try_propagate_event(&mut self, event: &Event) -> HandleResult {
         if let Some(child) = &self.focused_child {
             match child {
                 Child::CommandLine => self.command_line.write().unwrap().handle_event(event),
             }
         } else {
-            false
+            HandleResult::NotHandled
         }
-    }
-
-    fn get_focused_child(&mut self) -> Option<&mut dyn Component> {
-        None
     }
 }
 

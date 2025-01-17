@@ -3,7 +3,10 @@ use ratatui::{
     widgets::{Block, Borders},
 };
 
-use crate::{component::Component, widgets::Waveform};
+use crate::{
+    component::{Component, HandleResult},
+    widgets::Waveform,
+};
 
 use super::models::SimulationSpec;
 
@@ -48,13 +51,13 @@ impl Component for WaveViewer {
         }
     }
 
-    fn handle_key_event(&mut self, _key_event: &crossterm::event::KeyEvent) -> bool {
-        false
+    fn handle_key_event(&mut self, _key_event: &crossterm::event::KeyEvent) -> HandleResult {
+        HandleResult::NotHandled
     }
 
-    fn set_focus(&mut self) {}
-
-    fn get_focused_child(&mut self) -> Option<&mut dyn Component> {
-        None
+    fn try_propagate_event(&mut self, _event: &crossterm::event::Event) -> HandleResult {
+        HandleResult::NotHandled
     }
+
+    fn set_focus_to_self(&mut self) {}
 }
