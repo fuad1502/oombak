@@ -14,7 +14,7 @@ pub fn parse(source_paths: &[String], top_module_name: &str) -> OombakResult<Ins
     InstanceNode::try_from(&instance_sys)
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct InstanceNode {
     pub name: String,
     pub module_name: String,

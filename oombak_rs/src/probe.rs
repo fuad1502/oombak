@@ -99,6 +99,10 @@ impl Probe {
         &self.top_level_module_name
     }
 
+    pub fn root_node(&self) -> &InstanceNode {
+        &self.root_node
+    }
+
     fn create_top_level_points(root_node: &InstanceNode) -> OombakResult<Vec<ProbePoint>> {
         root_node
             .get_ports()
