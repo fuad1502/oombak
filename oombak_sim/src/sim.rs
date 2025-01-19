@@ -9,9 +9,9 @@ use std::{
 
 use bitvec::vec::BitVec;
 
-use oombak_rs::{dut::Dut, error::OombakResult};
+use oombak_rs::{dut::Dut, error::OombakResult, probe::Probe};
 
-use crate::error::{OombakSimResult, OombakSimError};
+use crate::error::{OombakSimError, OombakSimResult};
 
 pub struct Simulator {
     request_tx: Sender<Request>,
@@ -35,9 +35,11 @@ pub enum Request {
 pub enum Response<'a> {
     RunResult(Result<u64, String>),
     SetSignalResult(Result<(), String>),
-    LoadResult(Result<(), String>),
+    LoadResult(Result<InstanceNode, String>),
     SimulationResult(Result<&'a SimulationResult, String>),
 }
+
+pub use oombak_rs::parser::{InstanceNode, Signal, SignalType};
 
 impl Simulator {
     pub fn new() -> OombakResult<Simulator> {
@@ -78,6 +80,7 @@ impl Simulator {
 
 struct RequestServer {
     dut: Option<Dut>,
+    probe: Option<Probe>,
     listeners: Arc<RwLock<Listeners>>,
     simulation_time: u64,
     simulation_result: SimulationResult,
@@ -87,6 +90,7 @@ impl RequestServer {
     fn new(listeners: Arc<RwLock<Listeners>>) -> Self {
         Self {
             dut: None,
+            probe: None,
             listeners,
             simulation_time: 0,
             simulation_result: SimulationResult::default(),
@@ -111,7 +115,7 @@ impl RequestServer {
 
     fn serve_load(&mut self, sv_path: &Path) {
         let response = match self.load_file(sv_path) {
-            Ok(()) => Response::LoadResult(Ok(())),
+            Ok(instance_node) => Response::LoadResult(Ok(instance_node)),
             Err(e) => Response::LoadResult(Err(e.to_string())),
         };
         self.notify_listeners(response);
@@ -122,14 +126,16 @@ impl RequestServer {
         self.notify_listeners(response);
     }
 
-    fn load_file(&mut self, sv_path: &Path) -> OombakSimResult<()> {
-        let lib_path = oombak_gen::build(sv_path)?;
+    fn load_file(&mut self, sv_path: &Path) -> OombakSimResult<InstanceNode> {
+        let (lib_path, probe) = oombak_gen::build(sv_path)?;
+        let instance_node = probe.root_node().clone();
+        self.probe = Some(probe);
         let lib_path = lib_path.to_str().unwrap();
         let dut = Dut::new(lib_path)?;
         self.dut = Some(dut);
         self.simulation_result = SimulationResult::default();
         self.load_signal_names_to_simulation_result()?;
-        Ok(())
+        Ok(instance_node)
     }
 
     fn load_signal_names_to_simulation_result(&mut self) -> OombakSimResult<()> {

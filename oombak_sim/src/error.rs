@@ -1,6 +1,6 @@
-use thiserror::Error;
-use oombak_rs::error::OombakError;
 use oombak_gen::error::OombakGenError;
+use oombak_rs::error::OombakError;
+use thiserror::Error;
 
 pub type OombakSimResult<T> = Result<T, OombakSimError>;
 
