@@ -182,7 +182,11 @@ impl sim::Listener for Root {
     fn on_receive_reponse(&mut self, response: &sim::Response) {
         match response {
             sim::Response::RunResult(Ok(_)) => self.request_simulation_result(),
-            sim::Response::LoadResult(Ok(_)) => {
+            sim::Response::LoadResult(Ok(instance_node)) => {
+                self.instance_hier_viewer
+                    .write()
+                    .unwrap()
+                    .set_root_node(instance_node);
                 self.request_simulation_result();
                 self.reload_simulation = true;
             }

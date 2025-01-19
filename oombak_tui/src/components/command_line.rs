@@ -122,7 +122,7 @@ impl sim::Listener for CommandLine {
                 Ok(format!("run: current time = {curr_time}"))
             }
             sim::Response::SetSignalResult(Ok(())) => Ok("set: success".to_string()),
-            sim::Response::LoadResult(Ok(())) => Ok("load: success".to_string()),
+            sim::Response::LoadResult(Ok(_)) => Ok("load: success".to_string()),
             sim::Response::RunResult(Err(e)) => Err(format!("run: {e}")),
             sim::Response::SetSignalResult(Err(e)) => Err(format!("set: {e}")),
             sim::Response::LoadResult(Err(e)) => Err(format!("load: {e}")),
