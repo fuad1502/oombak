@@ -9,13 +9,13 @@ use std::{
 use error::{OombakGenError, OombakGenResult};
 use oombak_rs::probe::Probe;
 
-pub fn build(sv_path: &Path) -> OombakGenResult<PathBuf> {
+pub fn build(sv_path: &Path) -> OombakGenResult<(PathBuf, Probe)> {
     let source_paths: Vec<String> = source_paths_from_sv_path(sv_path)?
         .iter()
         .map(|p| p.to_string_lossy().to_string())
         .collect();
     let probe = Probe::try_from(&source_paths, "sample")?;
-    build_with_probe(sv_path, &probe)
+    Ok((build_with_probe(sv_path, &probe)?, probe))
 }
 
 pub fn build_with_probe(sv_path: &Path, probe: &Probe) -> OombakGenResult<PathBuf> {
