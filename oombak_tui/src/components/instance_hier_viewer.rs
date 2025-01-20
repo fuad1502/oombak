@@ -35,7 +35,7 @@ pub struct InstanceHierViewer {
 }
 
 struct InstanceHierNode {
-    path: Vec<String>,
+    path: String,
     module_name: String,
     children: Vec<Arc<RwLock<InstanceHierNode>>>,
     leafs: Vec<InstanceHierLeaf>,
@@ -44,7 +44,7 @@ struct InstanceHierNode {
 
 #[derive(Clone)]
 struct InstanceHierLeaf {
-    _path: Vec<String>,
+    _path: String,
     signal: Signal,
     is_added: bool,
 }
@@ -68,11 +68,11 @@ impl InstanceHierViewer {
 
     pub fn set_loaded_dut(&mut self, loaded_dut: &LoadedDut) {
         for point in loaded_dut.probed_points.iter() {
-            self.probed_points.insert(point.path().to_string());
+            self.probed_points.insert(point.clone());
         }
         self.root_node = Some(Arc::new(RwLock::new(InstanceHierNode::new(
             &loaded_dut.root_node,
-            &[],
+            "",
             &self.probed_points,
         ))));
         self.selected_item_idx = Some(0);
@@ -183,10 +183,7 @@ impl InstanceHierViewer {
         let expand_or_collapse_symbol = if node.is_expanded { "[-]" } else { "[+]" };
         let line = Line::raw(format!(
             "{}{} {} ({})",
-            indentation,
-            expand_or_collapse_symbol,
-            node.path.join("."),
-            node.module_name
+            indentation, expand_or_collapse_symbol, node.path, node.module_name
         ))
         .style(INSTANCE_ITEM_STYLE);
         ListItem::new(line)
@@ -228,11 +225,10 @@ impl InstanceHierViewer {
 impl InstanceHierNode {
     fn new(
         instance_node: &InstanceNode,
-        parent_path: &[String],
+        parent_path: &str,
         probed_points: &HashSet<String>,
     ) -> Self {
-        let mut path = parent_path.to_vec();
-        path.push(instance_node.name.clone());
+        let path = format!("{parent_path}.{}", instance_node.name);
         let children: Vec<Arc<RwLock<InstanceHierNode>>> = instance_node
             .children
             .iter()
@@ -246,7 +242,7 @@ impl InstanceHierNode {
             .map(|s| InstanceHierLeaf::new(s, &path, probed_points))
             .collect();
         InstanceHierNode {
-            path: path.to_vec(),
+            path,
             module_name: instance_node.module_name.clone(),
             leafs,
             is_expanded: false,
@@ -256,12 +252,11 @@ impl InstanceHierNode {
 }
 
 impl InstanceHierLeaf {
-    fn new(signal: &Signal, parent_path: &[String], probed_points: &HashSet<String>) -> Self {
-        let mut path = parent_path.to_vec();
-        path.push(signal.name.clone());
-        let is_added = probed_points.contains(&path.join("."));
+    fn new(signal: &Signal, parent_path: &str, probed_points: &HashSet<String>) -> Self {
+        let path = format!("{parent_path}.{}", signal.name);
+        let is_added = probed_points.contains(&path);
         InstanceHierLeaf {
-            _path: path.to_vec(),
+            _path: path,
             signal: signal.clone(),
             is_added,
         }

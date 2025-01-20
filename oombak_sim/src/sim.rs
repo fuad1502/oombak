@@ -40,11 +40,10 @@ pub enum Response<'a> {
 }
 
 pub use oombak_rs::parser::{InstanceNode, Signal, SignalType};
-pub use oombak_rs::probe::ProbePoint;
 
 pub struct LoadedDut {
     pub root_node: InstanceNode,
-    pub probed_points: Vec<ProbePoint>,
+    pub probed_points: Vec<String>,
 }
 
 impl Simulator {
@@ -134,15 +133,22 @@ impl RequestServer {
 
     fn load_dut(&mut self, sv_path: &Path) -> OombakSimResult<LoadedDut> {
         let (lib_path, probe) = oombak_gen::build(sv_path)?;
+        let probed_points = probe
+            .get_probed_points()
+            .iter()
+            .map(|p| p.path().to_string())
+            .collect();
         let root_node = probe.root_node().clone();
-        let probed_points = probe.get_probed_points().clone();
         self.probe = Some(probe);
         let lib_path = lib_path.to_str().unwrap();
         let dut = Dut::new(lib_path)?;
         self.dut = Some(dut);
         self.simulation_result = SimulationResult::default();
         self.load_signal_names_to_simulation_result()?;
-        Ok(LoadedDut { root_node, probed_points } )
+        Ok(LoadedDut {
+            root_node,
+            probed_points,
+        })
     }
 
     fn load_signal_names_to_simulation_result(&mut self) -> OombakSimResult<()> {
