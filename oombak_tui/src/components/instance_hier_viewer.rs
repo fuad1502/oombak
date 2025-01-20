@@ -32,26 +32,36 @@ pub struct InstanceHierViewer {
     items_in_list: Vec<HierItem>,
     list_state: ListState,
     selected_item_idx: Option<usize>,
+    signals_marked_to_add: HashSet<String>,
+    signals_marked_to_remove: HashSet<String>,
 }
 
 struct InstanceHierNode {
     path: String,
     module_name: String,
     children: Vec<Arc<RwLock<InstanceHierNode>>>,
-    leafs: Vec<InstanceHierLeaf>,
+    leafs: Vec<Arc<RwLock<InstanceHierLeaf>>>,
     is_expanded: bool,
 }
 
 #[derive(Clone)]
 struct InstanceHierLeaf {
-    _path: String,
+    path: String,
     signal: Signal,
     is_added: bool,
+    marker: Marker,
+}
+
+#[derive(Clone)]
+enum Marker {
+    NotMarked,
+    MarkedForAdd,
+    MarkedForRemove,
 }
 
 enum HierItem {
     Instance(Arc<RwLock<InstanceHierNode>>),
-    Signal(InstanceHierLeaf),
+    Signal(Arc<RwLock<InstanceHierLeaf>>),
 }
 
 impl InstanceHierViewer {
@@ -63,13 +73,13 @@ impl InstanceHierViewer {
             list_state: ListState::default(),
             selected_item_idx: None,
             probed_points: HashSet::default(),
+            signals_marked_to_add: HashSet::default(),
+            signals_marked_to_remove: HashSet::default(),
         }
     }
 
     pub fn set_loaded_dut(&mut self, loaded_dut: &LoadedDut) {
-        for point in loaded_dut.probed_points.iter() {
-            self.probed_points.insert(point.clone());
-        }
+        self.probed_points = HashSet::from_iter(loaded_dut.probed_points.iter().cloned());
         self.root_node = Some(Arc::new(RwLock::new(InstanceHierNode::new(
             &loaded_dut.root_node,
             "",
@@ -189,27 +199,58 @@ impl InstanceHierViewer {
         ListItem::new(line)
     }
 
-    fn new_signal_list_item<'a>(leaf: &InstanceHierLeaf, depth: usize) -> ListItem<'a> {
+    fn new_signal_list_item<'a>(
+        leaf: &Arc<RwLock<InstanceHierLeaf>>,
+        depth: usize,
+    ) -> ListItem<'a> {
+        let leaf = leaf.read().unwrap();
         let indentation = " ".repeat(depth * 2);
-        let added_symbol = if leaf.is_added { "(*)" } else { "" };
+        let added_symbol = if leaf.is_added { " (*)" } else { "" };
+        let marker_symbol = match leaf.marker {
+            Marker::NotMarked => "",
+            Marker::MarkedForAdd => " (+)",
+            Marker::MarkedForRemove => " (-)",
+        };
         let line = Line::raw(format!(
-            "{}{} {}",
-            indentation, leaf.signal.name, added_symbol
+            "{}{}{}{}",
+            indentation, leaf.signal.name, added_symbol, marker_symbol
         ))
         .style(SIGNAL_ITEM_STYLE);
         ListItem::new(line)
     }
 
-    fn perform_action_on_selected(&self) {
+    fn perform_action_on_selected(&mut self) {
+        let mut signals_marked_to_add = self.signals_marked_to_add.clone();
+        let mut signals_marked_to_remove = self.signals_marked_to_remove.clone();
         if let Some(item) = self.get_selected_item() {
             match item {
                 HierItem::Instance(node) => {
                     let mut node = node.write().unwrap();
                     node.is_expanded = !node.is_expanded;
-                    self.notify_render();
                 }
-                HierItem::Signal(_signal) => todo!(),
+                HierItem::Signal(leaf) => {
+                    let mut leaf = leaf.write().unwrap();
+                    leaf.marker = match leaf.marker {
+                        Marker::NotMarked if leaf.is_added => {
+                            signals_marked_to_remove.insert(leaf.path.clone());
+                            Marker::MarkedForRemove
+                        }
+                        Marker::NotMarked => {
+                            signals_marked_to_add.insert(leaf.path.clone());
+                            Marker::MarkedForAdd
+                        }
+                        Marker::MarkedForAdd => {
+                            signals_marked_to_add.remove(&leaf.path);
+                            Marker::NotMarked
+                        }
+                        Marker::MarkedForRemove => {
+                            signals_marked_to_remove.remove(&leaf.path);
+                            Marker::NotMarked
+                        }
+                    };
+                }
             }
+            self.notify_render();
         }
     }
 
@@ -240,6 +281,8 @@ impl InstanceHierNode {
             .signals
             .iter()
             .map(|s| InstanceHierLeaf::new(s, &path, probed_points))
+            .map(RwLock::new)
+            .map(Arc::new)
             .collect();
         InstanceHierNode {
             path,
@@ -256,9 +299,10 @@ impl InstanceHierLeaf {
         let path = format!("{parent_path}.{}", signal.name);
         let is_added = probed_points.contains(&path);
         InstanceHierLeaf {
-            _path: path,
+            path,
             signal: signal.clone(),
             is_added,
+            marker: Marker::NotMarked,
         }
     }
 }

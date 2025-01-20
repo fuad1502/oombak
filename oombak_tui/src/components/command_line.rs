@@ -126,7 +126,7 @@ impl sim::Listener for CommandLine {
             sim::Response::RunResult(Err(e)) => Err(format!("run: {e}")),
             sim::Response::SetSignalResult(Err(e)) => Err(format!("set: {e}")),
             sim::Response::LoadResult(Err(e)) => Err(format!("load: {e}")),
-            sim::Response::SimulationResult(_) => return,
+            _ => return,
         };
         self.result_history.push(result);
         self.notify_render();
