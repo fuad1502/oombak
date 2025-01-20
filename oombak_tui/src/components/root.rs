@@ -41,11 +41,12 @@ impl Root {
         let simulation_spec = SimulationSpec::default();
         Self {
             message_tx: message_tx.clone(),
-            request_tx,
+            request_tx: request_tx.clone(),
             wave_viewer: WaveViewer::default().simulation(simulation_spec.clone()),
             signals_viewer: SignalsViewer::default().simulation(simulation_spec.clone()),
             instance_hier_viewer: Arc::new(RwLock::new(InstanceHierViewer::new(
                 message_tx.clone(),
+                request_tx.clone(),
             ))),
             command_line,
             highlight_idx: 0,
@@ -182,13 +183,14 @@ impl sim::Listener for Root {
     fn on_receive_reponse(&mut self, response: &sim::Response) {
         match response {
             sim::Response::RunResult(Ok(_)) => self.request_simulation_result(),
-            sim::Response::LoadResult(Ok(loaded_dut)) => {
+            sim::Response::LoadResult(Ok(loaded_dut))
+            | sim::Response::ModifyProbedPointsResult(Ok(loaded_dut)) => {
                 self.instance_hier_viewer
                     .write()
                     .unwrap()
                     .set_loaded_dut(loaded_dut);
-                self.request_simulation_result();
                 self.reload_simulation = true;
+                self.request_simulation_result();
             }
             sim::Response::SimulationResult(Ok(simulation_result)) => {
                 self.update_simulation_spec(simulation_result);

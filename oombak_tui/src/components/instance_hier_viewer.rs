@@ -3,7 +3,7 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
 use crossterm::event::KeyCode;
-use oombak_sim::sim::{InstanceNode, LoadedDut, Signal};
+use oombak_sim::sim::{InstanceNode, LoadedDut, ProbePointsModification, Request, Signal};
 use ratatui::style::Color;
 use ratatui::{
     layout::{Alignment, Constraint, Layout},
@@ -27,6 +27,7 @@ const SIGNAL_ITEM_STYLE: Style = Style::new()
 
 pub struct InstanceHierViewer {
     message_tx: Sender<Message>,
+    request_tx: Sender<Request>,
     root_node: Option<Arc<RwLock<InstanceHierNode>>>,
     probed_points: HashSet<String>,
     items_in_list: Vec<HierItem>,
@@ -65,9 +66,10 @@ enum HierItem {
 }
 
 impl InstanceHierViewer {
-    pub fn new(message_tx: Sender<Message>) -> Self {
+    pub fn new(message_tx: Sender<Message>, request_tx: Sender<Request>) -> Self {
         Self {
             message_tx,
+            request_tx,
             root_node: None,
             items_in_list: vec![],
             list_state: ListState::default(),
@@ -114,22 +116,14 @@ impl Component for InstanceHierViewer {
         key_event: &crossterm::event::KeyEvent,
     ) -> crate::component::HandleResult {
         match key_event.code {
-            KeyCode::Char('q') => return HandleResult::ReleaseFocus,
+            KeyCode::Char('q') => {
+                self.request_modify_probe_points();
+                self.clear_marked_signals();
+                return HandleResult::ReleaseFocus;
+            }
             KeyCode::Enter => self.perform_action_on_selected(),
-            KeyCode::Down | KeyCode::Char('j') => {
-                if let Some(idx) = self.selected_item_idx {
-                    self.list_state.select_next();
-                    let new_idx = usize::saturating_add(idx, 1);
-                    self.selected_item_idx =
-                        Some(usize::min(self.items_in_list.len() - 1, new_idx));
-                }
-            }
-            KeyCode::Up | KeyCode::Char('k') => {
-                if let Some(idx) = self.selected_item_idx {
-                    self.list_state.select_previous();
-                    self.selected_item_idx = Some(usize::saturating_sub(idx, 1));
-                }
-            }
+            KeyCode::Down | KeyCode::Char('j') => self.scroll_down(),
+            KeyCode::Up | KeyCode::Char('k') => self.scroll_up(),
             _ => (),
         }
         self.notify_render();
@@ -252,6 +246,8 @@ impl InstanceHierViewer {
             }
             self.notify_render();
         }
+        self.signals_marked_to_add = signals_marked_to_add;
+        self.signals_marked_to_remove = signals_marked_to_remove;
     }
 
     fn get_selected_item(&self) -> Option<&HierItem> {
@@ -259,6 +255,36 @@ impl InstanceHierViewer {
             Some(&self.items_in_list[idx])
         } else {
             None
+        }
+    }
+
+    fn request_modify_probe_points(&self) {
+        let probe_points_modification = ProbePointsModification {
+            to_add: self.signals_marked_to_add.clone().into_iter().collect(),
+            to_remove: self.signals_marked_to_remove.clone().into_iter().collect(),
+        };
+        self.request_tx
+            .send(Request::ModifyProbedPoints(probe_points_modification))
+            .unwrap();
+    }
+
+    fn clear_marked_signals(&mut self) {
+        self.signals_marked_to_add.clear();
+        self.signals_marked_to_remove.clear();
+    }
+
+    fn scroll_down(&mut self) {
+        if let Some(idx) = self.selected_item_idx {
+            self.list_state.select_next();
+            let new_idx = usize::saturating_add(idx, 1);
+            self.selected_item_idx = Some(usize::min(self.items_in_list.len() - 1, new_idx));
+        }
+    }
+
+    fn scroll_up(&mut self) {
+        if let Some(idx) = self.selected_item_idx {
+            self.list_state.select_previous();
+            self.selected_item_idx = Some(usize::saturating_sub(idx, 1));
         }
     }
 }
@@ -269,7 +295,11 @@ impl InstanceHierNode {
         parent_path: &str,
         probed_points: &HashSet<String>,
     ) -> Self {
-        let path = format!("{parent_path}.{}", instance_node.name);
+        let path = if parent_path.is_empty() {
+            instance_node.name.to_string()
+        } else {
+            format!("{parent_path}.{}", instance_node.name)
+        };
         let children: Vec<Arc<RwLock<InstanceHierNode>>> = instance_node
             .children
             .iter()
@@ -296,7 +326,11 @@ impl InstanceHierNode {
 
 impl InstanceHierLeaf {
     fn new(signal: &Signal, parent_path: &str, probed_points: &HashSet<String>) -> Self {
-        let path = format!("{parent_path}.{}", signal.name);
+        let path = if parent_path.is_empty() {
+            signal.name.to_string()
+        } else {
+            format!("{parent_path}.{}", signal.name)
+        };
         let is_added = probed_points.contains(&path);
         InstanceHierLeaf {
             path,
