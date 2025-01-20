@@ -44,8 +44,8 @@ pub enum Response<'a> {
 pub use oombak_rs::parser::{InstanceNode, Signal, SignalType};
 
 pub struct ProbePointsModification {
-    to_add: Vec<String>,
-    to_remove: Vec<String>,
+    pub to_add: Vec<String>,
+    pub to_remove: Vec<String>,
 }
 
 pub struct LoadedDut {
@@ -169,7 +169,9 @@ impl RequestServer {
         let lib_path = self.rebuild_sv_path()?;
         self.dut = Some(Dut::new(lib_path.to_string_lossy().as_ref())?);
         self.reload_simulation_result()?;
-        Err(OombakSimError::DutNotLoaded)
+        Ok(LoadedDut::from(
+            self.probe.as_ref().ok_or(OombakSimError::DutNotLoaded)?,
+        ))
     }
 
     fn modify_probe(
