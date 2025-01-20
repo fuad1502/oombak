@@ -1,8 +1,9 @@
+use std::collections::HashSet;
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
 use crossterm::event::KeyCode;
-use oombak_sim::sim::{InstanceNode, Signal};
+use oombak_sim::sim::{InstanceNode, LoadedDut, Signal};
 use ratatui::style::Color;
 use ratatui::{
     layout::{Alignment, Constraint, Layout},
@@ -27,6 +28,7 @@ const SIGNAL_ITEM_STYLE: Style = Style::new()
 pub struct InstanceHierViewer {
     message_tx: Sender<Message>,
     root_node: Option<Arc<RwLock<InstanceHierNode>>>,
+    probed_points: HashSet<String>,
     items_in_list: Vec<HierItem>,
     list_state: ListState,
     selected_item_idx: Option<usize>,
@@ -44,7 +46,7 @@ struct InstanceHierNode {
 struct InstanceHierLeaf {
     _path: Vec<String>,
     signal: Signal,
-    _is_added: bool,
+    is_added: bool,
 }
 
 enum HierItem {
@@ -60,11 +62,19 @@ impl InstanceHierViewer {
             items_in_list: vec![],
             list_state: ListState::default(),
             selected_item_idx: None,
+            probed_points: HashSet::default(),
         }
     }
 
-    pub fn set_root_node(&mut self, node: &InstanceNode) {
-        self.root_node = Some(Arc::new(RwLock::new(InstanceHierNode::new(node, &[]))));
+    pub fn set_loaded_dut(&mut self, loaded_dut: &LoadedDut) {
+        for point in loaded_dut.probed_points.iter() {
+            self.probed_points.insert(point.path().to_string());
+        }
+        self.root_node = Some(Arc::new(RwLock::new(InstanceHierNode::new(
+            &loaded_dut.root_node,
+            &[],
+            &self.probed_points,
+        ))));
         self.selected_item_idx = Some(0);
         self.list_state.select_first();
     }
@@ -184,7 +194,7 @@ impl InstanceHierViewer {
 
     fn new_signal_list_item<'a>(leaf: &InstanceHierLeaf, depth: usize) -> ListItem<'a> {
         let indentation = " ".repeat(depth * 2);
-        let added_symbol = if leaf._is_added { "(*)" } else { "" };
+        let added_symbol = if leaf.is_added { "(*)" } else { "" };
         let line = Line::raw(format!(
             "{}{} {}",
             indentation, leaf.signal.name, added_symbol
@@ -216,20 +226,24 @@ impl InstanceHierViewer {
 }
 
 impl InstanceHierNode {
-    fn new(instance_node: &InstanceNode, parent_path: &[String]) -> Self {
+    fn new(
+        instance_node: &InstanceNode,
+        parent_path: &[String],
+        probed_points: &HashSet<String>,
+    ) -> Self {
         let mut path = parent_path.to_vec();
         path.push(instance_node.name.clone());
         let children: Vec<Arc<RwLock<InstanceHierNode>>> = instance_node
             .children
             .iter()
-            .map(|n| InstanceHierNode::new(n, &path))
+            .map(|n| InstanceHierNode::new(n, &path, probed_points))
             .map(RwLock::new)
             .map(Arc::new)
             .collect();
         let leafs = instance_node
             .signals
             .iter()
-            .map(|s| InstanceHierLeaf::new(s, &path))
+            .map(|s| InstanceHierLeaf::new(s, &path, probed_points))
             .collect();
         InstanceHierNode {
             path: path.to_vec(),
@@ -242,13 +256,14 @@ impl InstanceHierNode {
 }
 
 impl InstanceHierLeaf {
-    fn new(signal: &Signal, parent_path: &[String]) -> Self {
+    fn new(signal: &Signal, parent_path: &[String], probed_points: &HashSet<String>) -> Self {
         let mut path = parent_path.to_vec();
         path.push(signal.name.clone());
+        let is_added = probed_points.contains(&path.join("."));
         InstanceHierLeaf {
             _path: path.to_vec(),
             signal: signal.clone(),
-            _is_added: false,
+            is_added,
         }
     }
 }
