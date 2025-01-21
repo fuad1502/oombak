@@ -66,7 +66,7 @@ impl Root {
 }
 
 impl Component for Root {
-    fn render(&self, f: &mut Frame, rect: Rect) {
+    fn render_mut(&mut self, f: &mut Frame, rect: Rect) {
         let main_layout_v = Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![Constraint::Min(0), Constraint::Length(1)])
@@ -96,6 +96,12 @@ impl Component for Root {
             KeyCode::Left => {
                 self.highlight_idx = u16::saturating_sub(self.highlight_idx, 1);
                 self.set_highlight();
+            }
+            KeyCode::Up | KeyCode::Char('k') => {
+                self.signals_viewer.scroll_up();
+            }
+            KeyCode::Down | KeyCode::Char('j') => {
+                self.signals_viewer.scroll_down();
             }
             KeyCode::Char(':') => {
                 self.focused_child = Some(Child::CommandLine);
@@ -131,6 +137,8 @@ impl Component for Root {
             HandleResult::NotHandled
         }
     }
+
+    fn render(&self, _f: &mut Frame, _rect: Rect) {}
 }
 
 impl Root {
@@ -139,8 +147,8 @@ impl Root {
         self.wave_viewer.set_highlight(self.highlight_idx);
     }
 
-    fn render_signals_viewer(&self, f: &mut Frame, rect: Rect) {
-        self.signals_viewer.render(f, rect);
+    fn render_signals_viewer(&mut self, f: &mut Frame, rect: Rect) {
+        self.signals_viewer.render_mut(f, rect);
     }
 
     fn render_wave_viewer(&self, f: &mut Frame, rect: Rect) {

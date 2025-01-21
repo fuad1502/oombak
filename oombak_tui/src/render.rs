@@ -24,7 +24,7 @@ pub fn spawn_renderer(
     thread::spawn(move || -> OombakResult<()> {
         let mut message = Message::Render;
         while message != Message::Quit {
-            terminal.draw(|frame| root.read().unwrap().render(frame, frame.area()))?;
+            terminal.draw(|frame| root.write().unwrap().render_mut(frame, frame.area()))?;
             message = message_rx.recv()?;
         }
         Ok(())
