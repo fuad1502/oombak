@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 thiserror = "2.0.9"
 oombak_rs = { version="0.1.0", path="../oombak_rs" }
+tempfile = "3.15.0"

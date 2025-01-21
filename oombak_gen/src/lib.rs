@@ -8,8 +8,14 @@ use std::{
 
 use error::{OombakGenError, OombakGenResult};
 use oombak_rs::probe::Probe;
+use tempfile::TempDir;
 
-pub fn build(sv_path: &Path) -> OombakGenResult<(PathBuf, Probe)> {
+pub struct TempGenDir {
+    tempdir: TempDir,
+    lib_path: PathBuf,
+}
+
+pub fn build(sv_path: &Path) -> OombakGenResult<(TempGenDir, Probe)> {
     let source_paths: Vec<String> = source_paths_from_sv_path(sv_path)?
         .iter()
         .map(|p| p.to_string_lossy().to_string())
@@ -18,18 +24,20 @@ pub fn build(sv_path: &Path) -> OombakGenResult<(PathBuf, Probe)> {
     Ok((build_with_probe(sv_path, &probe)?, probe))
 }
 
-pub fn build_with_probe(sv_path: &Path, probe: &Probe) -> OombakGenResult<PathBuf> {
-    let source_path = generator::generate(sv_path, probe)?;
-    cmake(&source_path)
+pub fn build_with_probe(sv_path: &Path, probe: &Probe) -> OombakGenResult<TempGenDir> {
+    let source_dir = generator::generate(sv_path, probe)?;
+    cmake(source_dir)
 }
 
-fn cmake(source_path: &Path) -> OombakGenResult<PathBuf> {
-    cmake_configure(source_path)?;
-    cmake_build(source_path)?;
-    let mut so_path = PathBuf::from(source_path);
-    so_path.push("build");
-    so_path.push("libdut.so");
-    Ok(so_path)
+fn cmake(source_dir: TempDir) -> OombakGenResult<TempGenDir> {
+    cmake_configure(source_dir.path())?;
+    cmake_build(source_dir.path())?;
+    let mut lib_path = PathBuf::from("build");
+    lib_path.push("libdut.so");
+    Ok(TempGenDir {
+        tempdir: source_dir,
+        lib_path,
+    })
 }
 
 fn cmake_configure(source_path: &Path) -> OombakGenResult<()> {
@@ -66,4 +74,10 @@ fn source_paths_from_sv_path(sv_path: &Path) -> OombakGenResult<Vec<PathBuf>> {
         }
     }
     Ok(source_paths)
+}
+
+impl TempGenDir {
+    pub fn lib_path(&self) -> PathBuf {
+        self.tempdir.path().join(&self.lib_path)
+    }
 }

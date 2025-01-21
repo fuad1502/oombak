@@ -1,12 +1,9 @@
-use std::{
-    fs::File,
-    io::Write,
-    path::{Path, PathBuf},
-};
+use std::{fs::File, io::Write, path::Path};
 
 use crate::error::{OombakGenError, OombakGenResult};
 
 use oombak_rs::probe::{Probe, ProbePoint};
+use tempfile::TempDir;
 
 macro_rules! generate_lines_from_name_template {
     ($template:expr, $signals:expr) => {{
@@ -154,27 +151,26 @@ macro_rules! multi_bit_dpc_getter_template {
     };
 }
 
-pub fn generate(sv_path: &Path, probe: &Probe) -> OombakGenResult<PathBuf> {
-    Generator::new(probe, sv_path).generate()
+pub fn generate(sv_path: &Path, probe: &Probe) -> OombakGenResult<TempDir> {
+    Generator::new(probe, sv_path)?.generate()
 }
 
 struct Generator<'a> {
-    temp_dir: PathBuf,
+    temp_dir: TempDir,
     probe: &'a Probe,
     sv_path: &'a Path,
 }
 
 impl<'a> Generator<'a> {
-    fn new(probe: &'a Probe, sv_path: &'a Path) -> Self {
-        Generator {
-            temp_dir: PathBuf::new(),
+    fn new(probe: &'a Probe, sv_path: &'a Path) -> OombakGenResult<Self> {
+        Ok(Generator {
+            temp_dir: TempDir::new()?,
             probe,
             sv_path,
-        }
+        })
     }
 
-    fn generate(mut self) -> OombakGenResult<PathBuf> {
-        self.create_temp_dir()?;
+    fn generate(self) -> OombakGenResult<TempDir> {
         self.put_dut_bind_cpp()?;
         self.put_dut_bind_h()?;
         self.put_dut_cpp()?;
@@ -185,12 +181,6 @@ impl<'a> Generator<'a> {
         self.put_ombak_dut_sv()?;
         self.put_cmakelists_txt()?;
         Ok(self.temp_dir)
-    }
-
-    fn create_temp_dir(&mut self) -> OombakGenResult<()> {
-        self.temp_dir = PathBuf::from("dut_gen_temp_dir");
-        std::fs::create_dir(&self.temp_dir)?;
-        Ok(())
     }
 
     fn put_dut_bind_cpp(&self) -> OombakGenResult<()> {
@@ -392,8 +382,7 @@ impl<'a> Generator<'a> {
     }
 
     fn put_file(&self, file_name: &str, content: &[u8]) -> OombakGenResult<()> {
-        let mut file_path = self.temp_dir.clone();
-        file_path.push(file_name);
+        let file_path = self.temp_dir.path().join(file_name);
         let mut file = File::create_new(file_path)?;
         file.write_all(content)?;
         Ok(())
