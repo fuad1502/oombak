@@ -9,6 +9,7 @@ use std::{
 
 use bitvec::vec::BitVec;
 
+use oombak_gen::TempGenDir;
 use oombak_rs::{dut::Dut, error::OombakResult, probe::Probe};
 
 use crate::error::{OombakSimError, OombakSimResult};
@@ -152,8 +153,9 @@ impl RequestServer {
     }
 
     fn load_dut(&mut self, sv_path: &Path) -> OombakSimResult<LoadedDut> {
-        let (lib_path, probe) = oombak_gen::build(sv_path)?;
+        let (temp_gen_dir, probe) = oombak_gen::build(sv_path)?;
         let loaded_dut = LoadedDut::from(&probe);
+        let lib_path = temp_gen_dir.lib_path();
         self.dut = Some(Dut::new(lib_path.to_string_lossy().as_ref())?);
         self.sv_path = Some(sv_path.to_path_buf());
         self.probe = Some(probe);
@@ -166,7 +168,8 @@ impl RequestServer {
         probe_points_modification: &ProbePointsModification,
     ) -> OombakSimResult<LoadedDut> {
         self.modify_probe(probe_points_modification)?;
-        let lib_path = self.rebuild_sv_path()?;
+        let temp_gen_dir = self.rebuild_sv_path()?;
+        let lib_path = temp_gen_dir.lib_path();
         self.dut = Some(Dut::new(lib_path.to_string_lossy().as_ref())?);
         self.reload_simulation_result()?;
         Ok(LoadedDut::from(
@@ -185,7 +188,7 @@ impl RequestServer {
         Ok(())
     }
 
-    fn rebuild_sv_path(&self) -> OombakSimResult<PathBuf> {
+    fn rebuild_sv_path(&self) -> OombakSimResult<TempGenDir> {
         match (&self.sv_path, &self.probe) {
             (Some(sv_path), Some(probe)) => Ok(oombak_gen::build_with_probe(sv_path, probe)?),
             _ => Err(OombakSimError::DutNotLoaded),
