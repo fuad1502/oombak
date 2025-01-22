@@ -46,6 +46,115 @@ impl<'a> Waveform<'a> {
         self
     }
 
+    pub fn block(mut self, block: Block<'a>) -> Self {
+        self.block = Some(block);
+        self
+    }
+}
+
+impl StatefulWidget for Waveform<'_> {
+    type State = WaveformScrollState;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State)
+    where
+        Self: Sized,
+    {
+        state.set_viewport_length(area.width as usize);
+        let (value_count_pairs, start_skip) = self.trim_wave_values(&self.wave_spec.wave, state);
+        let lines = self.plot_values_as_lines(value_count_pairs, start_skip, state.viewport_length);
+        self.render_lines(&lines, area, buf);
+        self.add_cursor_highlight(buf, area, state.selected_position, lines.len() as u16);
+    }
+}
+
+impl Waveform<'_> {
+    fn trim_wave_values(
+        &self,
+        wave: &Wave,
+        state: &WaveformScrollState,
+    ) -> (Vec<(BitVec<u32>, usize)>, usize) {
+        let unit_size = NUMBER_OF_CELLS_PER_UNIT_TIME + self.width as usize;
+        let start_time = state.start_position / unit_size;
+        let end_time =
+            (state.start_position + usize::saturating_sub(state.viewport_length, 1)) / unit_size;
+        let mut result = vec![];
+
+        if let Some((start_idx, start_offset)) = wave.value_idx_at(start_time) {
+            let value = wave.values[start_idx].0.clone();
+            let count = usize::min(
+                wave.values[start_idx].2 - start_offset,
+                end_time - start_time + 1,
+            );
+            result.push((value, count));
+
+            let (end_idx, end_offset) = wave
+                .value_idx_at(end_time)
+                .unwrap_or((wave.values.len() - 1, wave.values.last().unwrap().2 - 1));
+
+            for i in start_idx + 1..end_idx {
+                let value = wave.values[i].0.clone();
+                let count = wave.values[i].2;
+                result.push((value, count));
+            }
+
+            if end_idx != start_idx {
+                let value = wave.values[end_idx].0.clone();
+                let count = end_offset + 1;
+                result.push((value, count));
+            }
+        }
+
+        (result, state.start_position % unit_size)
+    }
+
+    fn plot_values_as_lines(
+        &self,
+        value_count_pairs: Vec<(BitVec<u32>, usize)>,
+        skip_start: usize,
+        viewport_length: usize,
+    ) -> Vec<String> {
+        let height = self.wave_spec.height as usize;
+        let mut lines = vec![String::new(); 2 * height + 1];
+        for (c, (value, count)) in value_count_pairs.iter().enumerate() {
+            let is_end_value = c == value_count_pairs.len() - 1;
+            let word = self.format(value, *count);
+            Self::draw_opening(&mut lines, &word, height);
+            Self::draw_body(&mut lines, &word, height);
+            Self::draw_tail(&mut lines, &word, height, is_end_value);
+        }
+        lines
+            .iter()
+            .map(|l| l.chars().skip(skip_start).take(viewport_length).collect())
+            .collect()
+    }
+
+    fn render_lines(&self, lines: &[String], area: Rect, buf: &mut Buffer) {
+        self.block.render(area, buf);
+        let area = self.block.inner_if_some(area);
+        let style = if self.is_selected {
+            self.selected_style
+        } else {
+            Style::default()
+        };
+        for (i, line) in lines.iter().enumerate() {
+            let i = i as u16;
+            buf.set_string(area.x, area.y + i, line, style);
+        }
+    }
+
+    fn add_cursor_highlight(
+        &self,
+        buf: &mut Buffer,
+        area: Rect,
+        cursor_position: usize,
+        line_count: u16,
+    ) {
+        buf.set_style(
+            Rect::new(area.x + cursor_position as u16, area.y, 1, line_count),
+            Style::default().on_red(),
+        );
+    }
+
     fn format(&self, value: &BitVec<u32>, count: usize) -> Vec<char> {
         let option = bitvec_str::Option::from(self.wave_spec);
         let value = bitvec_str::from(value, &option);
@@ -125,99 +234,6 @@ impl<'a> Waveform<'a> {
                 }
             }
         }
-    }
-
-    pub fn block(mut self, block: Block<'a>) -> Self {
-        self.block = Some(block);
-        self
-    }
-}
-
-impl StatefulWidget for Waveform<'_> {
-    type State = WaveformScrollState;
-
-    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State)
-    where
-        Self: Sized,
-    {
-        state.set_viewport_length(area.width as usize);
-        let style = if self.is_selected {
-            self.selected_style
-        } else {
-            Style::default()
-        };
-        let height = self.wave_spec.height as usize;
-        let mut lines = vec![String::new(); 2 * height + 1];
-        let (value_count_pair, start_skip) =
-            self.get_trimmed_wave_values(&self.wave_spec.wave, state);
-        for (c, (value, count)) in value_count_pair.iter().enumerate() {
-            let is_end_value = c == value_count_pair.len() - 1;
-            let word = self.format(value, *count);
-            Self::draw_opening(&mut lines, &word, height);
-            Self::draw_body(&mut lines, &word, height);
-            Self::draw_tail(&mut lines, &word, height, is_end_value);
-        }
-        self.block.render(area, buf);
-        let area = self.block.inner_if_some(area);
-        for (i, line) in lines.iter().enumerate() {
-            let i = i as u16;
-            let line: String = line
-                .chars()
-                .skip(start_skip)
-                .take(state.viewport_length)
-                .collect();
-            buf.set_string(area.x, area.y + i, line, style);
-        }
-        buf.set_style(
-            Rect::new(
-                area.x + state.selected_position as u16,
-                area.y,
-                1,
-                lines.len() as u16,
-            ),
-            Style::default().on_red(),
-        );
-    }
-}
-
-impl Waveform<'_> {
-    fn get_trimmed_wave_values(
-        &self,
-        wave: &Wave,
-        state: &WaveformScrollState,
-    ) -> (Vec<(BitVec<u32>, usize)>, usize) {
-        let unit_size = NUMBER_OF_CELLS_PER_UNIT_TIME + self.width as usize;
-        let start_time = state.start_position / unit_size;
-        let end_time =
-            (state.start_position + usize::saturating_sub(state.viewport_length, 1)) / unit_size;
-        let mut result = vec![];
-
-        if let Some((start_idx, start_offset)) = wave.value_idx_at(start_time) {
-            let value = wave.values[start_idx].0.clone();
-            let count = usize::min(
-                wave.values[start_idx].2 - start_offset,
-                end_time - start_time + 1,
-            );
-            result.push((value, count));
-
-            let (end_idx, end_offset) = wave
-                .value_idx_at(end_time)
-                .unwrap_or((wave.values.len() - 1, wave.values.last().unwrap().2 - 1));
-
-            for i in start_idx + 1..end_idx {
-                let value = wave.values[i].0.clone();
-                let count = wave.values[i].2;
-                result.push((value, count));
-            }
-
-            if end_idx != start_idx {
-                let value = wave.values[end_idx].0.clone();
-                let count = end_offset + 1;
-                result.push((value, count));
-            }
-        }
-
-        (result, state.start_position % unit_size)
     }
 }
 
