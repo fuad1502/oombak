@@ -19,7 +19,7 @@ pub struct SignalsViewer {
     simulation: SimulationSpec,
     list_state: ListState,
     selected_idx: Option<usize>,
-    highlight_idx: u16,
+    highlight_idx: usize,
 }
 
 impl SignalsViewer {
@@ -28,7 +28,7 @@ impl SignalsViewer {
         self
     }
 
-    pub fn set_highlight(&mut self, idx: u16) {
+    pub fn set_highlight(&mut self, idx: usize) {
         self.highlight_idx = idx;
     }
 
@@ -115,12 +115,7 @@ impl SignalsViewer {
     }
 
     fn get_highlighted_value_of(&self, wave_spec: &WaveSpec) -> String {
-        let waveform_length = wave_spec.height * 2 + 1 + self.simulation.zoom as u16;
-        if let Some(value) = wave_spec
-            .wave
-            .values
-            .get(self.highlight_idx as usize / waveform_length as usize)
-        {
+        if let Some(value) = wave_spec.wave.values.get(self.highlight_idx) {
             let option = bitvec_str::Option::from(wave_spec);
             utils::bitvec_str::from(value, &option)
         } else {

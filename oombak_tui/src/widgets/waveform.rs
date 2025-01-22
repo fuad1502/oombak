@@ -4,7 +4,7 @@ use ratatui::{
     layout::Rect,
     prelude::BlockExt,
     style::{Style, Stylize},
-    widgets::{Block, Widget},
+    widgets::{Block, StatefulWidget, Widget},
 };
 
 use crate::{components::models::WaveSpec, utils::bitvec_str};
@@ -13,7 +13,6 @@ pub struct Waveform<'a> {
     values: &'a Vec<BitVec<u32>>,
     height: u16,
     width: u8,
-    highlighted_idx: u16,
     option: bitvec_str::Option,
     block: Option<Block<'a>>,
     selected_style: Style,
@@ -27,7 +26,6 @@ impl<'a> From<&'a WaveSpec> for Waveform<'a> {
             values: &wave_spec.wave.values,
             height: wave_spec.height,
             width: 0,
-            highlighted_idx: 0,
             option,
             block: None,
             selected_style: Style::default(),
@@ -47,7 +45,6 @@ impl<'a> Waveform<'a> {
             values,
             height,
             width,
-            highlighted_idx: 0,
             option,
             block: None,
             selected_style: Style::default(),
@@ -57,11 +54,6 @@ impl<'a> Waveform<'a> {
 
     pub fn width(mut self, width: u8) -> Self {
         self.width = width;
-        self
-    }
-
-    pub fn highlight(mut self, idx: u16) -> Self {
-        self.highlighted_idx = idx;
         self
     }
 
@@ -178,12 +170,19 @@ impl<'a> Waveform<'a> {
     }
 }
 
-impl Widget for Waveform<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer)
+impl StatefulWidget for Waveform<'_> {
+    type State = WaveformScrollState;
+
+    fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State)
     where
         Self: Sized,
     {
-        let style = Style::default();
+        state.set_viewport_length(area.width as usize);
+        let style = if self.is_selected {
+            self.selected_style
+        } else {
+            Style::default()
+        };
         let height = self.height as usize;
         let mut lines = vec![String::new(); 2 * height + 1];
         let value_count_pair = Self::compact_vec(self.values);
@@ -198,14 +197,86 @@ impl Widget for Waveform<'_> {
         let area = self.block.inner_if_some(area);
         for (i, line) in lines.iter().enumerate() {
             let i = i as u16;
+            let line: String = line
+                .chars()
+                .skip(state.start_position)
+                .take(state.viewport_length)
+                .collect();
             buf.set_string(area.x, area.y + i, line, style);
         }
-        if self.is_selected {
-            buf.set_style(area, self.selected_style);
-        }
         buf.set_style(
-            Rect::new(area.x + self.highlighted_idx, area.y, 1, lines.len() as u16),
+            Rect::new(
+                area.x + state.selected_position as u16,
+                area.y,
+                1,
+                lines.len() as u16,
+            ),
             Style::default().on_red(),
         );
+    }
+}
+
+#[derive(Default, Clone)]
+pub struct WaveformScrollState {
+    start_position: usize,
+    selected_position: usize,
+    content_length: usize,
+    viewport_length: usize,
+}
+
+impl WaveformScrollState {
+    pub fn new(content_length: usize) -> Self {
+        Self {
+            start_position: 0,
+            selected_position: 0,
+            content_length,
+            viewport_length: 0,
+        }
+    }
+
+    pub fn set_content_length(&mut self, content_length: usize) {
+        self.content_length = content_length;
+    }
+
+    pub fn set_viewport_length(&mut self, viewport_length: usize) {
+        let viewport_length = usize::min(viewport_length, self.content_length);
+        if self.selected_position >= viewport_length {
+            self.selected_position = usize::saturating_sub(self.viewport_length, 1);
+        }
+        self.viewport_length = viewport_length;
+    }
+
+    pub fn next(&mut self) {
+        if !self.is_at_end() && self.is_at_viewport_end() {
+            self.start_position += 1;
+        } else if !self.is_at_viewport_end() {
+            self.selected_position += 1;
+        }
+    }
+
+    pub fn prev(&mut self) {
+        if !self.is_at_beginning() && self.is_at_viewport_start() {
+            self.start_position -= 1;
+        } else if !self.is_at_viewport_start() {
+            self.selected_position -= 1;
+        }
+    }
+
+    fn is_at_viewport_end(&self) -> bool {
+        self.viewport_length == 0 || self.selected_position == self.viewport_length - 1
+    }
+
+    fn is_at_viewport_start(&self) -> bool {
+        self.selected_position == 0
+    }
+
+    fn is_at_end(&self) -> bool {
+        self.content_length == 0
+            || (self.start_position == self.content_length - self.viewport_length
+                && self.selected_position == self.viewport_length - 1)
+    }
+
+    fn is_at_beginning(&self) -> bool {
+        self.start_position == 0 && self.selected_position == 0
     }
 }

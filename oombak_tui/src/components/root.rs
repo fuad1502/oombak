@@ -21,7 +21,6 @@ pub struct Root {
     wave_viewer: WaveViewer,
     instance_hier_viewer: Arc<RwLock<InstanceHierViewer>>,
     command_line: Arc<RwLock<CommandLine>>,
-    highlight_idx: u16,
     focused_child: Option<Child>,
     simulation_spec: SimulationSpec,
     reload_simulation: bool,
@@ -49,7 +48,6 @@ impl Root {
                 request_tx.clone(),
             ))),
             command_line,
-            highlight_idx: 0,
             focused_child: None,
             simulation_spec,
             reload_simulation: false,
@@ -90,12 +88,14 @@ impl Component for Root {
                 return HandleResult::Handled;
             }
             KeyCode::Right => {
-                self.highlight_idx = u16::saturating_add(self.highlight_idx, 1);
-                self.set_highlight();
+                self.wave_viewer.scroll_right();
+                let highlight_idx = self.wave_viewer.get_highlighted_unit_time();
+                self.signals_viewer.set_highlight(highlight_idx);
             }
             KeyCode::Left => {
-                self.highlight_idx = u16::saturating_sub(self.highlight_idx, 1);
-                self.set_highlight();
+                self.wave_viewer.scroll_left();
+                let highlight_idx = self.wave_viewer.get_highlighted_unit_time();
+                self.signals_viewer.set_highlight(highlight_idx);
             }
             KeyCode::Up | KeyCode::Char('k') => {
                 self.signals_viewer.scroll_up();
@@ -144,11 +144,6 @@ impl Component for Root {
 }
 
 impl Root {
-    fn set_highlight(&mut self) {
-        self.signals_viewer.set_highlight(self.highlight_idx);
-        self.wave_viewer.set_highlight(self.highlight_idx);
-    }
-
     fn render_signals_viewer(&mut self, f: &mut Frame, rect: Rect) {
         self.signals_viewer.render_mut(f, rect);
     }
