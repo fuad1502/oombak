@@ -99,9 +99,11 @@ impl Component for Root {
             }
             KeyCode::Up | KeyCode::Char('k') => {
                 self.signals_viewer.scroll_up();
+                self.wave_viewer.scroll_up();
             }
             KeyCode::Down | KeyCode::Char('j') => {
                 self.signals_viewer.scroll_down();
+                self.wave_viewer.scroll_down();
             }
             KeyCode::Char(':') => {
                 self.focused_child = Some(Child::CommandLine);
@@ -151,9 +153,9 @@ impl Root {
         self.signals_viewer.render_mut(f, rect);
     }
 
-    fn render_wave_viewer(&self, f: &mut Frame, rect: Rect) {
+    fn render_wave_viewer(&mut self, f: &mut Frame, rect: Rect) {
         let block = Block::new().borders(Borders::LEFT);
-        self.wave_viewer.render_with_block(f, rect, block);
+        self.wave_viewer.render_mut_with_block(f, rect, block);
     }
 
     fn render_instance_hier_viewer(&self, f: &mut Frame, rect: Rect) {

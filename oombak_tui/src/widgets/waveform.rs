@@ -16,6 +16,8 @@ pub struct Waveform<'a> {
     highlighted_idx: u16,
     option: bitvec_str::Option,
     block: Option<Block<'a>>,
+    selected_style: Style,
+    is_selected: bool,
 }
 
 impl<'a> From<&'a WaveSpec> for Waveform<'a> {
@@ -28,6 +30,8 @@ impl<'a> From<&'a WaveSpec> for Waveform<'a> {
             highlighted_idx: 0,
             option,
             block: None,
+            selected_style: Style::default(),
+            is_selected: false,
         }
     }
 }
@@ -46,6 +50,8 @@ impl<'a> Waveform<'a> {
             highlighted_idx: 0,
             option,
             block: None,
+            selected_style: Style::default(),
+            is_selected: false,
         }
     }
 
@@ -56,6 +62,16 @@ impl<'a> Waveform<'a> {
 
     pub fn highlight(mut self, idx: u16) -> Self {
         self.highlighted_idx = idx;
+        self
+    }
+
+    pub fn selected_style(mut self, style: Style) -> Self {
+        self.selected_style = style;
+        self
+    }
+
+    pub fn selected(mut self, is_selected: bool) -> Self {
+        self.is_selected = is_selected;
         self
     }
 
@@ -183,6 +199,9 @@ impl Widget for Waveform<'_> {
         for (i, line) in lines.iter().enumerate() {
             let i = i as u16;
             buf.set_string(area.x, area.y + i, line, style);
+        }
+        if self.is_selected {
+            buf.set_style(area, self.selected_style);
         }
         buf.set_style(
             Rect::new(area.x + self.highlighted_idx, area.y, 1, lines.len() as u16),
