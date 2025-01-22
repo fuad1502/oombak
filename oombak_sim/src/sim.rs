@@ -229,14 +229,24 @@ impl RequestServer {
         end_time: u64,
     ) -> OombakSimResult<()> {
         let new_values = self.query_new_values()?;
+        let duration = (end_time - self.simulation_time) as usize;
+        self.simulation_result.total_time += duration;
         for (wave, new_value) in self
             .simulation_result
             .waves
             .iter_mut()
             .zip(new_values.into_iter())
         {
-            for _ in 0..(end_time - self.simulation_time) {
-                wave.values.push(new_value.clone());
+            if let Some((value, _start, count)) = wave.values.last_mut() {
+                if *value == new_value {
+                    *count += duration;
+                } else {
+                    wave.values
+                        .push((new_value, self.simulation_time as usize, duration));
+                }
+            } else {
+                wave.values
+                    .push((new_value, self.simulation_time as usize, duration));
             }
         }
         Ok(())
@@ -281,13 +291,14 @@ impl From<&Probe> for LoadedDut {
 pub struct SimulationResult {
     pub waves: Vec<Wave>,
     pub time_step_ps: usize,
+    pub total_time: usize,
 }
 
 #[derive(Clone)]
 pub struct Wave {
     pub signal_name: String,
     pub width: usize,
-    pub values: Vec<BitVec<u32>>,
+    pub values: Vec<(BitVec<u32>, usize, usize)>,
 }
 
 impl From<oombak_rs::dut::Signal> for Wave {
@@ -296,6 +307,23 @@ impl From<oombak_rs::dut::Signal> for Wave {
             signal_name: signal.name,
             width: signal.width as usize,
             values: vec![],
+        }
+    }
+}
+
+impl Wave {
+    pub fn value_idx_at(&self, time: usize) -> Option<(usize, usize)> {
+        match self.values.binary_search_by(|v| (v.1).cmp(&time)) {
+            Ok(idx) => Some((idx, 0)),
+            Err(0) => None,
+            Err(idx) => {
+                let offset = time - self.values[idx - 1].1;
+                if offset < self.values[idx - 1].2 {
+                    Some((idx - 1, offset))
+                } else {
+                    None
+                }
+            }
         }
     }
 }
