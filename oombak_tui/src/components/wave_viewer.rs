@@ -14,7 +14,7 @@ use crate::{
 use super::models::{SimulationSpec, WaveSpec};
 
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
-const NUMBER_OF_CELLS_PER_UNIT_TIME: usize = 4;
+const NUMBER_OF_CELLS_PER_UNIT_TIME: usize = 3;
 
 #[derive(Default)]
 pub struct WaveViewer {
@@ -80,7 +80,7 @@ impl WaveViewer {
     }
 
     pub fn get_highlighted_unit_time(&self) -> usize {
-        self.horizontal_position / (NUMBER_OF_CELLS_PER_UNIT_TIME * self.simulation.zoom as usize)
+        self.horizontal_position / (NUMBER_OF_CELLS_PER_UNIT_TIME + self.simulation.zoom as usize)
     }
 }
 

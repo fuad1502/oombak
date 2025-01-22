@@ -9,6 +9,8 @@ use ratatui::{
 
 use crate::{components::models::WaveSpec, utils::bitvec_str};
 
+const NUMBER_OF_CELLS_PER_UNIT_TIME: usize = 3;
+
 pub struct Waveform<'a> {
     values: &'a Vec<BitVec<u32>>,
     height: u16,
@@ -186,6 +188,7 @@ impl StatefulWidget for Waveform<'_> {
         let height = self.height as usize;
         let mut lines = vec![String::new(); 2 * height + 1];
         let value_count_pair = Self::compact_vec(self.values);
+        let (value_count_pair, start_skip) = self.trim_value_count_pairs(value_count_pair, state);
         for (c, (value, count)) in value_count_pair.iter().enumerate() {
             let is_end_value = c == value_count_pair.len() - 1;
             let word = self.format(value, *count);
@@ -199,7 +202,7 @@ impl StatefulWidget for Waveform<'_> {
             let i = i as u16;
             let line: String = line
                 .chars()
-                .skip(state.start_position)
+                .skip(start_skip)
                 .take(state.viewport_length)
                 .collect();
             buf.set_string(area.x, area.y + i, line, style);
@@ -213,6 +216,44 @@ impl StatefulWidget for Waveform<'_> {
             ),
             Style::default().on_red(),
         );
+    }
+}
+
+impl Waveform<'_> {
+    fn trim_value_count_pairs(
+        &self,
+        value_count_pairs: Vec<(BitVec<u32>, usize)>,
+        state: &WaveformScrollState,
+    ) -> (Vec<(BitVec<u32>, usize)>, usize) {
+        let n = NUMBER_OF_CELLS_PER_UNIT_TIME + self.width as usize;
+        let start_time = state.start_position / n;
+        let end_time = (state.start_position + state.viewport_length) / n;
+        let mut current_time = 0;
+        let mut value_count_pairs = value_count_pairs.iter().peekable();
+        let mut result = vec![];
+
+        while current_time <= start_time {
+            if let Some((value, count)) = value_count_pairs.next() {
+                current_time += count;
+                if current_time > start_time {
+                    result.push((value.clone(), current_time - start_time));
+                }
+            } else {
+                break;
+            }
+        }
+
+        while current_time <= end_time {
+            if let Some((value, count)) = value_count_pairs.next() {
+                let count = usize::min(*count, end_time - current_time + 1);
+                result.push((value.clone(), count));
+                current_time += count;
+            } else {
+                break;
+            }
+        }
+
+        (result, state.start_position % n)
     }
 }
 
