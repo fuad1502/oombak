@@ -5,6 +5,7 @@ use oombak_sim::sim::{self, SimulationResult};
 #[derive(Default, Clone)]
 pub struct SimulationSpec {
     pub wave_specs: Vec<WaveSpec>,
+    pub total_time: usize,
     pub time_step_ps: usize,
     pub zoom: u8,
 }
@@ -21,6 +22,7 @@ impl SimulationSpec {
     pub fn new(simulation_result: &SimulationResult) -> Self {
         let mut spec = SimulationSpec {
             wave_specs: vec![],
+            total_time: simulation_result.total_time,
             time_step_ps: 1,
             zoom: 1,
         };

@@ -40,7 +40,7 @@ impl WaveViewer {
             self.selected_idx = Some(0);
             self.horizontal_content_length = (NUMBER_OF_CELLS_PER_UNIT_TIME
                 + self.simulation.zoom as usize)
-                * self.simulation.wave_specs[0].wave.values.len();
+                * self.simulation.total_time;
             self.horizontal_scrollbar_state =
                 ScrollbarState::new(self.horizontal_content_length).position(0);
             self.waveform_scroll_state
@@ -51,7 +51,7 @@ impl WaveViewer {
     pub fn scroll_right(&mut self) {
         self.horizontal_scrollbar_state.next();
         self.waveform_scroll_state.next();
-        if self.horizontal_position < self.horizontal_content_length {
+        if self.horizontal_position + 1 < self.horizontal_content_length {
             self.horizontal_position += 1;
         }
     }
@@ -134,7 +134,7 @@ impl WaveViewer {
         is_selected: bool,
         render_area_width: u16,
     ) -> ListItem<'a> {
-        let waveform = Waveform::from(wave_spec)
+        let waveform = Waveform::new(wave_spec)
             .width(self.simulation.zoom)
             .block(Block::new().borders(Borders::BOTTOM))
             .selected_style(SELECTED_STYLE)

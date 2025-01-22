@@ -115,7 +115,8 @@ impl SignalsViewer {
     }
 
     fn get_highlighted_value_of(&self, wave_spec: &WaveSpec) -> String {
-        if let Some(value) = wave_spec.wave.values.get(self.highlight_idx) {
+        if let Some((idx, _)) = wave_spec.wave.value_idx_at(self.highlight_idx) {
+            let value = &wave_spec.wave.values[idx].0;
             let option = bitvec_str::Option::from(wave_spec);
             utils::bitvec_str::from(value, &option)
         } else {

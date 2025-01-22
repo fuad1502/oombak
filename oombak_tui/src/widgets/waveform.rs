@@ -1,4 +1,5 @@
 use bitvec::vec::BitVec;
+use oombak_sim::sim::Wave;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
@@ -12,42 +13,18 @@ use crate::{components::models::WaveSpec, utils::bitvec_str};
 const NUMBER_OF_CELLS_PER_UNIT_TIME: usize = 3;
 
 pub struct Waveform<'a> {
-    values: &'a Vec<BitVec<u32>>,
-    height: u16,
+    wave_spec: &'a WaveSpec,
     width: u8,
-    option: bitvec_str::Option,
     block: Option<Block<'a>>,
     selected_style: Style,
     is_selected: bool,
 }
 
-impl<'a> From<&'a WaveSpec> for Waveform<'a> {
-    fn from(wave_spec: &'a WaveSpec) -> Self {
-        let option = bitvec_str::Option::from(wave_spec);
-        Self {
-            values: &wave_spec.wave.values,
-            height: wave_spec.height,
-            width: 0,
-            option,
-            block: None,
-            selected_style: Style::default(),
-            is_selected: false,
-        }
-    }
-}
-
 impl<'a> Waveform<'a> {
-    pub fn new(
-        values: &'a Vec<BitVec<u32>>,
-        height: u16,
-        width: u8,
-        option: bitvec_str::Option,
-    ) -> Self {
+    pub fn new(wave_spec: &'a WaveSpec) -> Self {
         Self {
-            values,
-            height,
-            width,
-            option,
+            wave_spec,
+            width: 0,
             block: None,
             selected_style: Style::default(),
             is_selected: false,
@@ -70,9 +47,10 @@ impl<'a> Waveform<'a> {
     }
 
     fn format(&self, value: &BitVec<u32>, count: usize) -> Vec<char> {
-        let value = bitvec_str::from(value, &self.option);
+        let option = bitvec_str::Option::from(self.wave_spec);
+        let value = bitvec_str::from(value, &option);
         let width = self.width as usize;
-        let height = self.height as usize;
+        let height = self.wave_spec.height as usize;
         let body_length = width * count;
         let head_tail_lengths = 2 * (height + 1) * count;
         let overlaps = count - 1;
@@ -85,23 +63,6 @@ impl<'a> Waveform<'a> {
             format!(" {snip}~ ")
         };
         res.chars().take(str_width).collect()
-    }
-
-    fn compact_vec(values: &[BitVec<u32>]) -> Vec<(BitVec<u32>, usize)> {
-        let (_, values, counts) = values.iter().fold(
-            (None, vec![], vec![]),
-            |(prev, mut values, mut counts), x| {
-                if Some(x) == prev {
-                    *counts.last_mut().unwrap() += 1;
-                    (prev, values, counts)
-                } else {
-                    values.push(x.clone());
-                    counts.push(1);
-                    (Some(x), values, counts)
-                }
-            },
-        );
-        values.into_iter().zip(counts).collect()
     }
 
     fn draw_opening(lines: &mut [String], word: &[char], height: usize) {
@@ -185,10 +146,10 @@ impl StatefulWidget for Waveform<'_> {
         } else {
             Style::default()
         };
-        let height = self.height as usize;
+        let height = self.wave_spec.height as usize;
         let mut lines = vec![String::new(); 2 * height + 1];
-        let value_count_pair = Self::compact_vec(self.values);
-        let (value_count_pair, start_skip) = self.trim_value_count_pairs(value_count_pair, state);
+        let (value_count_pair, start_skip) =
+            self.get_trimmed_wave_values(&self.wave_spec.wave, state);
         for (c, (value, count)) in value_count_pair.iter().enumerate() {
             let is_end_value = c == value_count_pair.len() - 1;
             let word = self.format(value, *count);
@@ -220,40 +181,43 @@ impl StatefulWidget for Waveform<'_> {
 }
 
 impl Waveform<'_> {
-    fn trim_value_count_pairs(
+    fn get_trimmed_wave_values(
         &self,
-        value_count_pairs: Vec<(BitVec<u32>, usize)>,
+        wave: &Wave,
         state: &WaveformScrollState,
     ) -> (Vec<(BitVec<u32>, usize)>, usize) {
-        let n = NUMBER_OF_CELLS_PER_UNIT_TIME + self.width as usize;
-        let start_time = state.start_position / n;
-        let end_time = (state.start_position + state.viewport_length) / n;
-        let mut current_time = 0;
-        let mut value_count_pairs = value_count_pairs.iter().peekable();
+        let unit_size = NUMBER_OF_CELLS_PER_UNIT_TIME + self.width as usize;
+        let start_time = state.start_position / unit_size;
+        let end_time =
+            (state.start_position + usize::saturating_sub(state.viewport_length, 1)) / unit_size;
         let mut result = vec![];
 
-        while current_time <= start_time {
-            if let Some((value, count)) = value_count_pairs.next() {
-                current_time += count;
-                if current_time > start_time {
-                    result.push((value.clone(), current_time - start_time));
-                }
-            } else {
-                break;
+        if let Some((start_idx, start_offset)) = wave.value_idx_at(start_time) {
+            let value = wave.values[start_idx].0.clone();
+            let count = usize::min(
+                wave.values[start_idx].2 - start_offset,
+                end_time - start_time + 1,
+            );
+            result.push((value, count));
+
+            let (end_idx, end_offset) = wave
+                .value_idx_at(end_time)
+                .unwrap_or((wave.values.len() - 1, wave.values.last().unwrap().2 - 1));
+
+            for i in start_idx + 1..end_idx {
+                let value = wave.values[i].0.clone();
+                let count = wave.values[i].2;
+                result.push((value, count));
+            }
+
+            if end_idx != start_idx {
+                let value = wave.values[end_idx].0.clone();
+                let count = end_offset + 1;
+                result.push((value, count));
             }
         }
 
-        while current_time <= end_time {
-            if let Some((value, count)) = value_count_pairs.next() {
-                let count = usize::min(*count, end_time - current_time + 1);
-                result.push((value.clone(), count));
-                current_time += count;
-            } else {
-                break;
-            }
-        }
-
-        (result, state.start_position % n)
+        (result, state.start_position % unit_size)
     }
 }
 
