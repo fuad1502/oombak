@@ -75,36 +75,44 @@ impl Waveform<'_> {
     ) -> (Vec<(BitVec<u32>, usize)>, usize) {
         let unit_size = NUMBER_OF_CELLS_PER_UNIT_TIME + self.width as usize;
         let start_time = state.start_position / unit_size;
+        let mut start_cut = state.start_position % unit_size;
         let end_time =
             (state.start_position + usize::saturating_sub(state.viewport_length, 1)) / unit_size;
         let mut result = vec![];
 
         if let Some((start_idx, start_offset)) = wave.value_idx_at(start_time) {
-            let value = wave.values[start_idx].0.clone();
-            let count = usize::min(
-                wave.values[start_idx].2 - start_offset,
-                end_time - start_time + 1,
-            );
-            result.push((value, count));
-
             let (end_idx, end_offset) = wave
                 .value_idx_at(end_time)
                 .unwrap_or((wave.values.len() - 1, wave.values.last().unwrap().2 - 1));
 
-            for i in start_idx + 1..end_idx {
-                let value = wave.values[i].0.clone();
-                let count = wave.values[i].2;
-                result.push((value, count));
+            let start_value = wave.values[start_idx].0.clone();
+            let mut start_count = usize::min(
+                wave.values[start_idx].2 - start_offset,
+                end_time - start_time + 1,
+            );
+            if start_offset != 0 {
+                start_count += 1;
+                start_cut += unit_size;
             }
+            if end_idx == start_idx && end_offset != wave.values[end_idx].2 - 1 {
+                start_count += 1;
+            }
+            result.push((start_value, start_count));
 
-            if end_idx != start_idx {
-                let value = wave.values[end_idx].0.clone();
-                let count = end_offset + 1;
+            for i in start_idx + 1..=end_idx {
+                let value = wave.values[i].0.clone();
+                let count = if i == end_idx && end_offset != wave.values[i].2 - 1 {
+                    end_offset + 2
+                } else if i == end_idx {
+                    end_offset + 1
+                } else {
+                    wave.values[i].2
+                };
                 result.push((value, count));
             }
         }
 
-        (result, state.start_position % unit_size)
+        (result, start_cut)
     }
 
     fn plot_values_as_lines(
