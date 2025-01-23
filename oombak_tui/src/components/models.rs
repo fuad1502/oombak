@@ -41,6 +41,7 @@ impl SimulationSpec {
 
     pub fn update(&mut self, simulation_result: &SimulationResult) {
         self.time_step_ps = simulation_result.time_step_ps;
+        // self.total_time = simulation_result.total_time;
         self.wave_specs = simulation_result
             .waves
             .iter()
