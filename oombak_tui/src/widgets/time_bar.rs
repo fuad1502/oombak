@@ -6,7 +6,6 @@ use ratatui::{
 pub struct TimeBar {
     tick_period: usize,
     time_unit: TimeUnit,
-    highlight_style: Style,
 }
 
 #[derive(Default)]
@@ -109,15 +108,54 @@ impl TimeBarState {
         }
     }
 
+    pub fn set_total_time(&mut self, total_time: usize) {
+        self.total_time = total_time;
+    }
+
     pub fn set_viewport_length(&mut self, viewport_length: usize) {
+        let viewport_length = usize::min(viewport_length, self.total_time);
+        if self.selected_position >= viewport_length {
+            self.selected_position = usize::saturating_sub(self.viewport_length, 1);
+        }
         self.viewport_length = viewport_length;
     }
 
-    pub fn next(&mut self) {}
+    pub fn next(&mut self) {
+        if !self.is_at_end() && self.is_at_viewport_end() {
+            self.start_position += 1;
+        } else if !self.is_at_viewport_end() {
+            self.selected_position += 1;
+        }
+    }
 
-    pub fn prev(&mut self) {}
+    pub fn prev(&mut self) {
+        if !self.is_at_beginning() && self.is_at_viewport_start() {
+            self.start_position -= 1;
+        } else if !self.is_at_viewport_start() {
+            self.selected_position -= 1;
+        }
+    }
+
+    fn is_at_viewport_end(&self) -> bool {
+        self.viewport_length == 0 || self.selected_position == self.viewport_length - 1
+    }
+
+    fn is_at_viewport_start(&self) -> bool {
+        self.selected_position == 0
+    }
+
+    fn is_at_end(&self) -> bool {
+        self.total_time == 0
+            || (self.start_position == self.total_time - self.viewport_length
+                && self.selected_position == self.viewport_length - 1)
+    }
+
+    fn is_at_beginning(&self) -> bool {
+        self.start_position == 0 && self.selected_position == 0
+    }
 }
 
+#[cfg(test)]
 mod test {
     use ratatui::{
         buffer::Buffer,
@@ -176,7 +214,7 @@ mod test {
             "    ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ╻50 ns",
             "┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻",
         ]);
-        expected.set_style(Rect::new(50, 0, 1, 2), Style::default().on_red());
+        expected.set_style(Rect::new(49, 0, 1, 2), Style::default().on_red());
 
         assert_eq!(buf, expected);
     }
@@ -198,7 +236,7 @@ mod test {
             "    ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ╻50 ns",
             "┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻",
         ]);
-        expected.set_style(Rect::new(45, 0, 1, 2), Style::default().on_red());
+        expected.set_style(Rect::new(44, 0, 1, 2), Style::default().on_red());
 
         assert_eq!(buf, expected);
     }
@@ -229,9 +267,10 @@ mod test {
         let time_bar = TimeBar::default()
             .time_unit(TimeUnit::Nanoseconds)
             .tick_period(10);
-        let state = TimeBarState::new(100);
+        let mut state = TimeBarState::new(100);
 
         let buf = Buffer::empty(Rect::new(0, 0, 50, 2));
+        state.set_viewport_length(50);
 
         (time_bar, state, buf)
     }
