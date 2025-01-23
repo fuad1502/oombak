@@ -6,6 +6,8 @@ pub trait Component: Send + Sync {
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult;
 
+    fn handle_resize_event(&mut self, columns: u16, rows: u16) -> HandleResult;
+
     fn try_propagate_event(&mut self, event: &Event) -> HandleResult;
 
     fn set_focus_to_self(&mut self);
@@ -33,13 +35,11 @@ pub trait Component: Send + Sync {
                 self.set_focus_to_self();
                 HandleResult::Handled
             }
-            HandleResult::NotHandled => {
-                if let Event::Key(key_event) = event {
-                    self.handle_key_event(key_event)
-                } else {
-                    HandleResult::NotHandled
-                }
-            }
+            HandleResult::NotHandled => match event {
+                Event::Key(key_event) => self.handle_key_event(key_event),
+                Event::Resize(columns, rows) => self.handle_resize_event(*columns, *rows),
+                _ => HandleResult::NotHandled,
+            },
         }
     }
 }

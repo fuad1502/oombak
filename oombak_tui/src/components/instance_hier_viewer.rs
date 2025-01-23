@@ -137,11 +137,14 @@ impl Component for InstanceHierViewer {
         HandleResult::NotHandled
     }
 
+    fn handle_resize_event(&mut self, _columns: u16, _rows: u16) -> HandleResult {
+        self.notify_render();
+        HandleResult::Handled
+    }
+
     fn set_focus_to_self(&mut self) {}
 
-    fn render(&self, _f: &mut ratatui::Frame, _rect: ratatui::prelude::Rect) {
-        todo!()
-    }
+    fn render(&self, _f: &mut ratatui::Frame, _rect: ratatui::prelude::Rect) {}
 }
 
 impl InstanceHierViewer {

@@ -6,10 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState, ScrollbarState, StatefulWidget},
 };
 
-use crate::{
-    component::{Component, HandleResult},
-    widgets::{Waveform, WaveformScrollState},
-};
+use crate::widgets::{Waveform, WaveformScrollState};
 
 use super::models::{SimulationSpec, WaveSpec};
 
@@ -82,10 +79,8 @@ impl WaveViewer {
     pub fn get_highlighted_unit_time(&self) -> usize {
         self.horizontal_position / (NUMBER_OF_CELLS_PER_UNIT_TIME + self.simulation.zoom as usize)
     }
-}
 
-impl Component for WaveViewer {
-    fn render_mut(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
+    pub fn render_mut(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
         let mut waveform_scroll_state = self.waveform_scroll_state.clone();
         let items = self.new_list_items(rect.width, &mut waveform_scroll_state);
         self.waveform_scroll_state = waveform_scroll_state;
@@ -93,20 +88,6 @@ impl Component for WaveViewer {
         f.render_stateful_widget(list, rect, &mut self.list_state);
     }
 
-    fn handle_key_event(&mut self, _key_event: &crossterm::event::KeyEvent) -> HandleResult {
-        HandleResult::NotHandled
-    }
-
-    fn try_propagate_event(&mut self, _event: &crossterm::event::Event) -> HandleResult {
-        HandleResult::NotHandled
-    }
-
-    fn set_focus_to_self(&mut self) {}
-
-    fn render(&self, _f: &mut ratatui::Frame, _rect: Rect) {}
-}
-
-impl WaveViewer {
     fn new_list_items<'a>(
         &self,
         render_area_width: u16,

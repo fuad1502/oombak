@@ -79,6 +79,11 @@ impl Component for CommandLine {
         HandleResult::Handled
     }
 
+    fn handle_resize_event(&mut self, _columns: u16, _rows: u16) -> HandleResult {
+        self.notify_render();
+        HandleResult::Handled
+    }
+
     fn try_propagate_event(&mut self, _event: &crossterm::event::Event) -> HandleResult {
         HandleResult::NotHandled
     }

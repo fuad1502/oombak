@@ -118,6 +118,11 @@ impl Component for Root {
         HandleResult::Handled
     }
 
+    fn handle_resize_event(&mut self, _columns: u16, _rows: u16) -> HandleResult {
+        self.notify_render();
+        HandleResult::Handled
+    }
+
     fn set_focus_to_self(&mut self) {
         if matches!(self.focused_child, Some(Child::InstanceHierView)) {
             self.notify_render();
@@ -150,7 +155,9 @@ impl Root {
 
     fn render_wave_viewer(&mut self, f: &mut Frame, rect: Rect) {
         let block = Block::new().borders(Borders::LEFT);
-        self.wave_viewer.render_mut_with_block(f, rect, block);
+        let inner = block.inner(rect);
+        f.render_widget(block, rect);
+        self.wave_viewer.render_mut(f, inner);
     }
 
     fn render_instance_hier_viewer(&self, f: &mut Frame, rect: Rect) {

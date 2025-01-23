@@ -5,10 +5,7 @@ use ratatui::{
     widgets::{List, ListItem, ListState},
 };
 
-use crate::{
-    component::{Component, HandleResult},
-    utils::{self, bitvec_str},
-};
+use crate::utils::{self, bitvec_str};
 
 use super::models::{SimulationSpec, WaveSpec};
 
@@ -56,29 +53,13 @@ impl SignalsViewer {
             self.selected_idx = Some(usize::saturating_sub(idx, 1));
         }
     }
-}
 
-impl Component for SignalsViewer {
-    fn render_mut(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
+    pub fn render_mut(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
         let items = self.create_list_items(rect.width);
         let list = List::new(items);
         f.render_stateful_widget(list, rect, &mut self.list_state);
     }
 
-    fn handle_key_event(&mut self, _key_event: &crossterm::event::KeyEvent) -> HandleResult {
-        HandleResult::NotHandled
-    }
-
-    fn try_propagate_event(&mut self, _event: &crossterm::event::Event) -> HandleResult {
-        HandleResult::NotHandled
-    }
-
-    fn set_focus_to_self(&mut self) {}
-
-    fn render(&self, _f: &mut ratatui::Frame, _rect: ratatui::prelude::Rect) {}
-}
-
-impl SignalsViewer {
     fn create_list_items<'a>(&self, width: u16) -> Vec<ListItem<'a>> {
         self.simulation
             .wave_specs
