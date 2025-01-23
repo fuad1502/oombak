@@ -1,8 +1,9 @@
-# oombak 🌊
+# Oombak 🌊
 
-> This project is under development, stay tune for updates! Later, this
-> repository will be divided into multiple repositories inside
-> github.com/oombak
+> This project is still under development, stay tune for updates! I've put up
+> an issue tracker for the first release
+> [here](https://github.com/fuad1502/oombak/issues/1). Later, this repository
+> will be divided into multiple repositories inside github.com/oombak
 
 The **oombak** project consists of multiple sub-projects:
 
