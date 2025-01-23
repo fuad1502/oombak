@@ -197,6 +197,7 @@ impl RequestServer {
 
     fn reload_simulation_result(&mut self) -> OombakSimResult<()> {
         self.simulation_result = SimulationResult::default();
+        self.simulation_time = 0;
         self.load_signal_names_to_simulation_result()?;
         Ok(())
     }
