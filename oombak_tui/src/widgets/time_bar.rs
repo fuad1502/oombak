@@ -33,20 +33,22 @@ impl StatefulWidget for TimeBar {
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         state.set_viewport_length(area.width as usize);
-        let lines = self.plot_into_lines(state);
-        buf.set_string(0, 0, &lines[0], Style::default());
-        buf.set_string(0, 1, &lines[1], Style::default());
-        Self::set_highlight(buf, state, Style::default().on_red());
+        if area.width >= 1 && area.height >= 2 && state.viewport_length >= 1 {
+            let lines = self.plot_into_lines(state);
+            buf.set_string(area.x, area.y, &lines[0], Style::default());
+            buf.set_string(area.x, area.y + 1, &lines[1], Style::default());
+            Self::set_highlight(buf, area, state, Style::default().on_red());
+        }
     }
 }
 
 impl TimeBar {
     fn plot_into_lines(&self, state: &TimeBarState) -> [String; 2] {
-        let number_of_ticks = state.viewport_length / self.tick_period;
+        let number_of_ticks = state.viewport_length / self.tick_period + 2;
         let floored_start_position = self.floored_start_position(state);
         let mut lines = [String::new(), String::new()];
 
-        for i in 0..number_of_ticks + 1 {
+        for i in 0..number_of_ticks {
             let time = floored_start_position + i * self.tick_period;
             lines[0] += &self.new_tick_segment_upper(time);
             lines[1] += &self.new_tick_segment_lower();
@@ -56,11 +58,13 @@ impl TimeBar {
         lines
     }
 
-    fn set_highlight(buf: &mut Buffer, state: &TimeBarState, highlight_style: Style) {
-        buf.set_style(
-            Rect::new(state.selected_position as u16, 0, 1, 2),
-            highlight_style,
-        );
+    fn set_highlight(buf: &mut Buffer, area: Rect, state: &TimeBarState, highlight_style: Style) {
+        if area.width >= 1 && area.height >= 2 && state.viewport_length >= 1 {
+            buf.set_style(
+                Rect::new(area.x + state.selected_position as u16, area.y, 1, 2),
+                highlight_style,
+            );
+        }
     }
 
     fn new_tick_segment_upper(&self, time: usize) -> String {
@@ -181,9 +185,12 @@ mod test {
 
     use super::{TimeBar, TimeBarState, TimeUnit};
 
+    const X0: u16 = 10;
+    const Y0: u16 = 10;
+
     #[test]
     pub fn test_render() {
-        let (time_bar, mut state, mut buf) = setup();
+        let (time_bar, mut state, mut buf, area) = setup(50);
 
         time_bar.render(buf.area, &mut buf, &mut state);
 
@@ -191,14 +198,15 @@ mod test {
             "╻0 ns     ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ",
             "┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷",
         ]);
-        expected.set_style(Rect::new(0, 0, 1, 2), Style::default().on_red());
+        expected.area = area;
+        expected.set_style(Rect::new(X0, Y0, 1, 2), Style::default().on_red());
 
         assert_eq!(buf, expected);
     }
 
     #[test]
     pub fn test_scroll_little() {
-        let (time_bar, mut state, mut buf) = setup();
+        let (time_bar, mut state, mut buf, area) = setup(50);
 
         for _ in 0..10 {
             state.next();
@@ -210,14 +218,15 @@ mod test {
             "╻0 ns     ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ",
             "┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷",
         ]);
-        expected.set_style(Rect::new(10, 0, 1, 2), Style::default().on_red());
+        expected.area = area;
+        expected.set_style(Rect::new(X0 + 10, Y0, 1, 2), Style::default().on_red());
 
         assert_eq!(buf, expected);
     }
 
     #[test]
     pub fn test_scroll_pass_end() {
-        let (time_bar, mut state, mut buf) = setup();
+        let (time_bar, mut state, mut buf, area) = setup(50);
 
         for _ in 0..55 {
             state.next();
@@ -229,14 +238,15 @@ mod test {
             "    ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ╻50 ns",
             "┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻",
         ]);
-        expected.set_style(Rect::new(49, 0, 1, 2), Style::default().on_red());
+        expected.area = area;
+        expected.set_style(Rect::new(X0 + 49, Y0, 1, 2), Style::default().on_red());
 
         assert_eq!(buf, expected);
     }
 
     #[test]
     pub fn test_scroll_pass_end_and_back() {
-        let (time_bar, mut state, mut buf) = setup();
+        let (time_bar, mut state, mut buf, area) = setup(50);
 
         for _ in 0..55 {
             state.next();
@@ -251,14 +261,15 @@ mod test {
             "    ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ╻50 ns",
             "┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻",
         ]);
-        expected.set_style(Rect::new(44, 0, 1, 2), Style::default().on_red());
+        expected.area = area;
+        expected.set_style(Rect::new(X0 + 44, Y0, 1, 2), Style::default().on_red());
 
         assert_eq!(buf, expected);
     }
 
     #[test]
     pub fn test_scroll_pass_end_and_pass_back() {
-        let (time_bar, mut state, mut buf) = setup();
+        let (time_bar, mut state, mut buf, area) = setup(50);
 
         for _ in 0..55 {
             state.next();
@@ -273,20 +284,42 @@ mod test {
             "     ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ╻50 n",
             "┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷",
         ]);
-        expected.set_style(Rect::new(0, 0, 1, 2), Style::default().on_red());
+        expected.area = area;
+        expected.set_style(Rect::new(X0, Y0, 1, 2), Style::default().on_red());
 
         assert_eq!(buf, expected);
     }
 
-    fn setup() -> (TimeBar, TimeBarState, Buffer) {
+    #[test]
+    pub fn test_scroll_pass_end_uneven_viewport() {
+        let (time_bar, mut state, mut buf, area) = setup(49);
+
+        for _ in 0..55 {
+            state.next();
+        }
+
+        time_bar.render(buf.area, &mut buf, &mut state);
+
+        let mut expected = Buffer::with_lines(vec![
+            "   ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ╻50 ns",
+            "┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻",
+        ]);
+        expected.area = area;
+        expected.set_style(Rect::new(X0 + 48, Y0, 1, 2), Style::default().on_red());
+
+        assert_eq!(buf, expected);
+    }
+
+    fn setup(viewport_length: usize) -> (TimeBar, TimeBarState, Buffer, Rect) {
         let time_bar = TimeBar::default()
             .time_unit(TimeUnit::Nanoseconds)
             .tick_period(10);
         let mut state = TimeBarState::new(100);
 
-        let buf = Buffer::empty(Rect::new(0, 0, 50, 2));
-        state.set_viewport_length(50);
+        let area = Rect::new(X0, Y0, viewport_length as u16, 2);
+        let buf = Buffer::empty(area);
+        state.set_viewport_length(viewport_length);
 
-        (time_bar, state, buf)
+        (time_bar, state, buf, area)
     }
 }
