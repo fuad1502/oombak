@@ -166,13 +166,7 @@ impl Waveform<'_> {
     fn format(&self, value: &BitVec<u32>, count: usize) -> Vec<char> {
         let option = bitvec_str::Option::from(self.wave_spec);
         let value = bitvec_str::from(value, &option);
-        let width = NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(self.zoom as u32)
-            - NUMBER_OF_CELLS_PER_UNIT_TIME;
-        let height = self.wave_spec.height as usize;
-        let body_length = width * count;
-        let head_tail_lengths = 2 * (height + 1) * count;
-        let overlaps = count - 1;
-        let str_width = body_length + head_tail_lengths - overlaps;
+        let str_width = NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(self.zoom as u32) * count + 1;
         let res = if str_width - 2 >= value.len() {
             format!("{:^1$}", value, str_width)
         } else {

@@ -37,7 +37,7 @@ impl WaveViewer {
             self.list_state.select_first();
             self.selected_idx = Some(0);
             self.horizontal_content_length = NUMBER_OF_CELLS_PER_UNIT_TIME
-                * usize::pow(self.simulation.zoom as usize, 2)
+                * 2usize.pow(self.simulation.zoom as u32)
                 * self.simulation.total_time;
             self.horizontal_scrollbar_state =
                 ScrollbarState::new(self.horizontal_content_length).position(0);
@@ -105,7 +105,7 @@ impl WaveViewer {
     fn calculate_preferred_tick(&self) -> (usize, f64) {
         let multiplier = Self::nearest_power_of_2_multiplier(NUMBER_OF_CELLS_PER_UNIT_TIME, 10);
         let tick_count = NUMBER_OF_CELLS_PER_UNIT_TIME * multiplier;
-        let tick_period = multiplier as f64 / self.simulation.zoom as f64;
+        let tick_period = multiplier as f64 / 2usize.pow(self.simulation.zoom as u32) as f64;
         (tick_count, tick_period)
     }
 
