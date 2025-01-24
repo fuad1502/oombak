@@ -14,7 +14,7 @@ const NUMBER_OF_CELLS_PER_UNIT_TIME: usize = 3;
 
 pub struct Waveform<'a> {
     wave_spec: &'a WaveSpec,
-    width: u8,
+    zoom: u8,
     block: Option<Block<'a>>,
     selected_style: Style,
     is_selected: bool,
@@ -24,15 +24,15 @@ impl<'a> Waveform<'a> {
     pub fn new(wave_spec: &'a WaveSpec) -> Self {
         Self {
             wave_spec,
-            width: 0,
+            zoom: 0,
             block: None,
             selected_style: Style::default(),
             is_selected: false,
         }
     }
 
-    pub fn width(mut self, width: u8) -> Self {
-        self.width = width;
+    pub fn zoom(mut self, zoom: u8) -> Self {
+        self.zoom = zoom;
         self
     }
 
@@ -73,7 +73,7 @@ impl Waveform<'_> {
         wave: &Wave,
         state: &WaveformScrollState,
     ) -> (Vec<(BitVec<u32>, usize)>, usize) {
-        let unit_size = NUMBER_OF_CELLS_PER_UNIT_TIME + self.width as usize;
+        let unit_size = NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(self.zoom as u32);
         let start_time = state.start_position / unit_size;
         let mut start_cut = state.start_position % unit_size;
         let end_time =
@@ -166,7 +166,8 @@ impl Waveform<'_> {
     fn format(&self, value: &BitVec<u32>, count: usize) -> Vec<char> {
         let option = bitvec_str::Option::from(self.wave_spec);
         let value = bitvec_str::from(value, &option);
-        let width = self.width as usize;
+        let width = NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(self.zoom as u32)
+            - NUMBER_OF_CELLS_PER_UNIT_TIME;
         let height = self.wave_spec.height as usize;
         let body_length = width * count;
         let head_tail_lengths = 2 * (height + 1) * count;
