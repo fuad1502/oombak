@@ -4,7 +4,8 @@ use ratatui::{
 
 #[derive(Default)]
 pub struct TimeBar {
-    tick_period: usize,
+    tick_count: usize,
+    tick_period: f64,
     time_unit: TimeUnit,
 }
 
@@ -22,7 +23,12 @@ impl TimeBar {
         self
     }
 
-    pub fn tick_period(mut self, tick_period: usize) -> Self {
+    pub fn tick_count(mut self, tick_count: usize) -> Self {
+        self.tick_count = tick_count;
+        self
+    }
+
+    pub fn tick_period(mut self, tick_period: f64) -> Self {
         self.tick_period = tick_period;
         self
     }
@@ -44,12 +50,14 @@ impl StatefulWidget for TimeBar {
 
 impl TimeBar {
     fn plot_into_lines(&self, state: &TimeBarState) -> [String; 2] {
-        let number_of_ticks = state.viewport_length / self.tick_period + 2;
+        let number_of_ticks = state.viewport_length / self.tick_count + 2;
         let floored_start_position = self.floored_start_position(state);
         let mut lines = [String::new(), String::new()];
 
+        let start_time =
+            floored_start_position as f64 * (self.tick_period / self.tick_count as f64);
         for i in 0..number_of_ticks {
-            let time = floored_start_position + i * self.tick_period;
+            let time = start_time + i as f64 * self.tick_period;
             lines[0] += &self.new_tick_segment_upper(time);
             lines[1] += &self.new_tick_segment_lower();
         }
@@ -67,14 +75,14 @@ impl TimeBar {
         }
     }
 
-    fn new_tick_segment_upper(&self, time: usize) -> String {
-        format!("╻{0:1$}", self.format(time), self.tick_period - 1)
+    fn new_tick_segment_upper(&self, time: f64) -> String {
+        format!("╻{0:1$}", self.format(time), self.tick_count - 1)
     }
 
     fn new_tick_segment_lower(&self) -> String {
-        let sub_ticks_left = usize::saturating_sub(self.tick_period, 2) / 2;
+        let sub_ticks_left = usize::saturating_sub(self.tick_count, 2) / 2;
         let sub_ticks_right = sub_ticks_left;
-        let middle_ticks = self.tick_period - sub_ticks_left - sub_ticks_right - 1;
+        let middle_ticks = self.tick_count - sub_ticks_left - sub_ticks_right - 1;
         format!(
             "┻{0:┷<1$}{0:┻<2$}{0:┷<3$}",
             "", sub_ticks_left, middle_ticks, sub_ticks_right
@@ -93,10 +101,10 @@ impl TimeBar {
     }
 
     fn floored_start_position(&self, state: &TimeBarState) -> usize {
-        state.start_position / self.tick_period * self.tick_period
+        state.start_position / self.tick_count * self.tick_count
     }
 
-    fn format(&self, time: usize) -> String {
+    fn format(&self, time: f64) -> String {
         format!("{} {}", time, self.time_unit)
     }
 }
@@ -113,7 +121,7 @@ impl std::fmt::Display for TimeUnit {
 
 #[derive(Default)]
 pub struct TimeBarState {
-    total_time: usize,
+    content_length: usize,
     start_position: usize,
     selected_position: usize,
     viewport_length: usize,
@@ -122,17 +130,17 @@ pub struct TimeBarState {
 impl TimeBarState {
     pub fn new(total_time: usize) -> Self {
         Self {
-            total_time,
+            content_length: total_time,
             ..Default::default()
         }
     }
 
-    pub fn set_total_time(&mut self, total_time: usize) {
-        self.total_time = total_time;
+    pub fn set_content_length(&mut self, total_time: usize) {
+        self.content_length = total_time;
     }
 
     pub fn set_viewport_length(&mut self, viewport_length: usize) {
-        let viewport_length = usize::min(viewport_length, self.total_time);
+        let viewport_length = usize::min(viewport_length, self.content_length);
         if self.selected_position >= viewport_length {
             self.selected_position = usize::saturating_sub(self.viewport_length, 1);
         }
@@ -164,8 +172,8 @@ impl TimeBarState {
     }
 
     fn is_at_end(&self) -> bool {
-        self.total_time == 0
-            || (self.start_position == self.total_time - self.viewport_length
+        self.content_length == 0
+            || (self.start_position == self.content_length - self.viewport_length
                 && self.selected_position == self.viewport_length - 1)
     }
 
@@ -313,7 +321,8 @@ mod test {
     fn setup(viewport_length: usize) -> (TimeBar, TimeBarState, Buffer, Rect) {
         let time_bar = TimeBar::default()
             .time_unit(TimeUnit::Nanoseconds)
-            .tick_period(10);
+            .tick_period(10.0)
+            .tick_count(10);
         let mut state = TimeBarState::new(100);
 
         let area = Rect::new(X0, Y0, viewport_length as u16, 2);
