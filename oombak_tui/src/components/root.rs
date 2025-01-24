@@ -89,13 +89,21 @@ impl Component for Root {
             }
             KeyCode::Right => {
                 self.wave_viewer.scroll_right();
-                let highlight_idx = self.wave_viewer.get_highlighted_unit_time();
-                self.signals_viewer.set_highlight(highlight_idx);
+                self.update_signal_viewer_highlight();
             }
             KeyCode::Left => {
                 self.wave_viewer.scroll_left();
-                let highlight_idx = self.wave_viewer.get_highlighted_unit_time();
-                self.signals_viewer.set_highlight(highlight_idx);
+                self.update_signal_viewer_highlight();
+            }
+            KeyCode::Char('+') | KeyCode::Char('z') => {
+                self.simulation_spec.zoom = self.simulation_spec.zoom.saturating_add(1);
+                self.wave_viewer.zoom_in();
+                self.update_signal_viewer_highlight();
+            }
+            KeyCode::Char('-') | KeyCode::Char('x') => {
+                self.simulation_spec.zoom = self.simulation_spec.zoom.saturating_sub(1);
+                self.wave_viewer.zoom_out();
+                self.update_signal_viewer_highlight();
             }
             KeyCode::Up | KeyCode::Char('k') => {
                 self.signals_viewer.scroll_up();
@@ -174,6 +182,11 @@ impl Root {
         self.command_line.read().unwrap().render(f, rect);
     }
 
+    fn update_signal_viewer_highlight(&mut self) {
+        let highlight_idx = self.wave_viewer.get_highlighted_unit_time();
+        self.signals_viewer.set_highlight(highlight_idx);
+    }
+
     fn get_popup_area(rect: Rect) -> Rect {
         let chunks = Layout::vertical(vec![
             Constraint::Length(2),
@@ -217,6 +230,7 @@ impl Root {
     fn update_simulation_spec(&mut self, simulation_result: &SimulationResult) {
         if self.reload_simulation {
             self.simulation_spec = SimulationSpec::new(simulation_result);
+            self.reload_simulation = false;
         } else {
             self.simulation_spec.update(simulation_result);
         }

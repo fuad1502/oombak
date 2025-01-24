@@ -3,7 +3,7 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{palette::tailwind::SLATE, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, List, ListItem, ListState, ScrollbarState, StatefulWidget},
+    widgets::{Block, Borders, List, ListItem, ListState, StatefulWidget},
 };
 
 use crate::widgets::{TimeBar, TimeBarState, Waveform, WaveformScrollState};
@@ -20,7 +20,6 @@ pub struct WaveViewer {
     selected_idx: Option<usize>,
     waveform_scroll_state: WaveformScrollState,
     timebar_state: TimeBarState,
-    horizontal_scrollbar_state: ScrollbarState,
     horizontal_content_length: usize,
     horizontal_position: usize,
 }
@@ -36,20 +35,11 @@ impl WaveViewer {
         if !self.simulation.wave_specs.is_empty() {
             self.list_state.select_first();
             self.selected_idx = Some(0);
-            self.horizontal_content_length = NUMBER_OF_CELLS_PER_UNIT_TIME
-                * 2usize.pow(self.simulation.zoom as u32)
-                * self.simulation.total_time;
-            self.horizontal_scrollbar_state =
-                ScrollbarState::new(self.horizontal_content_length).position(0);
-            self.waveform_scroll_state
-                .set_content_length(self.horizontal_content_length);
-            self.timebar_state
-                .set_content_length(self.horizontal_content_length);
+            self.update_content_length();
         }
     }
 
     pub fn scroll_right(&mut self) {
-        self.horizontal_scrollbar_state.next();
         self.waveform_scroll_state.next();
         self.timebar_state.next();
         if self.horizontal_position + 1 < self.horizontal_content_length {
@@ -58,7 +48,6 @@ impl WaveViewer {
     }
 
     pub fn scroll_left(&mut self) {
-        self.horizontal_scrollbar_state.prev();
         self.waveform_scroll_state.prev();
         self.timebar_state.prev();
         if self.horizontal_position != 0 {
@@ -81,6 +70,16 @@ impl WaveViewer {
         }
     }
 
+    pub fn zoom_in(&mut self) {
+        self.simulation.zoom = self.simulation.zoom.saturating_add(1);
+        self.update_content_length();
+    }
+
+    pub fn zoom_out(&mut self) {
+        self.simulation.zoom = self.simulation.zoom.saturating_sub(1);
+        self.update_content_length();
+    }
+
     pub fn get_highlighted_unit_time(&self) -> usize {
         self.horizontal_position
             / (NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(self.simulation.zoom as u32))
@@ -100,6 +99,16 @@ impl WaveViewer {
         let chunks = Layout::vertical(vec![Constraint::Min(0), Constraint::Length(2)]).split(rect);
         f.render_stateful_widget(list, chunks[0], &mut self.list_state);
         f.render_stateful_widget(time_bar, chunks[1], &mut self.timebar_state);
+    }
+
+    fn update_content_length(&mut self) {
+        self.horizontal_content_length = NUMBER_OF_CELLS_PER_UNIT_TIME
+            * 2usize.pow(self.simulation.zoom as u32)
+            * self.simulation.total_time;
+        self.waveform_scroll_state
+            .set_content_length(self.horizontal_content_length);
+        self.timebar_state
+            .set_content_length(self.horizontal_content_length);
     }
 
     fn calculate_preferred_tick(&self) -> (usize, f64) {
