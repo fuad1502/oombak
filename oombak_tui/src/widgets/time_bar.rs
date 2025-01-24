@@ -1,5 +1,5 @@
 use ratatui::{
-    buffer::Buffer, layout::Rect, style::Style, style::Stylize, text::Line, widgets::StatefulWidget,
+    buffer::Buffer, layout::Rect, style::Style, style::Stylize, widgets::StatefulWidget,
 };
 
 #[derive(Default)]
@@ -33,50 +33,65 @@ impl StatefulWidget for TimeBar {
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         state.set_viewport_length(area.width as usize);
-        let number_of_ticks = state.viewport_length / self.tick_period;
-        let floored_start_position = state.start_position / self.tick_period * self.tick_period;
-
-        let mut line_1 = String::new();
-        let mut line_2 = String::new();
-        for i in 0..number_of_ticks + 1 {
-            let time = floored_start_position + i * self.tick_period;
-            let segment = format!("╻{0:1$}", self.format(time), self.tick_period - 1);
-            line_1 += &segment;
-            let sub_ticks_left = usize::saturating_sub(self.tick_period, 2) / 2;
-            let sub_ticks_right = sub_ticks_left;
-            let middle_ticks = self.tick_period - sub_ticks_left - sub_ticks_right - 1;
-            let segment = format!(
-                "┻{0:┷<1$}{0:┻<2$}{0:┷<3$}",
-                "", sub_ticks_left, middle_ticks, sub_ticks_right
-            );
-            line_2 += &segment;
-        }
-
-        let skip_start = state.start_position - floored_start_position;
-        let line_1: String = line_1
-            .chars()
-            .skip(skip_start)
-            .take(state.viewport_length)
-            .collect();
-        let line_1 = Line::from(line_1);
-        let line_2: String = line_2
-            .chars()
-            .skip(skip_start)
-            .take(state.viewport_length)
-            .collect();
-        let line_2 = Line::from(line_2);
-
-        buf.set_line(0, 0, &line_1, area.width);
-        buf.set_line(0, 1, &line_2, area.width);
-
-        buf.set_style(
-            Rect::new(state.selected_position as u16, 0, 1, 2),
-            Style::default().on_red(),
-        );
+        let lines = self.plot_into_lines(state);
+        buf.set_string(0, 0, &lines[0], Style::default());
+        buf.set_string(0, 1, &lines[1], Style::default());
+        Self::set_highlight(buf, state, Style::default().on_red());
     }
 }
 
 impl TimeBar {
+    fn plot_into_lines(&self, state: &TimeBarState) -> [String; 2] {
+        let number_of_ticks = state.viewport_length / self.tick_period;
+        let floored_start_position = self.floored_start_position(state);
+        let mut lines = [String::new(), String::new()];
+
+        for i in 0..number_of_ticks + 1 {
+            let time = floored_start_position + i * self.tick_period;
+            lines[0] += &self.new_tick_segment_upper(time);
+            lines[1] += &self.new_tick_segment_lower();
+        }
+
+        self.crop_lines(&mut lines, state);
+        lines
+    }
+
+    fn set_highlight(buf: &mut Buffer, state: &TimeBarState, highlight_style: Style) {
+        buf.set_style(
+            Rect::new(state.selected_position as u16, 0, 1, 2),
+            highlight_style,
+        );
+    }
+
+    fn new_tick_segment_upper(&self, time: usize) -> String {
+        format!("╻{0:1$}", self.format(time), self.tick_period - 1)
+    }
+
+    fn new_tick_segment_lower(&self) -> String {
+        let sub_ticks_left = usize::saturating_sub(self.tick_period, 2) / 2;
+        let sub_ticks_right = sub_ticks_left;
+        let middle_ticks = self.tick_period - sub_ticks_left - sub_ticks_right - 1;
+        format!(
+            "┻{0:┷<1$}{0:┻<2$}{0:┷<3$}",
+            "", sub_ticks_left, middle_ticks, sub_ticks_right
+        )
+    }
+
+    fn crop_lines(&self, lines: &mut [String; 2], state: &TimeBarState) {
+        let floored_start_position = self.floored_start_position(state);
+        let start_offset = state.start_position - floored_start_position;
+        lines[0] = Self::crop_line(&lines[0], start_offset, state.viewport_length);
+        lines[1] = Self::crop_line(&lines[1], start_offset, state.viewport_length);
+    }
+
+    fn crop_line(line: &str, start_offset: usize, width: usize) -> String {
+        line.chars().skip(start_offset).take(width).collect()
+    }
+
+    fn floored_start_position(&self, state: &TimeBarState) -> usize {
+        state.start_position / self.tick_period * self.tick_period
+    }
+
     fn format(&self, time: usize) -> String {
         format!("{} {}", time, self.time_unit)
     }
