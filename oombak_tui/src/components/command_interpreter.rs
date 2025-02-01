@@ -7,16 +7,18 @@ use crate::{
     backend::interpreter,
     component::{Component, HandleResult},
     render::Message,
+    widgets::{Terminal, TerminalState},
 };
 
 use oombak_sim::sim;
 
-pub struct CommandLine {
+pub struct CommandInterpreter {
     message_tx: Sender<Message>,
     request_tx: Sender<sim::Request>,
     text: String,
     result_history: Vec<Result<String, String>>,
     state: State,
+    mode: Mode,
 }
 
 #[derive(PartialEq)]
@@ -25,7 +27,13 @@ enum State {
     NotActive,
 }
 
-impl CommandLine {
+#[derive(PartialEq, Copy, Clone)]
+pub enum Mode {
+    Line,
+    Window,
+}
+
+impl CommandInterpreter {
     pub fn new(message_tx: Sender<Message>, request_tx: Sender<sim::Request>) -> Self {
         Self {
             message_tx,
@@ -33,50 +41,32 @@ impl CommandLine {
             text: "".to_string(),
             result_history: vec![],
             state: State::NotActive,
+            mode: Mode::Line,
         }
+    }
+
+    pub fn is_window_mode(&self) -> bool {
+        self.mode == Mode::Window
+    }
+
+    pub fn set_line_mode(&mut self) {
+        self.mode = Mode::Line;
+        self.state = State::Active;
+    }
+
+    pub fn set_window_mode(&mut self) {
+        self.mode = Mode::Window;
     }
 }
 
-impl Component for CommandLine {
-    fn render(&self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
-        let paragraph = match self.state {
-            State::Active => Paragraph::new(self.text.clone()).black().on_light_yellow(),
-            State::NotActive => match self.result_history.last() {
-                Some(Ok(res)) => Paragraph::new(res.clone()).green().on_black(),
-                Some(Err(res)) => Paragraph::new(res.clone()).red().on_black(),
-                _ => Paragraph::new("").on_black(),
-            },
-        };
-        f.render_widget(paragraph, rect);
-    }
+impl Component for CommandInterpreter {
+    fn render(&self, _f: &mut ratatui::Frame, _rect: ratatui::prelude::Rect) {}
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult {
-        match key_event.code {
-            KeyCode::Esc => {
-                self.state = State::NotActive;
-                self.notify_render();
-                return HandleResult::ReleaseFocus;
-            }
-            KeyCode::Enter => {
-                self.state = State::NotActive;
-                self.execute_command();
-                self.notify_render();
-                return HandleResult::ReleaseFocus;
-            }
-            KeyCode::Char(':') => {
-                self.state = State::Active;
-                self.text = ":".to_string();
-            }
-            KeyCode::Char(c) if self.state == State::Active => {
-                self.text += &format!("{c}");
-            }
-            KeyCode::Backspace if self.state == State::Active && self.text.len() > 1 => {
-                self.text.pop();
-            }
-            _ => (),
-        };
-        self.notify_render();
-        HandleResult::Handled
+        match self.mode {
+            Mode::Line => self.handle_key_event_line_mode(key_event),
+            Mode::Window => todo!(),
+        }
     }
 
     fn handle_resize_event(&mut self, _columns: u16, _rows: u16) -> HandleResult {
@@ -91,10 +81,53 @@ impl Component for CommandLine {
     fn set_focus_to_self(&mut self) {}
 }
 
-impl CommandLine {
+impl CommandInterpreter {
+    pub fn render_on_line(&self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
+        let paragraph = match self.state {
+            State::Active => {
+                let text = format!(":{}", self.text);
+                Paragraph::new(text).black().on_light_yellow()
+            }
+            State::NotActive => match self.result_history.last() {
+                Some(Ok(res)) => Paragraph::new(res.clone()).green().on_black(),
+                Some(Err(res)) => Paragraph::new(res.clone()).red().on_black(),
+                _ => Paragraph::new("").on_black(),
+            },
+        };
+        f.render_widget(paragraph, rect);
+    }
+
+    pub fn render_on_window(&self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
+        f.render_stateful_widget(Terminal::default(), rect, &mut TerminalState::default());
+    }
+
+    fn handle_key_event_line_mode(&mut self, key_event: &KeyEvent) -> HandleResult {
+        match key_event.code {
+            KeyCode::Esc => {
+                self.state = State::NotActive;
+                self.text = "".to_string();
+                return HandleResult::ReleaseFocus;
+            }
+            KeyCode::Enter => {
+                self.execute_command();
+                self.state = State::NotActive;
+                self.text = "".to_string();
+                return HandleResult::ReleaseFocus;
+            }
+            KeyCode::Char(c) if self.state == State::Active => {
+                self.text += &format!("{c}");
+            }
+            KeyCode::Backspace if self.state == State::Active => {
+                self.text.pop();
+            }
+            _ => (),
+        };
+        self.notify_render();
+        HandleResult::Handled
+    }
+
     fn execute_command(&mut self) {
-        let command_string = &self.text[1..];
-        match interpreter::interpret(command_string) {
+        match interpreter::interpret(&self.text) {
             Ok(command) => {
                 match command {
                     interpreter::Command::Run(x) => self.request(sim::Request::Run(x)),
@@ -105,7 +138,7 @@ impl CommandLine {
                     interpreter::Command::Noop => return,
                 }
                 self.result_history
-                    .push(Ok(format!("executed: {command_string}")));
+                    .push(Ok(format!("executed: {}", self.text)));
             }
             Err(message) => self.result_history.push(Err(message)),
         }
@@ -120,7 +153,7 @@ impl CommandLine {
     }
 }
 
-impl sim::Listener for CommandLine {
+impl sim::Listener for CommandInterpreter {
     fn on_receive_reponse(&mut self, response: &sim::Response) {
         let result = match response {
             sim::Response::RunResult(Ok(curr_time)) => {

@@ -12,7 +12,7 @@ use ratatui::widgets::{Block, Borders, Clear};
 use ratatui::Frame;
 
 use super::models::SimulationSpec;
-use super::{CommandLine, InstanceHierViewer, SignalsViewer, WaveViewer};
+use super::{CommandInterpreter, InstanceHierViewer, SignalsViewer, WaveViewer};
 
 pub struct Root {
     message_tx: Sender<Message>,
@@ -20,14 +20,14 @@ pub struct Root {
     signals_viewer: SignalsViewer,
     wave_viewer: WaveViewer,
     instance_hier_viewer: Arc<RwLock<InstanceHierViewer>>,
-    command_line: Arc<RwLock<CommandLine>>,
+    command_interpreter: Arc<RwLock<CommandInterpreter>>,
     focused_child: Option<Child>,
     simulation_spec: SimulationSpec,
     reload_simulation: bool,
 }
 
 enum Child {
-    CommandLine,
+    CommandInterpreter,
     InstanceHierView,
 }
 
@@ -35,7 +35,7 @@ impl Root {
     pub fn new(
         message_tx: Sender<Message>,
         request_tx: Sender<sim::Request>,
-        command_line: Arc<RwLock<CommandLine>>,
+        command_interpreter: Arc<RwLock<CommandInterpreter>>,
     ) -> Self {
         let simulation_spec = SimulationSpec::default();
         Self {
@@ -47,7 +47,7 @@ impl Root {
                 message_tx.clone(),
                 request_tx.clone(),
             ))),
-            command_line,
+            command_interpreter,
             focused_child: None,
             simulation_spec,
             reload_simulation: false,
@@ -75,7 +75,7 @@ impl Component for Root {
             .split(main_layout_v[0]);
         self.render_signals_viewer(f, sub_layout_h[0]);
         self.render_wave_viewer(f, sub_layout_h[1]);
-        self.render_command_line(f, main_layout_v[1]);
+        self.render_command_interpreter(f, rect, main_layout_v[1]);
         if matches!(self.focused_child, Some(Child::InstanceHierView)) {
             self.render_instance_hier_viewer(f, rect);
         }
@@ -87,11 +87,11 @@ impl Component for Root {
                 self.notify_quit();
                 return HandleResult::Handled;
             }
-            KeyCode::Right => {
+            KeyCode::Right | KeyCode::Char('l') => {
                 self.wave_viewer.scroll_right();
                 self.update_signal_viewer_highlight();
             }
-            KeyCode::Left => {
+            KeyCode::Left | KeyCode::Char('h') => {
                 self.wave_viewer.scroll_left();
                 self.update_signal_viewer_highlight();
             }
@@ -114,8 +114,12 @@ impl Component for Root {
                 self.wave_viewer.scroll_down();
             }
             KeyCode::Char(':') => {
-                self.focused_child = Some(Child::CommandLine);
-                self.try_propagate_event(&Event::Key(*key_event));
+                self.focused_child = Some(Child::CommandInterpreter);
+                self.command_interpreter.write().unwrap().set_line_mode();
+            }
+            KeyCode::Char('t') => {
+                self.focused_child = Some(Child::CommandInterpreter);
+                self.command_interpreter.write().unwrap().set_window_mode();
             }
             KeyCode::Char('s') => {
                 self.focused_child = Some(Child::InstanceHierView);
@@ -132,16 +136,18 @@ impl Component for Root {
     }
 
     fn set_focus_to_self(&mut self) {
-        if matches!(self.focused_child, Some(Child::InstanceHierView)) {
-            self.notify_render();
-        }
+        self.notify_render();
         self.focused_child = None;
     }
 
     fn try_propagate_event(&mut self, event: &Event) -> HandleResult {
         if let Some(child) = &self.focused_child {
             match child {
-                Child::CommandLine => self.command_line.write().unwrap().handle_event(event),
+                Child::CommandInterpreter => self
+                    .command_interpreter
+                    .write()
+                    .unwrap()
+                    .handle_event(event),
                 Child::InstanceHierView => self
                     .instance_hier_viewer
                     .write()
@@ -178,8 +184,32 @@ impl Root {
             .render_mut_with_block(f, popup_area, block);
     }
 
-    fn render_command_line(&self, f: &mut Frame, rect: Rect) {
-        self.command_line.read().unwrap().render(f, rect);
+    fn render_command_interpreter(&self, f: &mut Frame, window_area: Rect, line_area: Rect) {
+        self.render_interpreter_on_line(f, line_area);
+        if matches!(self.focused_child, Some(Child::CommandInterpreter))
+            && self.command_interpreter.read().unwrap().is_window_mode()
+        {
+            self.render_interpreter_on_window(f, window_area);
+        }
+    }
+
+    fn render_interpreter_on_line(&self, f: &mut Frame, rect: Rect) {
+        self.command_interpreter
+            .read()
+            .unwrap()
+            .render_on_line(f, rect);
+    }
+
+    fn render_interpreter_on_window(&self, f: &mut Frame, rect: Rect) {
+        let popup_area = Self::get_popup_area(rect);
+        let block = Block::new().borders(Borders::ALL);
+        let inner = block.inner(popup_area);
+        f.render_widget(Clear, popup_area);
+        f.render_widget(block, popup_area);
+        self.command_interpreter
+            .read()
+            .unwrap()
+            .render_on_window(f, inner);
     }
 
     fn update_signal_viewer_highlight(&mut self) {
