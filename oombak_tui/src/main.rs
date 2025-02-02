@@ -8,24 +8,22 @@ fn main() {
     let (message_tx, message_rx) = mpsc::channel();
     let mut simulator = sim::Simulator::new().unwrap();
 
-    let command_interpreter =
-        components::CommandInterpreter::new(message_tx.clone(), simulator.get_request_channel());
-    let command_interpreter = Arc::new(RwLock::new(command_interpreter));
+    let command_interpreter = Arc::new(RwLock::new(components::CommandInterpreter::new(
+        message_tx.clone(),
+        simulator.get_request_channel(),
+    )));
+    simulator.register_listener(command_interpreter.clone());
 
-    let command_interpreter_clone = Arc::clone(&command_interpreter);
-    simulator.register_listener(command_interpreter_clone);
-
-    let root = components::Root::new(message_tx, simulator.get_request_channel(), command_interpreter);
-    let root = Arc::new(RwLock::new(root));
-
-    let root_clone = Arc::clone(&root);
-    simulator.register_listener(root_clone);
-
-    let root_clone = Arc::clone(&root);
-    event::register_event_listener(root);
+    let root = Arc::new(RwLock::new(components::Root::new(
+        message_tx,
+        simulator.get_request_channel(),
+        command_interpreter,
+    )));
+    simulator.register_listener(root.clone());
+    event::register_event_listener(root.clone());
 
     event::spawn_event_loop();
-    render::spawn_renderer(root_clone, terminal, message_rx)
+    render::spawn_renderer(root, terminal, message_rx)
         .join()
         .unwrap()
         .unwrap();

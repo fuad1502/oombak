@@ -15,14 +15,13 @@ use oombak_sim::sim;
 pub struct CommandInterpreter {
     message_tx: Sender<Message>,
     request_tx: Sender<sim::Request>,
-    text: String,
-    result_history: Vec<Result<String, String>>,
-    state: State,
+    terminal_state: TerminalState,
+    line_state: LineState,
     mode: Mode,
 }
 
 #[derive(PartialEq)]
-enum State {
+enum LineState {
     Active,
     NotActive,
 }
@@ -38,9 +37,8 @@ impl CommandInterpreter {
         Self {
             message_tx,
             request_tx,
-            text: "".to_string(),
-            result_history: vec![],
-            state: State::NotActive,
+            terminal_state: TerminalState::default(),
+            line_state: LineState::NotActive,
             mode: Mode::Line,
         }
     }
@@ -51,7 +49,7 @@ impl CommandInterpreter {
 
     pub fn set_line_mode(&mut self) {
         self.mode = Mode::Line;
-        self.state = State::Active;
+        self.line_state = LineState::Active;
     }
 
     pub fn set_window_mode(&mut self) {
@@ -65,7 +63,7 @@ impl Component for CommandInterpreter {
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult {
         match self.mode {
             Mode::Line => self.handle_key_event_line_mode(key_event),
-            Mode::Window => todo!(),
+            Mode::Window => self.handle_key_event_window_mode(key_event),
         }
     }
 
@@ -83,12 +81,12 @@ impl Component for CommandInterpreter {
 
 impl CommandInterpreter {
     pub fn render_on_line(&self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
-        let paragraph = match self.state {
-            State::Active => {
-                let text = format!(":{}", self.text);
+        let paragraph = match self.line_state {
+            LineState::Active => {
+                let text = format!(":{}", self.terminal_state.command_line());
                 Paragraph::new(text).black().on_light_yellow()
             }
-            State::NotActive => match self.result_history.last() {
+            LineState::NotActive => match self.terminal_state.output_history().last() {
                 Some(Ok(res)) => Paragraph::new(res.clone()).green().on_black(),
                 Some(Err(res)) => Paragraph::new(res.clone()).red().on_black(),
                 _ => Paragraph::new("").on_black(),
@@ -97,28 +95,28 @@ impl CommandInterpreter {
         f.render_widget(paragraph, rect);
     }
 
-    pub fn render_on_window(&self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
-        f.render_stateful_widget(Terminal::default(), rect, &mut TerminalState::default());
+    pub fn render_on_window(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
+        f.render_stateful_widget(Terminal::default(), rect, &mut self.terminal_state);
     }
 
     fn handle_key_event_line_mode(&mut self, key_event: &KeyEvent) -> HandleResult {
         match key_event.code {
             KeyCode::Esc => {
-                self.state = State::NotActive;
-                self.text = "".to_string();
+                self.line_state = LineState::NotActive;
+                self.terminal_state.clear_command_line();
                 return HandleResult::ReleaseFocus;
             }
             KeyCode::Enter => {
                 self.execute_command();
-                self.state = State::NotActive;
-                self.text = "".to_string();
+                self.line_state = LineState::NotActive;
+                self.terminal_state.clear_command_line();
                 return HandleResult::ReleaseFocus;
             }
-            KeyCode::Char(c) if self.state == State::Active => {
-                self.text += &format!("{c}");
+            KeyCode::Char(c) if self.line_state == LineState::Active => {
+                self.terminal_state.put(c);
             }
-            KeyCode::Backspace if self.state == State::Active => {
-                self.text.pop();
+            KeyCode::Backspace if self.line_state == LineState::Active => {
+                self.terminal_state.backspace();
             }
             _ => (),
         };
@@ -126,8 +124,45 @@ impl CommandInterpreter {
         HandleResult::Handled
     }
 
+    fn handle_key_event_window_mode(&mut self, key_event: &KeyEvent) -> HandleResult {
+        match key_event.code {
+            KeyCode::Esc => {
+                self.terminal_state.clear_command_line();
+                return HandleResult::ReleaseFocus;
+            }
+            KeyCode::Enter => {
+                if let Some(result) = self.execute_builtin_command() {
+                    return result;
+                }
+                self.execute_command();
+                self.terminal_state.clear_command_line();
+            }
+            KeyCode::Char(c) => {
+                self.terminal_state.put(c);
+            }
+            KeyCode::Backspace => {
+                self.terminal_state.backspace();
+            }
+            _ => (),
+        };
+        self.notify_render();
+        HandleResult::Handled
+    }
+
+    fn execute_builtin_command(&mut self) -> Option<HandleResult> {
+        match self.terminal_state.command_line() {
+            "quit" => {
+                self.terminal_state.clear_command_line();
+                Some(HandleResult::ReleaseFocus)
+            }
+            "help" => todo!(),
+            _ => None,
+        }
+    }
+
     fn execute_command(&mut self) {
-        match interpreter::interpret(&self.text) {
+        let command_text = self.terminal_state.command_line();
+        match interpreter::interpret(command_text) {
             Ok(command) => {
                 match command {
                     interpreter::Command::Run(x) => self.request(sim::Request::Run(x)),
@@ -137,10 +172,10 @@ impl CommandInterpreter {
                     }
                     interpreter::Command::Noop => return,
                 }
-                self.result_history
-                    .push(Ok(format!("executed: {}", self.text)));
+                self.terminal_state
+                    .append_output_history(Ok(format!("executed: {command_text}")));
             }
-            Err(message) => self.result_history.push(Err(message)),
+            Err(message) => self.terminal_state.append_output_history(Err(message)),
         }
     }
 
@@ -169,7 +204,7 @@ impl sim::Listener for CommandInterpreter {
             }
             _ => return,
         };
-        self.result_history.push(result);
+        self.terminal_state.append_output_history(result);
         self.notify_render();
     }
 }

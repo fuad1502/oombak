@@ -207,7 +207,7 @@ impl Root {
         f.render_widget(Clear, popup_area);
         f.render_widget(block, popup_area);
         self.command_interpreter
-            .read()
+            .write()
             .unwrap()
             .render_on_window(f, inner);
     }
