@@ -6,6 +6,8 @@ use ratatui::{
     widgets::{List, ListDirection, ListItem, ListState, Paragraph, StatefulWidget, Widget},
 };
 
+use super::ScrollState;
+
 #[derive(Default)]
 pub struct Terminal {}
 
@@ -20,6 +22,7 @@ pub struct TerminalState {
 pub struct CommandLineState {
     text: String,
     cursor_position: usize,
+    scroll_state: ScrollState,
 }
 
 impl StatefulWidget for Terminal {
@@ -31,10 +34,25 @@ impl StatefulWidget for Terminal {
         let list = List::new(list_items).direction(ListDirection::BottomToTop);
         StatefulWidget::render(list, chunks[0], buf, &mut state.history_list_state);
 
+        let state = &mut state.command_line_state;
+        state
+            .scroll_state
+            .set_viewport_length(area.width as usize - 7);
+        let start_idx = state.scroll_state.start_position();
+        let highlight_idx = state
+            .text
+            .char_indices()
+            .nth(state.cursor_position)
+            .unwrap_or((state.text.len(), ' '))
+            .0;
         let command_line = Line::from(vec![
             Span::from(" >>> ").black().on_yellow(),
             Span::from(" "),
-            Span::from(&state.command_line_state.text),
+            Span::from(state.text.get(start_idx..highlight_idx).unwrap_or(" ")),
+            Span::from(state.text.get(highlight_idx..=highlight_idx).unwrap_or(" "))
+                .black()
+                .on_white(),
+            Span::from(state.text.get(highlight_idx + 1..).unwrap_or(" ")),
         ]);
         let paragraph = Paragraph::new(command_line).on_blue();
         paragraph.render(chunks[1], buf);
@@ -51,16 +69,53 @@ impl TerminalState {
     }
 
     pub fn clear_command_line(&mut self) {
-        self.command_line_state.text = "".to_string();
+        self.command_line_state.text.clear();
         self.command_line_state.cursor_position = 0;
+        self.command_line_state.scroll_state.set_content_length(0);
     }
 
     pub fn put(&mut self, c: char) {
-        self.command_line_state.text += &c.to_string();
+        let state = &mut self.command_line_state;
+        let idx = state
+            .text
+            .char_indices()
+            .nth(state.cursor_position)
+            .unwrap_or((state.text.len(), ' '))
+            .0;
+        state.text.insert(idx, c);
+        state.cursor_position += 1;
+        state.scroll_state.set_content_length(state.text.len());
+        state.scroll_state.next();
     }
 
     pub fn backspace(&mut self) {
-        self.command_line_state.text.pop();
+        let state = &mut self.command_line_state;
+        if state.cursor_position >= 1 {
+            let idx = state
+                .text
+                .char_indices()
+                .nth(state.cursor_position - 1)
+                .unwrap()
+                .0;
+            state.text.remove(idx);
+            state.cursor_position = state.cursor_position.saturating_sub(1);
+            state.scroll_state.set_content_length(state.text.len());
+            state.scroll_state.prev();
+        }
+    }
+
+    pub fn move_cursor_right(&mut self) {
+        let state = &mut self.command_line_state;
+        if state.cursor_position < state.text.len() {
+            state.cursor_position += 1;
+        }
+        state.scroll_state.next();
+    }
+
+    pub fn move_cursor_left(&mut self) {
+        let state = &mut self.command_line_state;
+        state.cursor_position = state.cursor_position.saturating_sub(1);
+        state.scroll_state.prev();
     }
 
     pub fn append_output_history(&mut self, output: Result<String, String>) {

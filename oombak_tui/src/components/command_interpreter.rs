@@ -143,6 +143,12 @@ impl CommandInterpreter {
             KeyCode::Backspace => {
                 self.terminal_state.backspace();
             }
+            KeyCode::Right => {
+                self.terminal_state.move_cursor_right();
+            }
+            KeyCode::Left => {
+                self.terminal_state.move_cursor_left();
+            }
             _ => (),
         };
         self.notify_render();
