@@ -10,6 +10,8 @@ use ratatui::{
 
 use crate::{components::models::WaveSpec, utils::bitvec_str};
 
+use super::ScrollState;
+
 const NUMBER_OF_CELLS_PER_UNIT_TIME: usize = 3;
 
 pub struct Waveform<'a> {
@@ -53,7 +55,7 @@ impl<'a> Waveform<'a> {
 }
 
 impl StatefulWidget for Waveform<'_> {
-    type State = WaveformScrollState;
+    type State = ScrollState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State)
     where
@@ -61,9 +63,10 @@ impl StatefulWidget for Waveform<'_> {
     {
         state.set_viewport_length(area.width as usize);
         let (value_count_pairs, start_skip) = self.trim_wave_values(&self.wave_spec.wave, state);
-        let lines = self.plot_values_as_lines(value_count_pairs, start_skip, state.viewport_length);
+        let lines =
+            self.plot_values_as_lines(value_count_pairs, start_skip, state.viewport_length());
         self.render_lines(&lines, area, buf);
-        self.add_cursor_highlight(buf, area, state.selected_position, lines.len() as u16);
+        self.add_cursor_highlight(buf, area, state.selected_position(), lines.len() as u16);
     }
 }
 
@@ -71,13 +74,13 @@ impl Waveform<'_> {
     fn trim_wave_values(
         &self,
         wave: &Wave,
-        state: &WaveformScrollState,
+        state: &ScrollState,
     ) -> (Vec<(BitVec<u32>, usize)>, usize) {
         let unit_size = NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(self.zoom as u32);
-        let start_time = state.start_position / unit_size;
-        let mut start_cut = state.start_position % unit_size;
-        let end_time =
-            (state.start_position + usize::saturating_sub(state.viewport_length, 1)) / unit_size;
+        let start_time = state.start_position() / unit_size;
+        let mut start_cut = state.start_position() % unit_size;
+        let end_time = (state.start_position() + usize::saturating_sub(state.viewport_length(), 1))
+            / unit_size;
         let mut result = vec![];
 
         if let Some((start_idx, start_offset)) = wave.value_idx_at(start_time) {
@@ -237,70 +240,5 @@ impl Waveform<'_> {
                 }
             }
         }
-    }
-}
-
-#[derive(Default, Clone)]
-pub struct WaveformScrollState {
-    start_position: usize,
-    selected_position: usize,
-    content_length: usize,
-    viewport_length: usize,
-}
-
-impl WaveformScrollState {
-    pub fn new(content_length: usize) -> Self {
-        Self {
-            start_position: 0,
-            selected_position: 0,
-            content_length,
-            viewport_length: 0,
-        }
-    }
-
-    pub fn set_content_length(&mut self, content_length: usize) {
-        self.content_length = content_length;
-    }
-
-    pub fn set_viewport_length(&mut self, viewport_length: usize) {
-        let viewport_length = usize::min(viewport_length, self.content_length);
-        if self.selected_position >= viewport_length {
-            self.selected_position = usize::saturating_sub(self.viewport_length, 1);
-        }
-        self.viewport_length = viewport_length;
-    }
-
-    pub fn next(&mut self) {
-        if !self.is_at_end() && self.is_at_viewport_end() {
-            self.start_position += 1;
-        } else if !self.is_at_viewport_end() {
-            self.selected_position += 1;
-        }
-    }
-
-    pub fn prev(&mut self) {
-        if !self.is_at_beginning() && self.is_at_viewport_start() {
-            self.start_position -= 1;
-        } else if !self.is_at_viewport_start() {
-            self.selected_position -= 1;
-        }
-    }
-
-    fn is_at_viewport_end(&self) -> bool {
-        self.viewport_length == 0 || self.selected_position == self.viewport_length - 1
-    }
-
-    fn is_at_viewport_start(&self) -> bool {
-        self.selected_position == 0
-    }
-
-    fn is_at_end(&self) -> bool {
-        self.content_length == 0
-            || (self.start_position == self.content_length - self.viewport_length
-                && self.selected_position == self.viewport_length - 1)
-    }
-
-    fn is_at_beginning(&self) -> bool {
-        self.start_position == 0 && self.selected_position == 0
     }
 }

@@ -1,4 +1,4 @@
-#[derive(Default)]
+#[derive(Default, Clone, Copy)]
 pub struct ScrollState {
     content_length: usize,
     start_position: usize,

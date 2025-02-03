@@ -7,4 +7,3 @@ pub use terminal::Terminal;
 pub use terminal::TerminalState;
 pub use time_bar::TimeBar;
 pub use waveform::Waveform;
-pub use waveform::WaveformScrollState;
