@@ -195,7 +195,7 @@ impl Root {
 
     fn render_interpreter_on_line(&self, f: &mut Frame, rect: Rect) {
         self.command_interpreter
-            .read()
+            .write()
             .unwrap()
             .render_on_line(f, rect);
     }

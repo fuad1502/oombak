@@ -1,13 +1,13 @@
 use std::sync::mpsc::Sender;
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ratatui::{style::Stylize, widgets::Paragraph};
+use ratatui::{style::Stylize, text::Line};
 
 use crate::{
     backend::interpreter,
     component::{Component, HandleResult},
     render::Message,
-    widgets::{Terminal, TerminalState},
+    widgets::{CommandLine, Terminal, TerminalState},
 };
 
 use oombak_sim::sim;
@@ -80,19 +80,24 @@ impl Component for CommandInterpreter {
 }
 
 impl CommandInterpreter {
-    pub fn render_on_line(&self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
-        let paragraph = match self.line_state {
+    pub fn render_on_line(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
+        match self.line_state {
             LineState::Active => {
-                let text = format!(":{}", self.terminal_state.command_line());
-                Paragraph::new(text).black().on_light_yellow()
+                f.render_stateful_widget(
+                    CommandLine::default(),
+                    rect,
+                    self.terminal_state.command_line_state_mut(),
+                );
             }
-            LineState::NotActive => match self.terminal_state.output_history().last() {
-                Some(Ok(res)) => Paragraph::new(res.clone()).green().on_black(),
-                Some(Err(res)) => Paragraph::new(res.clone()).red().on_black(),
-                _ => Paragraph::new("").on_black(),
-            },
+            LineState::NotActive => {
+                let line = match self.terminal_state.output_history().last() {
+                    Some(Ok(res)) => Line::from(&res[..]).green(),
+                    Some(Err(res)) => Line::from(&res[..]).red(),
+                    _ => Line::from(" "),
+                };
+                f.render_widget(line.on_dark_gray(), rect);
+            }
         };
-        f.render_widget(paragraph, rect);
     }
 
     pub fn render_on_window(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
@@ -111,30 +116,31 @@ impl CommandInterpreter {
     }
 
     fn handle_key_event_window_mode(&mut self, key_event: &KeyEvent) -> HandleResult {
+        let command_line_state = self.terminal_state.command_line_state_mut();
         match (key_event.code, key_event.modifiers) {
             (KeyCode::Esc, _) => {
-                self.terminal_state.clear_command_line();
+                command_line_state.clear();
                 return HandleResult::ReleaseFocus;
             }
             (KeyCode::Char('d'), modifier) if modifier.contains(KeyModifiers::CONTROL) => {
-                self.terminal_state.clear_command_line();
+                command_line_state.clear();
                 return HandleResult::ReleaseFocus;
             }
             (KeyCode::Enter, _) => {
                 self.execute_command();
-                self.terminal_state.clear_command_line();
+                self.terminal_state.command_line_state_mut().clear();
             }
             (KeyCode::Char(c), modifier) if modifier.is_empty() => {
-                self.terminal_state.put(c);
+                command_line_state.put(c);
             }
             (KeyCode::Backspace, _) => {
-                self.terminal_state.backspace();
+                command_line_state.backspace();
             }
             (KeyCode::Right, _) => {
-                self.terminal_state.move_cursor_right();
+                command_line_state.move_cursor_right();
             }
             (KeyCode::Left, _) => {
-                self.terminal_state.move_cursor_left();
+                command_line_state.move_cursor_left();
             }
             _ => (),
         };
@@ -143,7 +149,7 @@ impl CommandInterpreter {
     }
 
     fn execute_command(&mut self) {
-        let command_text = self.terminal_state.command_line();
+        let command_text = self.terminal_state.command_line_state().text();
         match interpreter::interpret(command_text) {
             Ok(command) => {
                 match command {
