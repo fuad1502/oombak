@@ -6,6 +6,5 @@ pub use scroll_state::ScrollState;
 pub use terminal::Terminal;
 pub use terminal::TerminalState;
 pub use time_bar::TimeBar;
-pub use time_bar::TimeBarState;
 pub use waveform::Waveform;
 pub use waveform::WaveformScrollState;

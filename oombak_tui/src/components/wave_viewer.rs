@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState, StatefulWidget},
 };
 
-use crate::widgets::{TimeBar, TimeBarState, Waveform, WaveformScrollState};
+use crate::widgets::{ScrollState, TimeBar, Waveform, WaveformScrollState};
 
 use super::models::{SimulationSpec, WaveSpec};
 
@@ -19,9 +19,8 @@ pub struct WaveViewer {
     list_state: ListState,
     selected_idx: Option<usize>,
     waveform_scroll_state: WaveformScrollState,
-    timebar_state: TimeBarState,
+    scroll_state: ScrollState,
     horizontal_content_length: usize,
-    horizontal_position: usize,
 }
 
 impl WaveViewer {
@@ -41,18 +40,12 @@ impl WaveViewer {
 
     pub fn scroll_right(&mut self) {
         self.waveform_scroll_state.next();
-        self.timebar_state.next();
-        if self.horizontal_position + 1 < self.horizontal_content_length {
-            self.horizontal_position += 1;
-        }
+        self.scroll_state.next();
     }
 
     pub fn scroll_left(&mut self) {
         self.waveform_scroll_state.prev();
-        self.timebar_state.prev();
-        if self.horizontal_position != 0 {
-            self.horizontal_position -= 1;
-        }
+        self.scroll_state.prev();
     }
 
     pub fn scroll_down(&mut self) {
@@ -81,7 +74,9 @@ impl WaveViewer {
     }
 
     pub fn get_highlighted_unit_time(&self) -> usize {
-        self.horizontal_position
+        let absolute_highlight_position =
+            self.scroll_state.start_position() + self.scroll_state.selected_position();
+        absolute_highlight_position
             / (NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(self.simulation.zoom as u32))
     }
 
@@ -98,7 +93,7 @@ impl WaveViewer {
 
         let chunks = Layout::vertical(vec![Constraint::Min(0), Constraint::Length(2)]).split(rect);
         f.render_stateful_widget(list, chunks[0], &mut self.list_state);
-        f.render_stateful_widget(time_bar, chunks[1], &mut self.timebar_state);
+        f.render_stateful_widget(time_bar, chunks[1], &mut self.scroll_state);
     }
 
     fn update_content_length(&mut self) {
@@ -107,7 +102,7 @@ impl WaveViewer {
             * self.simulation.total_time;
         self.waveform_scroll_state
             .set_content_length(self.horizontal_content_length);
-        self.timebar_state
+        self.scroll_state
             .set_content_length(self.horizontal_content_length);
     }
 
