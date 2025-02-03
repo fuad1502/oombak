@@ -151,20 +151,29 @@ impl CommandInterpreter {
     fn execute_command(&mut self) {
         let command_text = self.terminal_state.command_line_state().text();
         match interpreter::interpret(command_text) {
-            Ok(command) => {
-                match command {
-                    interpreter::Command::Run(x) => self.request(sim::Request::Run(x)),
-                    interpreter::Command::Load(x) => self.request(sim::Request::Load(x)),
-                    interpreter::Command::Set(sig_name, value) => {
-                        self.request(sim::Request::SetSignal(sig_name, value))
-                    }
-                    interpreter::Command::Quit => self.notify_quit(),
-                    interpreter::Command::Help => todo!(),
-                    interpreter::Command::Noop => return,
+            Ok(command) => match command {
+                interpreter::Command::Run(x) => {
+                    self.request(sim::Request::Run(x));
+                    self.terminal_state
+                        .append_output_history(Ok(format!("executed: {command_text}")));
                 }
-                self.terminal_state
-                    .append_output_history(Ok(format!("executed: {command_text}")));
-            }
+                interpreter::Command::Load(x) => {
+                    self.request(sim::Request::Load(x));
+                    self.terminal_state
+                        .append_output_history(Ok(format!("executed: {command_text}")));
+                }
+                interpreter::Command::Set(sig_name, value) => {
+                    self.request(sim::Request::SetSignal(sig_name, value));
+                    self.terminal_state
+                        .append_output_history(Ok(format!("executed: {command_text}")));
+                }
+                interpreter::Command::Help => {
+                    self.terminal_state
+                        .append_output_history(Ok(interpreter::help().to_string()));
+                }
+                interpreter::Command::Quit => self.notify_quit(),
+                interpreter::Command::Noop => (),
+            },
             Err(message) => self.terminal_state.append_output_history(Err(message)),
         }
     }

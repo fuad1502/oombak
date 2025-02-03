@@ -23,37 +23,38 @@ struct CommandInfo {
 type Parser = Box<dyn Fn(&[&str]) -> Result<Command, String> + Send + Sync>;
 
 static ALL_COMMAND_INFO: OnceLock<[CommandInfo; 5]> = OnceLock::new();
+static HELP: OnceLock<String> = OnceLock::new();
 
 fn all_command_info() -> &'static [CommandInfo; 5] {
     ALL_COMMAND_INFO.get_or_init(|| {
         [
             CommandInfo {
                 name: "run",
-                description: "",
+                description: "run the simulation for as long as the duration.",
                 args: vec!["duration"],
                 parser: Box::new(parse_run),
             },
             CommandInfo {
                 name: "load",
-                description: "",
+                description: "loads the file for simulation",
                 args: vec!["SystemVerilog file path"],
                 parser: Box::new(parse_load),
             },
             CommandInfo {
                 name: "set",
-                description: "",
+                description: "sets the signal value",
                 args: vec!["signal name", "value"],
                 parser: Box::new(parse_set),
             },
             CommandInfo {
                 name: "quit",
-                description: "",
+                description: "closes this application",
                 args: vec![],
                 parser: Box::new(parse_quit),
             },
             CommandInfo {
                 name: "help",
-                description: "",
+                description: "displays this message",
                 args: vec![],
                 parser: Box::new(parse_help),
             },
@@ -74,6 +75,21 @@ pub fn interpret(command_string: &str) -> Result<Command, String> {
         }
     }
     Err(format!("unknown command \"{}\"", command[0]))
+}
+
+pub fn help() -> &'static str {
+    HELP.get_or_init(|| {
+        let mut help = "Commands:\n".to_string();
+        for command_info in all_command_info() {
+            help += "   ";
+            help += &command_info.usage();
+            help += "\n";
+            help += "       ";
+            help += command_info.description;
+            help += "\n";
+        }
+        help
+    })
 }
 
 fn parse_run(args: &[&str]) -> Result<Command, String> {
@@ -100,7 +116,7 @@ fn parse_quit(_args: &[&str]) -> Result<Command, String> {
 }
 
 fn parse_help(_args: &[&str]) -> Result<Command, String> {
-    Ok(Command::Quit)
+    Ok(Command::Help)
 }
 
 fn check_usage(command_info: &CommandInfo, args: &[&str]) -> Result<(), String> {
