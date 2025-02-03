@@ -44,6 +44,7 @@ pub trait Component: Send + Sync {
     }
 }
 
+#[derive(PartialEq)]
 pub enum HandleResult {
     Handled,
     NotHandled,

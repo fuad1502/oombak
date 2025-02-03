@@ -8,6 +8,8 @@ pub enum Command {
     Run(u64),
     Load(PathBuf),
     Set(String, BitVec<u32>),
+    Quit,
+    Help,
     Noop,
 }
 
@@ -21,6 +23,8 @@ pub fn interpret(command_string: &str) -> Result<Command, String> {
         "run" => parse_run(args),
         "load" => parse_load(args),
         "set" => parse_set(args),
+        "quit" => Ok(Command::Quit),
+        "help" => Ok(Command::Help),
         _ => Err(format!("unknown command \"{}\"", command[0])),
     }
 }

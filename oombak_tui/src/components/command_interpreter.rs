@@ -1,6 +1,6 @@
 use std::sync::mpsc::Sender;
 
-use crossterm::event::{KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{style::Stylize, widgets::Paragraph};
 
 use crate::{
@@ -100,70 +100,46 @@ impl CommandInterpreter {
     }
 
     fn handle_key_event_line_mode(&mut self, key_event: &KeyEvent) -> HandleResult {
-        match key_event.code {
-            KeyCode::Esc => {
-                self.line_state = LineState::NotActive;
-                self.terminal_state.clear_command_line();
-                return HandleResult::ReleaseFocus;
-            }
-            KeyCode::Enter => {
-                self.execute_command();
-                self.line_state = LineState::NotActive;
-                self.terminal_state.clear_command_line();
-                return HandleResult::ReleaseFocus;
-            }
-            KeyCode::Char(c) if self.line_state == LineState::Active => {
-                self.terminal_state.put(c);
-            }
-            KeyCode::Backspace if self.line_state == LineState::Active => {
-                self.terminal_state.backspace();
-            }
-            _ => (),
-        };
-        self.notify_render();
-        HandleResult::Handled
+        let mut handle_result = self.handle_key_event_window_mode(key_event);
+        if key_event.code == KeyCode::Enter {
+            handle_result = HandleResult::ReleaseFocus;
+        }
+        if handle_result == HandleResult::ReleaseFocus {
+            self.line_state = LineState::NotActive;
+        }
+        handle_result
     }
 
     fn handle_key_event_window_mode(&mut self, key_event: &KeyEvent) -> HandleResult {
-        match key_event.code {
-            KeyCode::Esc => {
+        match (key_event.code, key_event.modifiers) {
+            (KeyCode::Esc, _) => {
                 self.terminal_state.clear_command_line();
                 return HandleResult::ReleaseFocus;
             }
-            KeyCode::Enter => {
-                if let Some(result) = self.execute_builtin_command() {
-                    return result;
-                }
+            (KeyCode::Char('d'), modifier) if modifier.contains(KeyModifiers::CONTROL) => {
+                self.terminal_state.clear_command_line();
+                return HandleResult::ReleaseFocus;
+            }
+            (KeyCode::Enter, _) => {
                 self.execute_command();
                 self.terminal_state.clear_command_line();
             }
-            KeyCode::Char(c) => {
+            (KeyCode::Char(c), modifier) if modifier.is_empty() => {
                 self.terminal_state.put(c);
             }
-            KeyCode::Backspace => {
+            (KeyCode::Backspace, _) => {
                 self.terminal_state.backspace();
             }
-            KeyCode::Right => {
+            (KeyCode::Right, _) => {
                 self.terminal_state.move_cursor_right();
             }
-            KeyCode::Left => {
+            (KeyCode::Left, _) => {
                 self.terminal_state.move_cursor_left();
             }
             _ => (),
         };
         self.notify_render();
         HandleResult::Handled
-    }
-
-    fn execute_builtin_command(&mut self) -> Option<HandleResult> {
-        match self.terminal_state.command_line() {
-            "quit" => {
-                self.terminal_state.clear_command_line();
-                Some(HandleResult::ReleaseFocus)
-            }
-            "help" => todo!(),
-            _ => None,
-        }
     }
 
     fn execute_command(&mut self) {
@@ -176,6 +152,8 @@ impl CommandInterpreter {
                     interpreter::Command::Set(sig_name, value) => {
                         self.request(sim::Request::SetSignal(sig_name, value))
                     }
+                    interpreter::Command::Quit => self.notify_quit(),
+                    interpreter::Command::Help => todo!(),
                     interpreter::Command::Noop => return,
                 }
                 self.terminal_state
@@ -191,6 +169,10 @@ impl CommandInterpreter {
 
     fn notify_render(&self) {
         self.message_tx.send(Message::Render).unwrap();
+    }
+
+    fn notify_quit(&self) {
+        self.message_tx.send(Message::Quit).unwrap();
     }
 }
 
