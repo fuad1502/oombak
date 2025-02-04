@@ -12,7 +12,7 @@ use ratatui::widgets::{Block, Borders, Clear};
 use ratatui::Frame;
 
 use super::models::SimulationSpec;
-use super::{CommandInterpreter, InstanceHierViewer, SignalsViewer, WaveViewer};
+use super::{CommandInterpreter, FileExplorer, InstanceHierViewer, SignalsViewer, WaveViewer};
 
 pub struct Root {
     message_tx: Sender<Message>,
@@ -21,6 +21,7 @@ pub struct Root {
     wave_viewer: WaveViewer,
     instance_hier_viewer: Arc<RwLock<InstanceHierViewer>>,
     command_interpreter: Arc<RwLock<CommandInterpreter>>,
+    file_explorer: Arc<RwLock<FileExplorer>>,
     focused_child: Option<Child>,
     simulation_spec: SimulationSpec,
     reload_simulation: bool,
@@ -29,6 +30,7 @@ pub struct Root {
 enum Child {
     CommandInterpreter,
     InstanceHierView,
+    FileExplorer,
 }
 
 impl Root {
@@ -48,6 +50,10 @@ impl Root {
                 request_tx.clone(),
             ))),
             command_interpreter,
+            file_explorer: Arc::new(RwLock::new(FileExplorer::new(
+                message_tx.clone(),
+                request_tx.clone(),
+            ))),
             focused_child: None,
             simulation_spec,
             reload_simulation: false,
@@ -78,6 +84,9 @@ impl Component for Root {
         self.render_command_interpreter(f, rect, main_layout_v[1]);
         if matches!(self.focused_child, Some(Child::InstanceHierView)) {
             self.render_instance_hier_viewer(f, rect);
+        }
+        if matches!(self.focused_child, Some(Child::FileExplorer)) {
+            self.render_file_explorer(f, rect);
         }
     }
 
@@ -124,6 +133,9 @@ impl Component for Root {
             KeyCode::Char('s') => {
                 self.focused_child = Some(Child::InstanceHierView);
             }
+            KeyCode::Char('o') => {
+                self.focused_child = Some(Child::FileExplorer);
+            }
             _ => return HandleResult::NotHandled,
         }
         self.notify_render();
@@ -153,6 +165,7 @@ impl Component for Root {
                     .write()
                     .unwrap()
                     .handle_event(event),
+                Child::FileExplorer => self.file_explorer.write().unwrap().handle_event(event),
             }
         } else {
             HandleResult::NotHandled
@@ -179,6 +192,16 @@ impl Root {
         let block = Block::new().borders(Borders::ALL);
         f.render_widget(Clear, popup_area);
         self.instance_hier_viewer
+            .write()
+            .unwrap()
+            .render_mut_with_block(f, popup_area, block);
+    }
+
+    fn render_file_explorer(&self, f: &mut Frame, rect: Rect) {
+        let popup_area = Self::get_popup_area(rect);
+        let block = Block::new().borders(Borders::ALL);
+        f.render_widget(Clear, popup_area);
+        self.file_explorer
             .write()
             .unwrap()
             .render_mut_with_block(f, popup_area, block);
