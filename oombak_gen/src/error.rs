@@ -13,6 +13,8 @@ pub enum OombakGenError {
     InvalidPath(PathBuf),
     #[error("IO error: {}", _0)]
     Io(std::io::Error),
+    #[error("CMake error: {}", _0)]
+    CMake(String),
     #[error("oombak_rs: {}", _0)]
     Oombak(OombakError),
 }

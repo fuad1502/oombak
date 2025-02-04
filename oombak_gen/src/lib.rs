@@ -41,18 +41,26 @@ fn cmake(source_dir: TempDir) -> OombakGenResult<TempGenDir> {
 }
 
 fn cmake_configure(source_path: &Path) -> OombakGenResult<()> {
-    Command::new("cmake")
+    let output = Command::new("cmake")
         .current_dir(source_path)
         .args(["-S", ".", "-B", "build"])
         .output()?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        return Err(OombakGenError::CMake(stderr));
+    }
     Ok(())
 }
 
 fn cmake_build(source_path: &Path) -> OombakGenResult<()> {
-    Command::new("cmake")
+    let output = Command::new("cmake")
         .current_dir(source_path)
         .args(["--build", "build"])
         .output()?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        return Err(OombakGenError::CMake(stderr));
+    }
     Ok(())
 }
 
