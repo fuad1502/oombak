@@ -43,7 +43,11 @@ OOMBAK_PARSER_EXPORT Instance *
 oombak_parser_parse(const char *source_paths, const char *top_module_name) {
   std::vector<std::string_view> source_paths_vec =
       from_colon_separated_paths(source_paths);
-  return parser->get_instance_tree(source_paths_vec, top_module_name);
+  try {
+    return parser->get_instance_tree(source_paths_vec, top_module_name);
+  } catch (...) {
+    return NULL;
+  }
 }
 
 OOMBAK_PARSER_EXPORT Instance *
@@ -52,7 +56,11 @@ oombak_parser_parse(OombakCtx ctx, const char *source_paths,
   auto parser = (OombakParser *)ctx;
   std::vector<std::string_view> source_paths_vec =
       from_colon_separated_paths(source_paths);
-  return parser->get_instance_tree(source_paths_vec, top_module_name);
+  try {
+    return parser->get_instance_tree(source_paths_vec, top_module_name);
+  } catch (...) {
+    return NULL;
+  }
 }
 
 OombakParser::OombakParser() {}
