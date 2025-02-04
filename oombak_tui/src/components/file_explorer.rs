@@ -57,8 +57,8 @@ impl Component for FileExplorer {
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult {
         match key_event.code {
-            KeyCode::Up => self.handle_up_key_press(),
-            KeyCode::Down => self.handle_down_key_press(),
+            KeyCode::Up | KeyCode::Char('k') => self.handle_up_key_press(),
+            KeyCode::Down | KeyCode::Char('j') => self.handle_down_key_press(),
             KeyCode::Enter => {
                 if self.handle_enter_key_press() {
                     self.reset_path();
