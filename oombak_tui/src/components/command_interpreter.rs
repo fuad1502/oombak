@@ -74,11 +74,11 @@ impl Component for CommandInterpreter {
         HandleResult::Handled
     }
 
-    fn try_propagate_event(&mut self, _event: &crossterm::event::Event) -> HandleResult {
-        HandleResult::NotHandled
-    }
+    fn handle_focus_gained(&mut self) {}
 
-    fn set_focus_to_self(&mut self) {}
+    fn get_focused_child(&self) -> Option<std::sync::Arc<std::sync::RwLock<dyn Component>>> {
+        None
+    }
 }
 
 impl CommandInterpreter {

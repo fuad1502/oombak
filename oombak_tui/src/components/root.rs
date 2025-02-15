@@ -5,7 +5,7 @@ use crate::component::{Component, HandleResult};
 use crate::render::Message;
 use oombak_sim::sim::{self, SimulationResult};
 
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::widgets::{Block, Borders, Clear};
@@ -147,28 +147,17 @@ impl Component for Root {
         HandleResult::Handled
     }
 
-    fn set_focus_to_self(&mut self) {
+    fn handle_focus_gained(&mut self) {
         self.notify_render();
         self.focused_child = None;
     }
 
-    fn try_propagate_event(&mut self, event: &Event) -> HandleResult {
-        if let Some(child) = &self.focused_child {
-            match child {
-                Child::CommandInterpreter => self
-                    .command_interpreter
-                    .write()
-                    .unwrap()
-                    .handle_event(event),
-                Child::InstanceHierView => self
-                    .instance_hier_viewer
-                    .write()
-                    .unwrap()
-                    .handle_event(event),
-                Child::FileExplorer => self.file_explorer.write().unwrap().handle_event(event),
-            }
-        } else {
-            HandleResult::NotHandled
+    fn get_focused_child(&self) -> Option<Arc<RwLock<dyn Component>>> {
+        match self.focused_child {
+            Some(Child::CommandInterpreter) => Some(self.command_interpreter.clone()),
+            Some(Child::InstanceHierView) => Some(self.instance_hier_viewer.clone()),
+            Some(Child::FileExplorer) => Some(self.file_explorer.clone()),
+            None => None,
         }
     }
 }

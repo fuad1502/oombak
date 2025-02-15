@@ -130,19 +130,16 @@ impl Component for InstanceHierViewer {
         HandleResult::Handled
     }
 
-    fn try_propagate_event(
-        &mut self,
-        _event: &crossterm::event::Event,
-    ) -> crate::component::HandleResult {
-        HandleResult::NotHandled
-    }
-
     fn handle_resize_event(&mut self, _columns: u16, _rows: u16) -> HandleResult {
         self.notify_render();
         HandleResult::Handled
     }
 
-    fn set_focus_to_self(&mut self) {}
+    fn handle_focus_gained(&mut self) {}
+
+    fn get_focused_child(&self) -> Option<Arc<RwLock<dyn Component>>> {
+        None
+    }
 }
 
 impl InstanceHierViewer {

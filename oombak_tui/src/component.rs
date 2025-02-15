@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock};
+
 use crossterm::event::{Event, KeyEvent};
 use ratatui::{layout::Rect, widgets::Block, Frame};
 
@@ -8,9 +10,9 @@ pub trait Component: Send + Sync {
 
     fn handle_resize_event(&mut self, columns: u16, rows: u16) -> HandleResult;
 
-    fn try_propagate_event(&mut self, event: &Event) -> HandleResult;
+    fn handle_focus_gained(&mut self);
 
-    fn set_focus_to_self(&mut self);
+    fn get_focused_child(&self) -> Option<Arc<RwLock<dyn Component>>>;
 
     fn render_with_block(&mut self, f: &mut Frame, rect: Rect, block: Block) {
         let inner = block.inner(rect);
@@ -22,7 +24,7 @@ pub trait Component: Send + Sync {
         match self.try_propagate_event(event) {
             HandleResult::Handled => HandleResult::Handled,
             HandleResult::ReleaseFocus => {
-                self.set_focus_to_self();
+                self.handle_focus_gained();
                 HandleResult::Handled
             }
             HandleResult::NotHandled => match event {
@@ -30,6 +32,14 @@ pub trait Component: Send + Sync {
                 Event::Resize(columns, rows) => self.handle_resize_event(*columns, *rows),
                 _ => HandleResult::NotHandled,
             },
+        }
+    }
+
+    fn try_propagate_event(&mut self, event: &Event) -> HandleResult {
+        if let Some(child) = &self.get_focused_child() {
+            child.write().unwrap().handle_event(event)
+        } else {
+            HandleResult::NotHandled
         }
     }
 }

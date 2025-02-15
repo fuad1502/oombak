@@ -4,7 +4,7 @@ use std::{
     sync::mpsc::Sender,
 };
 
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent};
 use oombak_sim::sim::Request;
 use ratatui::{
     layout::Rect,
@@ -76,11 +76,11 @@ impl Component for FileExplorer {
         HandleResult::NotHandled
     }
 
-    fn try_propagate_event(&mut self, _event: &Event) -> HandleResult {
-        HandleResult::NotHandled
-    }
+    fn handle_focus_gained(&mut self) {}
 
-    fn set_focus_to_self(&mut self) {}
+    fn get_focused_child(&self) -> Option<std::sync::Arc<std::sync::RwLock<dyn Component>>> {
+        None
+    }
 }
 
 impl FileExplorer {
