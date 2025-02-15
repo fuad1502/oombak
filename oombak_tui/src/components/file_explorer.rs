@@ -45,7 +45,7 @@ impl FileExplorer {
 }
 
 impl Component for FileExplorer {
-    fn render_mut(&mut self, f: &mut Frame, rect: Rect) {
+    fn render(&mut self, f: &mut Frame, rect: Rect) {
         let items = self.new_list_items();
         if self.list_state.selected().is_none() && !items.is_empty() {
             self.list_state.select_first();
@@ -81,10 +81,6 @@ impl Component for FileExplorer {
     }
 
     fn set_focus_to_self(&mut self) {}
-
-    fn render(&self, _f: &mut Frame, _rect: Rect) {
-        unimplemented!();
-    }
 }
 
 impl FileExplorer {

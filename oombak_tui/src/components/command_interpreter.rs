@@ -58,7 +58,9 @@ impl CommandInterpreter {
 }
 
 impl Component for CommandInterpreter {
-    fn render(&self, _f: &mut ratatui::Frame, _rect: ratatui::prelude::Rect) {}
+    fn render(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
+        self.render_on_window(f, rect);
+    }
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult {
         match self.mode {

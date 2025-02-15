@@ -93,7 +93,7 @@ impl InstanceHierViewer {
 }
 
 impl Component for InstanceHierViewer {
-    fn render_mut(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
+    fn render(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
         if let Some(node) = &self.root_node {
             let (list_items, items_in_list) = Self::get_flattened_hierarchy(node);
             self.items_in_list = items_in_list;
@@ -143,8 +143,6 @@ impl Component for InstanceHierViewer {
     }
 
     fn set_focus_to_self(&mut self) {}
-
-    fn render(&self, _f: &mut ratatui::Frame, _rect: ratatui::prelude::Rect) {}
 }
 
 impl InstanceHierViewer {

@@ -70,7 +70,7 @@ impl Root {
 }
 
 impl Component for Root {
-    fn render_mut(&mut self, f: &mut Frame, rect: Rect) {
+    fn render(&mut self, f: &mut Frame, rect: Rect) {
         let main_layout_v = Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![Constraint::Min(0), Constraint::Length(1)])
@@ -171,8 +171,6 @@ impl Component for Root {
             HandleResult::NotHandled
         }
     }
-
-    fn render(&self, _f: &mut Frame, _rect: Rect) {}
 }
 
 impl Root {
@@ -194,7 +192,7 @@ impl Root {
         self.instance_hier_viewer
             .write()
             .unwrap()
-            .render_mut_with_block(f, popup_area, block);
+            .render_with_block(f, popup_area, block);
     }
 
     fn render_file_explorer(&self, f: &mut Frame, rect: Rect) {
@@ -204,7 +202,7 @@ impl Root {
         self.file_explorer
             .write()
             .unwrap()
-            .render_mut_with_block(f, popup_area, block);
+            .render_with_block(f, popup_area, block);
     }
 
     fn render_command_interpreter(&self, f: &mut Frame, window_area: Rect, line_area: Rect) {
