@@ -4,6 +4,7 @@ pub mod components;
 pub mod error;
 pub mod event;
 pub mod render;
+pub mod thread;
 pub mod tui;
 pub mod utils;
 pub mod widgets;

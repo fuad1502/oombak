@@ -1,11 +1,11 @@
 use crate::component::Component;
-use crate::error::OombakResult;
+use crate::thread::{any_to_string, Thread, ThreadError, ThreadGroup, ThreadResult};
 
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 
 use std::io::Stdout;
-use std::sync::mpsc::Receiver;
+use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
@@ -16,17 +16,57 @@ pub enum Message {
     Render,
 }
 
-pub fn spawn_renderer(
-    root: Arc<RwLock<dyn Component>>,
-    mut terminal: Terminal<CrosstermBackend<Stdout>>,
-    message_rx: Receiver<Message>,
-) -> JoinHandle<OombakResult<()>> {
-    thread::spawn(move || -> OombakResult<()> {
-        let mut message = Message::Render;
-        while message != Message::Quit {
-            terminal.draw(|frame| root.write().unwrap().render(frame, frame.area()))?;
-            message = message_rx.recv()?;
+pub struct RendererThread {
+    handle: Option<JoinHandle<ThreadResult>>,
+    message_channel_tx: Sender<Message>,
+}
+
+impl RendererThread {
+    pub fn new(
+        root_component: Arc<RwLock<dyn Component>>,
+        message_channel_tx: Sender<Message>,
+        message_channel_rx: Receiver<Message>,
+        mut terminal: Terminal<CrosstermBackend<Stdout>>,
+        thread_group: &ThreadGroup,
+    ) -> Self {
+        let terminate_group_channel_tx = thread_group.get_terminate_group_channel_tx();
+
+        let handle = thread::spawn(move || -> ThreadResult {
+            let mut message = Message::Render;
+            while message != Message::Quit {
+                match terminal
+                    .draw(|frame| root_component.write().unwrap().render(frame, frame.area()))
+                {
+                    Ok(_) => (),
+                    Err(e) => {
+                        let _ = terminate_group_channel_tx.send(());
+                        return Err(ThreadError::Io(e));
+                    }
+                }
+                message = message_channel_rx.recv().unwrap_or(Message::Quit);
+            }
+
+            let _ = terminate_group_channel_tx.send(());
+            Ok(())
+        });
+
+        Self {
+            handle: Some(handle),
+            message_channel_tx,
         }
-        Ok(())
-    })
+    }
+}
+
+impl Thread for RendererThread {
+    fn terminate(&mut self) -> ThreadResult {
+        if let Some(handle) = self.handle.take() {
+            let _ = self.message_channel_tx.send(Message::Quit);
+            match handle.join() {
+                Err(e) => Err(ThreadError::Panic(any_to_string(&e))),
+                Ok(res) => res,
+            }
+        } else {
+            Ok(())
+        }
+    }
 }
