@@ -1,11 +1,13 @@
 use std::{
     any::Any,
     panic::{self, PanicHookInfo},
-    sync::mpsc::Sender,
 };
 
-pub fn setup_terminate_group_panic_hook(terminate_group_channel_tx: Sender<()>) {
+use super::ThreadGroup;
+
+pub fn setup_terminate_group_panic_hook(thread_group: &ThreadGroup) {
     let original_hook = panic::take_hook();
+    let terminate_group_channel_tx = thread_group.get_terminate_group_channel_tx();
     let panic_handler = move |hook_info: &PanicHookInfo| {
         let _ = terminate_group_channel_tx.send(());
         original_hook(hook_info);

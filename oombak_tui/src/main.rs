@@ -40,7 +40,7 @@ fn main() {
 
     thread_group.add_thread(Box::new(event_thread));
     thread_group.add_thread(Box::new(renderer_thread));
-    setup_terminate_group_panic_hook(thread_group.get_terminate_group_channel_tx());
+    setup_terminate_group_panic_hook(&thread_group);
     let res = thread_group.join();
 
     simulator
