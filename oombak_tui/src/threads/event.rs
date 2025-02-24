@@ -1,7 +1,4 @@
-use crate::{
-    component::Component,
-    thread::{any_to_string, Thread, ThreadError, ThreadGroup, ThreadResult},
-};
+use crate::component::Component;
 
 use crossterm::event::Event;
 
@@ -13,6 +10,8 @@ use std::{
     thread::{self, JoinHandle},
     time::Duration,
 };
+
+use super::{thread_group::ThreadGroup, util::any_to_string, Thread, ThreadError, ThreadResult};
 
 pub struct EventThread {
     handle: Option<JoinHandle<ThreadResult>>,

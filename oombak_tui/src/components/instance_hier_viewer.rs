@@ -14,7 +14,7 @@ use ratatui::{
 
 use crate::{
     component::{Component, HandleResult},
-    render::Message,
+    threads::RendererMessage,
 };
 
 const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
@@ -26,7 +26,7 @@ const SIGNAL_ITEM_STYLE: Style = Style::new()
     .add_modifier(Modifier::ITALIC);
 
 pub struct InstanceHierViewer {
-    message_tx: Sender<Message>,
+    message_tx: Sender<RendererMessage>,
     request_tx: Sender<Request>,
     root_node: Option<Arc<RwLock<InstanceHierNode>>>,
     probed_points: HashSet<String>,
@@ -66,7 +66,7 @@ enum HierItem {
 }
 
 impl InstanceHierViewer {
-    pub fn new(message_tx: Sender<Message>, request_tx: Sender<Request>) -> Self {
+    pub fn new(message_tx: Sender<RendererMessage>, request_tx: Sender<Request>) -> Self {
         Self {
             message_tx,
             request_tx,
@@ -144,7 +144,7 @@ impl Component for InstanceHierViewer {
 
 impl InstanceHierViewer {
     fn notify_render(&self) {
-        self.message_tx.send(Message::Render).unwrap();
+        self.message_tx.send(RendererMessage::Render).unwrap();
     }
 
     fn get_flattened_hierarchy(

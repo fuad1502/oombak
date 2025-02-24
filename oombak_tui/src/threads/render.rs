@@ -1,5 +1,4 @@
 use crate::component::Component;
-use crate::thread::{any_to_string, Thread, ThreadError, ThreadGroup, ThreadResult};
 
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
@@ -9,6 +8,10 @@ use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
+
+use super::thread_group::ThreadGroup;
+use super::util::any_to_string;
+use super::{Thread, ThreadError, ThreadResult};
 
 #[derive(PartialEq)]
 pub enum Message {

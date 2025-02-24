@@ -2,7 +2,7 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
 use crate::component::{Component, HandleResult};
-use crate::render::Message;
+use crate::threads::RendererMessage;
 use oombak_sim::sim::{self, SimulationResult};
 
 use crossterm::event::{KeyCode, KeyEvent};
@@ -15,7 +15,7 @@ use super::models::SimulationSpec;
 use super::{CommandInterpreter, FileExplorer, InstanceHierViewer, SignalsViewer, WaveViewer};
 
 pub struct Root {
-    message_tx: Sender<Message>,
+    message_tx: Sender<RendererMessage>,
     request_tx: Sender<sim::Request>,
     signals_viewer: SignalsViewer,
     wave_viewer: WaveViewer,
@@ -35,7 +35,7 @@ enum Child {
 
 impl Root {
     pub fn new(
-        message_tx: Sender<Message>,
+        message_tx: Sender<RendererMessage>,
         request_tx: Sender<sim::Request>,
         command_interpreter: Arc<RwLock<CommandInterpreter>>,
     ) -> Self {
@@ -61,11 +61,11 @@ impl Root {
     }
 
     fn notify_render(&self) {
-        self.message_tx.send(Message::Render).unwrap();
+        self.message_tx.send(RendererMessage::Render).unwrap();
     }
 
     fn notify_quit(&self) {
-        self.message_tx.send(Message::Quit).unwrap();
+        self.message_tx.send(RendererMessage::Quit).unwrap();
     }
 }
 

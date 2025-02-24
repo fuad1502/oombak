@@ -15,13 +15,13 @@ use ratatui::{
 
 use crate::{
     component::{Component, HandleResult},
-    render::Message,
+    threads::RendererMessage,
 };
 
 const SELECTED_STYLE: Style = Style::new().bg(Color::Blue).add_modifier(Modifier::BOLD);
 
 pub struct FileExplorer {
-    message_tx: Sender<Message>,
+    message_tx: Sender<RendererMessage>,
     request_tx: Sender<Request>,
     path: PathBuf,
     entries: Vec<PathBuf>,
@@ -30,7 +30,7 @@ pub struct FileExplorer {
 }
 
 impl FileExplorer {
-    pub fn new(message_tx: Sender<Message>, request_tx: Sender<Request>) -> Self {
+    pub fn new(message_tx: Sender<RendererMessage>, request_tx: Sender<Request>) -> Self {
         let path = env::current_dir().unwrap();
         let entries = Self::get_sorted_entries(&path);
         Self {
@@ -177,6 +177,6 @@ impl FileExplorer {
     }
 
     fn notify_render(&self) {
-        self.message_tx.send(Message::Render).unwrap();
+        self.message_tx.send(RendererMessage::Render).unwrap();
     }
 }

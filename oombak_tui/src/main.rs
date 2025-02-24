@@ -1,9 +1,9 @@
 use oombak_sim::sim;
 use oombak_tui::{
     components,
-    event::EventThread,
-    render::RendererThread,
-    thread::{setup_terminate_group_panic_hook, ThreadGroup},
+    threads::EventThread,
+    threads::RendererThread,
+    threads::{setup_terminate_group_panic_hook, ThreadGroup},
     tui,
 };
 use std::sync::{mpsc, Arc, RwLock};
