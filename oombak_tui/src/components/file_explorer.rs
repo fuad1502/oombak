@@ -4,7 +4,7 @@ use std::{
     sync::mpsc::Sender,
 };
 
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent};
 use oombak_sim::sim::Request;
 use ratatui::{
     layout::Rect,
@@ -15,13 +15,13 @@ use ratatui::{
 
 use crate::{
     component::{Component, HandleResult},
-    render::Message,
+    threads::RendererMessage,
 };
 
 const SELECTED_STYLE: Style = Style::new().bg(Color::Blue).add_modifier(Modifier::BOLD);
 
 pub struct FileExplorer {
-    message_tx: Sender<Message>,
+    message_tx: Sender<RendererMessage>,
     request_tx: Sender<Request>,
     path: PathBuf,
     entries: Vec<PathBuf>,
@@ -30,7 +30,7 @@ pub struct FileExplorer {
 }
 
 impl FileExplorer {
-    pub fn new(message_tx: Sender<Message>, request_tx: Sender<Request>) -> Self {
+    pub fn new(message_tx: Sender<RendererMessage>, request_tx: Sender<Request>) -> Self {
         let path = env::current_dir().unwrap();
         let entries = Self::get_sorted_entries(&path);
         Self {
@@ -45,7 +45,7 @@ impl FileExplorer {
 }
 
 impl Component for FileExplorer {
-    fn render_mut(&mut self, f: &mut Frame, rect: Rect) {
+    fn render(&mut self, f: &mut Frame, rect: Rect) {
         let items = self.new_list_items();
         if self.list_state.selected().is_none() && !items.is_empty() {
             self.list_state.select_first();
@@ -76,14 +76,10 @@ impl Component for FileExplorer {
         HandleResult::NotHandled
     }
 
-    fn try_propagate_event(&mut self, _event: &Event) -> HandleResult {
-        HandleResult::NotHandled
-    }
+    fn handle_focus_gained(&mut self) {}
 
-    fn set_focus_to_self(&mut self) {}
-
-    fn render(&self, _f: &mut Frame, _rect: Rect) {
-        unimplemented!();
+    fn get_focused_child(&self) -> Option<std::sync::Arc<std::sync::RwLock<dyn Component>>> {
+        None
     }
 }
 
@@ -181,6 +177,6 @@ impl FileExplorer {
     }
 
     fn notify_render(&self) {
-        self.message_tx.send(Message::Render).unwrap();
+        self.message_tx.send(RendererMessage::Render).unwrap();
     }
 }

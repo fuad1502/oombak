@@ -6,14 +6,14 @@ use ratatui::{style::Stylize, text::Line};
 use crate::{
     backend::interpreter,
     component::{Component, HandleResult},
-    render::Message,
+    threads::RendererMessage,
     widgets::{CommandLine, Terminal, TerminalState},
 };
 
 use oombak_sim::sim;
 
 pub struct CommandInterpreter {
-    message_tx: Sender<Message>,
+    message_tx: Sender<RendererMessage>,
     request_tx: Sender<sim::Request>,
     terminal_state: TerminalState,
     line_state: LineState,
@@ -33,7 +33,7 @@ pub enum Mode {
 }
 
 impl CommandInterpreter {
-    pub fn new(message_tx: Sender<Message>, request_tx: Sender<sim::Request>) -> Self {
+    pub fn new(message_tx: Sender<RendererMessage>, request_tx: Sender<sim::Request>) -> Self {
         Self {
             message_tx,
             request_tx,
@@ -58,7 +58,9 @@ impl CommandInterpreter {
 }
 
 impl Component for CommandInterpreter {
-    fn render(&self, _f: &mut ratatui::Frame, _rect: ratatui::prelude::Rect) {}
+    fn render(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
+        self.render_on_window(f, rect);
+    }
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult {
         match self.mode {
@@ -72,11 +74,11 @@ impl Component for CommandInterpreter {
         HandleResult::Handled
     }
 
-    fn try_propagate_event(&mut self, _event: &crossterm::event::Event) -> HandleResult {
-        HandleResult::NotHandled
-    }
+    fn handle_focus_gained(&mut self) {}
 
-    fn set_focus_to_self(&mut self) {}
+    fn get_focused_child(&self) -> Option<std::sync::Arc<std::sync::RwLock<dyn Component>>> {
+        None
+    }
 }
 
 impl CommandInterpreter {
@@ -183,11 +185,11 @@ impl CommandInterpreter {
     }
 
     fn notify_render(&self) {
-        self.message_tx.send(Message::Render).unwrap();
+        self.message_tx.send(RendererMessage::Render).unwrap();
     }
 
     fn notify_quit(&self) {
-        self.message_tx.send(Message::Quit).unwrap();
+        self.message_tx.send(RendererMessage::Quit).unwrap();
     }
 }
 

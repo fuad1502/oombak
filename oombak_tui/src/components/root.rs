@@ -2,10 +2,10 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
 use crate::component::{Component, HandleResult};
-use crate::render::Message;
+use crate::threads::RendererMessage;
 use oombak_sim::sim::{self, SimulationResult};
 
-use crossterm::event::{Event, KeyCode, KeyEvent};
+use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::layout::{Constraint, Direction, Layout, Rect};
 use ratatui::widgets::{Block, Borders, Clear};
@@ -15,7 +15,7 @@ use super::models::SimulationSpec;
 use super::{CommandInterpreter, FileExplorer, InstanceHierViewer, SignalsViewer, WaveViewer};
 
 pub struct Root {
-    message_tx: Sender<Message>,
+    message_tx: Sender<RendererMessage>,
     request_tx: Sender<sim::Request>,
     signals_viewer: SignalsViewer,
     wave_viewer: WaveViewer,
@@ -35,7 +35,7 @@ enum Child {
 
 impl Root {
     pub fn new(
-        message_tx: Sender<Message>,
+        message_tx: Sender<RendererMessage>,
         request_tx: Sender<sim::Request>,
         command_interpreter: Arc<RwLock<CommandInterpreter>>,
     ) -> Self {
@@ -61,16 +61,16 @@ impl Root {
     }
 
     fn notify_render(&self) {
-        self.message_tx.send(Message::Render).unwrap();
+        self.message_tx.send(RendererMessage::Render).unwrap();
     }
 
     fn notify_quit(&self) {
-        self.message_tx.send(Message::Quit).unwrap();
+        self.message_tx.send(RendererMessage::Quit).unwrap();
     }
 }
 
 impl Component for Root {
-    fn render_mut(&mut self, f: &mut Frame, rect: Rect) {
+    fn render(&mut self, f: &mut Frame, rect: Rect) {
         let main_layout_v = Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![Constraint::Min(0), Constraint::Length(1)])
@@ -147,32 +147,19 @@ impl Component for Root {
         HandleResult::Handled
     }
 
-    fn set_focus_to_self(&mut self) {
+    fn handle_focus_gained(&mut self) {
         self.notify_render();
         self.focused_child = None;
     }
 
-    fn try_propagate_event(&mut self, event: &Event) -> HandleResult {
-        if let Some(child) = &self.focused_child {
-            match child {
-                Child::CommandInterpreter => self
-                    .command_interpreter
-                    .write()
-                    .unwrap()
-                    .handle_event(event),
-                Child::InstanceHierView => self
-                    .instance_hier_viewer
-                    .write()
-                    .unwrap()
-                    .handle_event(event),
-                Child::FileExplorer => self.file_explorer.write().unwrap().handle_event(event),
-            }
-        } else {
-            HandleResult::NotHandled
+    fn get_focused_child(&self) -> Option<Arc<RwLock<dyn Component>>> {
+        match self.focused_child {
+            Some(Child::CommandInterpreter) => Some(self.command_interpreter.clone()),
+            Some(Child::InstanceHierView) => Some(self.instance_hier_viewer.clone()),
+            Some(Child::FileExplorer) => Some(self.file_explorer.clone()),
+            None => None,
         }
     }
-
-    fn render(&self, _f: &mut Frame, _rect: Rect) {}
 }
 
 impl Root {
@@ -194,7 +181,7 @@ impl Root {
         self.instance_hier_viewer
             .write()
             .unwrap()
-            .render_mut_with_block(f, popup_area, block);
+            .render_with_block(f, popup_area, block);
     }
 
     fn render_file_explorer(&self, f: &mut Frame, rect: Rect) {
@@ -204,7 +191,7 @@ impl Root {
         self.file_explorer
             .write()
             .unwrap()
-            .render_mut_with_block(f, popup_area, block);
+            .render_with_block(f, popup_area, block);
     }
 
     fn render_command_interpreter(&self, f: &mut Frame, window_area: Rect, line_area: Rect) {
