@@ -1,6 +1,6 @@
-use ratatui::{
-    buffer::Buffer, layout::Rect, style::Style, style::Stylize, widgets::StatefulWidget,
-};
+use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::StatefulWidget};
+
+use crate::styles::wave_viewer::{CURSOR_STYLE, TIMEBAR_STYLE};
 
 use super::ScrollState;
 
@@ -43,9 +43,9 @@ impl StatefulWidget for TimeBar {
         state.set_viewport_length(area.width as usize);
         if area.width >= 1 && area.height >= 2 {
             let lines = self.plot_into_lines(state);
-            buf.set_string(area.x, area.y, &lines[0], Style::default());
-            buf.set_string(area.x, area.y + 1, &lines[1], Style::default());
-            Self::set_highlight(buf, area, state, Style::default().on_red());
+            buf.set_string(area.x, area.y, &lines[0], TIMEBAR_STYLE);
+            buf.set_string(area.x, area.y + 1, &lines[1], TIMEBAR_STYLE);
+            Self::set_highlight(buf, area, state, CURSOR_STYLE);
         }
     }
 }

@@ -4,26 +4,18 @@ use std::sync::{Arc, RwLock};
 
 use crossterm::event::KeyCode;
 use oombak_sim::sim::{InstanceNode, LoadedDut, ProbePointsModification, Request, Signal};
-use ratatui::style::Color;
 use ratatui::{
     layout::{Alignment, Constraint, Layout},
-    style::{palette::tailwind::SLATE, Modifier, Style},
     text::Line,
     widgets::{List, ListItem, ListState, Paragraph},
 };
 
+use crate::styles::global::SELECTED_ITEM_STYLE;
+use crate::styles::instance_hier_viewer::{INSTANCE_ITEM_STYLE, SIGNAL_ITEM_STYLE};
 use crate::{
     component::{Component, HandleResult},
     threads::RendererMessage,
 };
-
-const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
-const INSTANCE_ITEM_STYLE: Style = Style::new()
-    .fg(Color::Blue)
-    .add_modifier(Modifier::UNDERLINED);
-const SIGNAL_ITEM_STYLE: Style = Style::new()
-    .fg(Color::Yellow)
-    .add_modifier(Modifier::ITALIC);
 
 pub struct InstanceHierViewer {
     message_tx: Sender<RendererMessage>,
@@ -97,7 +89,7 @@ impl Component for InstanceHierViewer {
         if let Some(node) = &self.root_node {
             let (list_items, items_in_list) = Self::get_flattened_hierarchy(node);
             self.items_in_list = items_in_list;
-            let list = List::new(list_items).highlight_style(SELECTED_STYLE);
+            let list = List::new(list_items).highlight_style(SELECTED_ITEM_STYLE);
             f.render_stateful_widget(list, rect, &mut self.list_state);
         } else {
             let rect = Layout::vertical(vec![

@@ -1,9 +1,11 @@
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::Stylize,
+    style::Styled,
     widgets::{List, ListDirection, ListItem, ListState, StatefulWidget},
 };
+
+use crate::styles::terminal::{FAIL_OUTPUT_STYLE, SUCCESS_OUTPUT_STYLE};
 
 use super::{CommandLine, CommandLineState};
 
@@ -41,8 +43,8 @@ impl Terminal {
             .iter()
             .rev()
             .map(|h| match h {
-                Ok(output) => ListItem::from(format!("> {output}")).green(),
-                Err(output) => ListItem::from(format!("> {output}")).red(),
+                Ok(output) => ListItem::from(format!("> {output}")).set_style(SUCCESS_OUTPUT_STYLE),
+                Err(output) => ListItem::from(format!("> {output}")).set_style(FAIL_OUTPUT_STYLE),
             })
             .collect()
     }

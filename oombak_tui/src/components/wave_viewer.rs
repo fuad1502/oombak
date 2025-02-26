@@ -1,16 +1,17 @@
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{palette::tailwind::SLATE, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, ListState, StatefulWidget},
 };
 
-use crate::widgets::{ScrollState, TimeBar, Waveform};
+use crate::{
+    styles::wave_viewer::SELECTED_WAVEFORM_STYLE,
+    widgets::{ScrollState, TimeBar, Waveform},
+};
 
 use super::models::{SimulationSpec, WaveSpec};
 
-const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 const NUMBER_OF_CELLS_PER_UNIT_TIME: usize = 3;
 
 #[derive(Default)]
@@ -148,7 +149,7 @@ impl WaveViewer {
         let waveform = Waveform::new(wave_spec)
             .zoom(self.simulation.zoom)
             .block(Block::new().borders(Borders::BOTTOM))
-            .selected_style(SELECTED_STYLE)
+            .selected_style(SELECTED_WAVEFORM_STYLE)
             .selected(is_selected);
         let list_item_height = wave_spec.height * 2 + 2;
         let mut draw_buffer = Buffer::empty(Rect::new(0, 0, render_area_width, list_item_height));

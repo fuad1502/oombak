@@ -8,17 +8,19 @@ use crossterm::event::{KeyCode, KeyEvent};
 use oombak_sim::sim::Request;
 use ratatui::{
     layout::Rect,
-    style::{Color, Modifier, Style, Stylize},
+    style::Styled,
     widgets::{List, ListItem, ListState},
     Frame,
 };
 
 use crate::{
     component::{Component, HandleResult},
+    styles::{
+        file_explorer::{DIR_ITEM_STYLE, FILE_ITEM_STYLE},
+        global::SELECTED_ITEM_STYLE,
+    },
     threads::RendererMessage,
 };
-
-const SELECTED_STYLE: Style = Style::new().bg(Color::Blue).add_modifier(Modifier::BOLD);
 
 pub struct FileExplorer {
     message_tx: Sender<RendererMessage>,
@@ -51,7 +53,7 @@ impl Component for FileExplorer {
             self.list_state.select_first();
             self.selected_idx = Some(0);
         }
-        let list = List::new(items).highlight_style(SELECTED_STYLE);
+        let list = List::new(items).highlight_style(SELECTED_ITEM_STYLE);
         f.render_stateful_widget(list, rect, &mut self.list_state);
     }
 
@@ -160,9 +162,15 @@ impl FileExplorer {
             .entries
             .iter()
             .map(|p| (Self::new_list_item(p), p.is_dir()))
-            .map(|(i, d)| if d { i.green() } else { i })
+            .map(|(i, d)| {
+                if d {
+                    i.set_style(DIR_ITEM_STYLE)
+                } else {
+                    i.set_style(FILE_ITEM_STYLE)
+                }
+            })
             .collect();
-        items.insert(0, ListItem::new("../").green());
+        items.insert(0, ListItem::new("../").set_style(DIR_ITEM_STYLE));
         items
     }
 

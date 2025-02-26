@@ -4,11 +4,15 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     prelude::BlockExt,
-    style::{Style, Stylize},
+    style::{Style, Styled},
     widgets::{Block, StatefulWidget, Widget},
 };
 
-use crate::{components::models::WaveSpec, utils::bitvec_str};
+use crate::{
+    components::models::WaveSpec,
+    styles::wave_viewer::{CURSOR_STYLE, WAVEFORM_STYLE},
+    utils::bitvec_str,
+};
 
 use super::ScrollState;
 
@@ -142,14 +146,19 @@ impl Waveform<'_> {
     fn render_lines(&self, lines: &[String], area: Rect, buf: &mut Buffer) {
         self.block.render(area, buf);
         let area = self.block.inner_if_some(area);
-        let style = if self.is_selected {
+        let selected_style = if self.is_selected {
             self.selected_style
         } else {
             Style::default()
         };
         for (i, line) in lines.iter().enumerate() {
             let i = i as u16;
-            buf.set_string(area.x, area.y + i, line, style);
+            buf.set_string(
+                area.x,
+                area.y + i,
+                line,
+                WAVEFORM_STYLE.set_style(selected_style),
+            )
         }
     }
 
@@ -162,7 +171,7 @@ impl Waveform<'_> {
     ) {
         buf.set_style(
             Rect::new(area.x + cursor_position as u16, area.y, 1, line_count),
-            Style::default().on_red(),
+            CURSOR_STYLE,
         );
     }
 

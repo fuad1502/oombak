@@ -6,6 +6,7 @@ use ratatui::{style::Stylize, text::Line};
 use crate::{
     backend::interpreter,
     component::{Component, HandleResult},
+    styles::terminal::{FAIL_OUTPUT_STYLE, SUCCESS_OUTPUT_STYLE},
     threads::RendererMessage,
     widgets::{CommandLine, Terminal, TerminalState},
 };
@@ -93,8 +94,8 @@ impl CommandInterpreter {
             }
             LineState::NotActive => {
                 let line = match self.terminal_state.output_history().last() {
-                    Some(Ok(res)) => Line::from(&res[..]).green(),
-                    Some(Err(res)) => Line::from(&res[..]).red(),
+                    Some(Ok(res)) => Line::from(&res[..]).style(SUCCESS_OUTPUT_STYLE),
+                    Some(Err(res)) => Line::from(&res[..]).style(FAIL_OUTPUT_STYLE),
                     _ => Line::from(" "),
                 };
                 f.render_widget(line.on_dark_gray(), rect);

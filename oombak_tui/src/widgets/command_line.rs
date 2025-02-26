@@ -1,8 +1,9 @@
 use ratatui::{
-    style::Stylize,
     text::{Line, Span},
     widgets::{StatefulWidget, Widget},
 };
+
+use crate::styles::terminal::{COMMAND_LINE_HEADER_STYLE, COMMAND_LINE_STYLE, TEXT_CURSOR_STYLE};
 
 use super::ScrollState;
 
@@ -38,13 +39,13 @@ impl StatefulWidget for CommandLine {
         let after_highlight = state.text.get(highlight_idx + 1..).unwrap_or(" ");
 
         let command_line = Line::from(vec![
-            Span::from(Self::HEADER).black().on_yellow(),
+            Span::from(Self::HEADER).style(COMMAND_LINE_HEADER_STYLE),
             Span::from(" "),
             Span::from(before_highlight),
-            Span::from(highlight).black().on_white(),
+            Span::from(highlight).style(TEXT_CURSOR_STYLE),
             Span::from(after_highlight),
         ]);
-        command_line.on_blue().render(area, buf);
+        command_line.style(COMMAND_LINE_STYLE).render(area, buf);
     }
 }
 

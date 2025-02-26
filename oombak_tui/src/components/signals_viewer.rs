@@ -1,15 +1,16 @@
 use ratatui::{
-    style::{palette::tailwind::SLATE, Modifier, Style},
+    style::Style,
     symbols,
     text::Line,
     widgets::{List, ListItem, ListState},
 };
 
-use crate::utils::{self, bitvec_str};
+use crate::{
+    styles::signals_viewer::SELECTED_SIGNAL_STYLE,
+    utils::{self, bitvec_str},
+};
 
 use super::models::{SimulationSpec, WaveSpec};
-
-const SELECTED_STYLE: Style = Style::new().bg(SLATE.c800).add_modifier(Modifier::BOLD);
 
 #[derive(Default)]
 pub struct SignalsViewer {
@@ -67,7 +68,7 @@ impl SignalsViewer {
             .enumerate()
             .map(|(i, spec)| {
                 if Some(i) == self.selected_idx {
-                    self.new_list_item(spec, width, SELECTED_STYLE)
+                    self.new_list_item(spec, width, SELECTED_SIGNAL_STYLE)
                 } else {
                     self.new_list_item(spec, width, Style::default())
                 }
