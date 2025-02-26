@@ -1,9 +1,10 @@
-pub mod backend;
-pub mod component;
-pub mod components;
-pub mod error;
+mod backend;
+mod component;
+mod error;
 mod styles;
+mod utils;
+mod widgets;
+
+pub mod components;
 pub mod threads;
 pub mod tui;
-pub mod utils;
-pub mod widgets;
