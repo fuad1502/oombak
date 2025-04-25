@@ -1,7 +1,13 @@
 use std::sync::{Arc, RwLock};
 
 use crossterm::event::{Event, KeyEvent};
-use ratatui::{layout::Rect, widgets::Block, Frame};
+use ratatui::{
+    layout::{Constraint, Layout, Rect},
+    widgets::Block,
+    Frame,
+};
+
+use crate::widgets::{KeyMapHelpBar, KeyMaps};
 
 pub trait Component: Send + Sync {
     fn render(&mut self, f: &mut Frame, rect: Rect);
@@ -14,10 +20,20 @@ pub trait Component: Send + Sync {
 
     fn get_focused_child(&self) -> Option<Arc<RwLock<dyn Component>>>;
 
+    fn get_key_mappings(&self) -> KeyMaps;
+
     fn render_with_block(&mut self, f: &mut Frame, rect: Rect, block: Block) {
         let inner = block.inner(rect);
         self.render(f, inner);
         f.render_widget(block, rect);
+    }
+
+    fn render_with_command_keys_help_bar(&mut self, f: &mut Frame, rect: Rect) {
+        let key_maps = self.get_key_mappings();
+        let help_bar = KeyMapHelpBar::new(&key_maps);
+        let chunks = Layout::vertical(vec![Constraint::Min(0), Constraint::Length(1)]).split(rect);
+        f.render_widget(help_bar, chunks[1]);
+        self.render(f, chunks[0]);
     }
 
     fn handle_event(&mut self, event: &Event) -> HandleResult {

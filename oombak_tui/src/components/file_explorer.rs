@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     env, fs,
     path::{Path, PathBuf},
     sync::mpsc::Sender,
@@ -20,6 +21,7 @@ use crate::{
         global::SELECTED_ITEM_STYLE,
     },
     threads::RendererMessage,
+    widgets::{KeyId, KeyMaps},
 };
 
 pub struct FileExplorer {
@@ -29,12 +31,14 @@ pub struct FileExplorer {
     entries: Vec<PathBuf>,
     selected_idx: Option<usize>,
     list_state: ListState,
+    key_mappings: KeyMaps,
 }
 
 impl FileExplorer {
     pub fn new(message_tx: Sender<RendererMessage>, request_tx: Sender<Request>) -> Self {
         let path = env::current_dir().unwrap();
         let entries = Self::get_sorted_entries(&path);
+        let key_mappings = Self::create_key_mappings();
         Self {
             message_tx,
             request_tx,
@@ -42,7 +46,20 @@ impl FileExplorer {
             entries,
             selected_idx: None,
             list_state: ListState::default(),
+            key_mappings,
         }
+    }
+
+    fn create_key_mappings() -> KeyMaps {
+        HashMap::from([
+            (KeyId::from('q'), "close window".to_string()),
+            (KeyId::from(KeyCode::Enter), "open".to_string()),
+            (KeyId::from(KeyCode::Up), "scroll up".to_string()),
+            (KeyId::from('k'), "scroll up".to_string()),
+            (KeyId::from(KeyCode::Down), "scroll down".to_string()),
+            (KeyId::from('j'), "scroll down".to_string()),
+        ])
+        .into()
     }
 }
 
@@ -82,6 +99,10 @@ impl Component for FileExplorer {
 
     fn get_focused_child(&self) -> Option<std::sync::Arc<std::sync::RwLock<dyn Component>>> {
         None
+    }
+
+    fn get_key_mappings(&self) -> KeyMaps {
+        self.key_mappings.clone()
     }
 }
 

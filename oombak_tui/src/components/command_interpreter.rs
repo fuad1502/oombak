@@ -1,4 +1,4 @@
-use std::sync::mpsc::Sender;
+use std::{collections::HashMap, sync::mpsc::Sender};
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{style::Stylize, text::Line};
@@ -8,7 +8,7 @@ use crate::{
     component::{Component, HandleResult},
     styles::terminal::{FAIL_OUTPUT_STYLE, SUCCESS_OUTPUT_STYLE},
     threads::RendererMessage,
-    widgets::{CommandLine, Terminal, TerminalState},
+    widgets::{CommandLine, KeyId, KeyMaps, Terminal, TerminalState},
 };
 
 use oombak_sim::sim;
@@ -19,6 +19,7 @@ pub struct CommandInterpreter {
     terminal_state: TerminalState,
     line_state: LineState,
     mode: Mode,
+    key_mappings: KeyMaps,
 }
 
 #[derive(PartialEq)]
@@ -35,12 +36,14 @@ pub enum Mode {
 
 impl CommandInterpreter {
     pub fn new(message_tx: Sender<RendererMessage>, request_tx: Sender<sim::Request>) -> Self {
+        let key_mappings = Self::create_key_mappings();
         Self {
             message_tx,
             request_tx,
             terminal_state: TerminalState::default(),
             line_state: LineState::NotActive,
             mode: Mode::Line,
+            key_mappings,
         }
     }
 
@@ -55,6 +58,18 @@ impl CommandInterpreter {
 
     pub fn set_window_mode(&mut self) {
         self.mode = Mode::Window;
+    }
+
+    fn create_key_mappings() -> KeyMaps {
+        HashMap::from([
+            (KeyId::from(KeyCode::Esc), "close window".to_string()),
+            (
+                KeyId::from((KeyCode::Char('d'), KeyModifiers::CONTROL)),
+                "close window".to_string(),
+            ),
+            (KeyId::from(KeyCode::Enter), "execute command".to_string()),
+        ])
+        .into()
     }
 }
 
@@ -79,6 +94,10 @@ impl Component for CommandInterpreter {
 
     fn get_focused_child(&self) -> Option<std::sync::Arc<std::sync::RwLock<dyn Component>>> {
         None
+    }
+
+    fn get_key_mappings(&self) -> KeyMaps {
+        self.key_mappings.clone()
     }
 }
 

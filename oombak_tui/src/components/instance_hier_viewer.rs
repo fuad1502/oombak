@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
@@ -12,6 +12,7 @@ use ratatui::{
 
 use crate::styles::global::SELECTED_ITEM_STYLE;
 use crate::styles::instance_hier_viewer::{INSTANCE_ITEM_STYLE, SIGNAL_ITEM_STYLE};
+use crate::widgets::{KeyId, KeyMaps};
 use crate::{
     component::{Component, HandleResult},
     threads::RendererMessage,
@@ -27,6 +28,7 @@ pub struct InstanceHierViewer {
     selected_item_idx: Option<usize>,
     signals_marked_to_add: HashSet<String>,
     signals_marked_to_remove: HashSet<String>,
+    key_mappings: KeyMaps,
 }
 
 struct InstanceHierNode {
@@ -59,6 +61,7 @@ enum HierItem {
 
 impl InstanceHierViewer {
     pub fn new(message_tx: Sender<RendererMessage>, request_tx: Sender<Request>) -> Self {
+        let key_mappings = Self::create_key_mappings();
         Self {
             message_tx,
             request_tx,
@@ -69,6 +72,7 @@ impl InstanceHierViewer {
             probed_points: HashSet::default(),
             signals_marked_to_add: HashSet::default(),
             signals_marked_to_remove: HashSet::default(),
+            key_mappings,
         }
     }
 
@@ -81,6 +85,21 @@ impl InstanceHierViewer {
         ))));
         self.selected_item_idx = Some(0);
         self.list_state.select_first();
+    }
+
+    fn create_key_mappings() -> KeyMaps {
+        HashMap::from([
+            (KeyId::from('q'), "close window".to_string()),
+            (
+                KeyId::from(KeyCode::Enter),
+                "add / remove signal from probing".to_string(),
+            ),
+            (KeyId::from(KeyCode::Up), "scroll up".to_string()),
+            (KeyId::from('k'), "scroll up".to_string()),
+            (KeyId::from(KeyCode::Down), "scroll down".to_string()),
+            (KeyId::from('j'), "scroll down".to_string()),
+        ])
+        .into()
     }
 }
 
@@ -131,6 +150,10 @@ impl Component for InstanceHierViewer {
 
     fn get_focused_child(&self) -> Option<Arc<RwLock<dyn Component>>> {
         None
+    }
+
+    fn get_key_mappings(&self) -> KeyMaps {
+        self.key_mappings.clone()
     }
 }
 

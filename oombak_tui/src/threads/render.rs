@@ -37,9 +37,12 @@ impl RendererThread {
         let handle = thread::spawn(move || -> ThreadResult {
             let mut message = Message::Render;
             while message != Message::Quit {
-                match terminal
-                    .draw(|frame| root_component.write().unwrap().render(frame, frame.area()))
-                {
+                match terminal.draw(|frame| {
+                    root_component
+                        .write()
+                        .unwrap()
+                        .render_with_command_keys_help_bar(frame, frame.area())
+                }) {
                     Ok(_) => (),
                     Err(e) => {
                         let _ = terminate_group_channel_tx.send(());
