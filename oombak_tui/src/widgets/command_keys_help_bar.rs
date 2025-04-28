@@ -5,9 +5,11 @@ use ratatui::{
     buffer::Buffer,
     layout::{Alignment, Rect},
     style::Style,
-    text::Line,
+    text::{Line, Span},
     widgets::Widget,
 };
+
+use crate::styles::command_keys_help_bar::{DESCRIPTION_STYLE, KEY_ID_STYLE};
 
 #[derive(Clone)]
 pub struct KeyMaps(HashMap<KeyId, String>);
@@ -49,20 +51,53 @@ impl Widget for KeyMapHelpBar<'_> {
     where
         Self: Sized,
     {
-        let mut text = String::new();
+        let mut line = Line::default();
         for key_map in ReversedKeyMaps::from(self.key_maps).0 {
-            let new_item = format!(" {}", KeyMap::from(key_map));
-            if text.len() + new_item.len() > area.width as usize {
+            let key_map = KeyMap::from(key_map);
+            let key_ids = Self::key_ids_to_string(&key_map.key_ids);
+            let spans = vec![
+                Span::from("["),
+                Span::from(key_ids).style(KEY_ID_STYLE),
+                Span::from(": "),
+                Span::from(key_map.description).style(DESCRIPTION_STYLE),
+                Span::from("] "),
+            ];
+            if line.width() + Self::spans_width(&spans) > area.width as usize {
                 break;
             } else {
-                text += &new_item;
+                line = Self::append_spans(line, spans);
             }
         }
 
-        let line = Line::from(text)
-            .alignment(Alignment::Center)
-            .style(self.style);
+        let line = line.alignment(Alignment::Center).style(self.style);
         line.render(area, buf);
+    }
+}
+
+impl KeyMapHelpBar<'_> {
+    fn key_ids_to_string(key_ids: &[KeyId]) -> String {
+        if key_ids.len() > 1 {
+            key_ids
+                .iter()
+                .map(KeyId::to_string)
+                .collect::<Vec<String>>()
+                .join(", ")
+        } else if !key_ids.is_empty() {
+            key_ids[0].to_string()
+        } else {
+            "".to_string()
+        }
+    }
+
+    fn spans_width(spans: &[Span]) -> usize {
+        spans.iter().map(Span::width).sum()
+    }
+
+    fn append_spans<'a>(mut line: Line<'a>, spans: Vec<Span<'a>>) -> Line<'a> {
+        for span in spans {
+            line.push_span(span);
+        }
+        line
     }
 }
 
@@ -103,22 +138,6 @@ impl From<(String, Vec<KeyId>)> for KeyMap {
         KeyMap {
             key_ids: value.1,
             description: value.0,
-        }
-    }
-}
-
-impl std::fmt::Display for KeyMap {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.key_ids.len() > 1 {
-            let ids = self
-                .key_ids
-                .iter()
-                .map(KeyId::to_string)
-                .collect::<Vec<String>>()
-                .join(", ");
-            write!(f, "[({}): {}]", ids, self.description)
-        } else {
-            write!(f, "[{}: {}]", self.key_ids[0], self.description)
         }
     }
 }

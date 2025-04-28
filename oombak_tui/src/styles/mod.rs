@@ -49,3 +49,11 @@ pub mod instance_hier_viewer {
         .fg(Color::Yellow)
         .add_modifier(Modifier::ITALIC);
 }
+
+pub mod command_keys_help_bar {
+    use super::*;
+
+    pub const KEY_ID_STYLE: Style = Style::new().fg(Color::Blue).add_modifier(Modifier::BOLD);
+    pub const DESCRIPTION_STYLE: Style =
+        Style::new().fg(Color::Green).add_modifier(Modifier::ITALIC);
+}
