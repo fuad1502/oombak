@@ -21,7 +21,7 @@ use crate::{
         global::SELECTED_ITEM_STYLE,
     },
     threads::RendererMessage,
-    widgets::{KeyId, KeyMaps},
+    widgets::{KeyDesc, KeyId, KeyMaps},
 };
 
 pub struct FileExplorer {
@@ -52,12 +52,12 @@ impl FileExplorer {
 
     fn create_key_mappings() -> KeyMaps {
         HashMap::from([
-            (KeyId::from('q'), "close window".to_string()),
-            (KeyId::from(KeyCode::Enter), "open".to_string()),
-            (KeyId::from(KeyCode::Up), "scroll up".to_string()),
-            (KeyId::from('k'), "scroll up".to_string()),
-            (KeyId::from(KeyCode::Down), "scroll down".to_string()),
-            (KeyId::from('j'), "scroll down".to_string()),
+            (KeyId::from('q'), KeyDesc::from("close window")),
+            (KeyId::from(KeyCode::Enter), KeyDesc::from("open")),
+            (KeyId::from(KeyCode::Up), KeyDesc::from("scroll up")),
+            (KeyId::from('k'), KeyDesc::from("scroll up")),
+            (KeyId::from(KeyCode::Down), KeyDesc::from("scroll down")),
+            (KeyId::from('j'), KeyDesc::from("scroll down")),
         ])
         .into()
     }

@@ -8,7 +8,7 @@ use crate::{
     component::{Component, HandleResult},
     styles::terminal::{FAIL_OUTPUT_STYLE, SUCCESS_OUTPUT_STYLE},
     threads::RendererMessage,
-    widgets::{CommandLine, KeyId, KeyMaps, Terminal, TerminalState},
+    widgets::{CommandLine, KeyDesc, KeyId, KeyMaps, Terminal, TerminalState},
 };
 
 use oombak_sim::sim;
@@ -62,12 +62,15 @@ impl CommandInterpreter {
 
     fn create_key_mappings() -> KeyMaps {
         HashMap::from([
-            (KeyId::from(KeyCode::Esc), "close window".to_string()),
+            (KeyId::from(KeyCode::Esc), KeyDesc::from("close window")),
             (
                 KeyId::from((KeyCode::Char('d'), KeyModifiers::CONTROL)),
-                "close window".to_string(),
+                KeyDesc::from("close window"),
             ),
-            (KeyId::from(KeyCode::Enter), "execute command".to_string()),
+            (
+                KeyId::from(KeyCode::Enter),
+                KeyDesc::from("execute command"),
+            ),
         ])
         .into()
     }

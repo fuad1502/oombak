@@ -12,7 +12,7 @@ use ratatui::{
 
 use crate::styles::global::SELECTED_ITEM_STYLE;
 use crate::styles::instance_hier_viewer::{INSTANCE_ITEM_STYLE, SIGNAL_ITEM_STYLE};
-use crate::widgets::{KeyId, KeyMaps};
+use crate::widgets::{KeyDesc, KeyId, KeyMaps};
 use crate::{
     component::{Component, HandleResult},
     threads::RendererMessage,
@@ -89,15 +89,15 @@ impl InstanceHierViewer {
 
     fn create_key_mappings() -> KeyMaps {
         HashMap::from([
-            (KeyId::from('q'), "close window".to_string()),
+            (KeyId::from('q'), KeyDesc::from("close window")),
             (
                 KeyId::from(KeyCode::Enter),
-                "add / remove signal from probing".to_string(),
+                KeyDesc::from("add / remove signal from probing"),
             ),
-            (KeyId::from(KeyCode::Up), "scroll up".to_string()),
-            (KeyId::from('k'), "scroll up".to_string()),
-            (KeyId::from(KeyCode::Down), "scroll down".to_string()),
-            (KeyId::from('j'), "scroll down".to_string()),
+            (KeyId::from(KeyCode::Up), KeyDesc::from("scroll up")),
+            (KeyId::from('k'), KeyDesc::from("scroll up")),
+            (KeyId::from(KeyCode::Down), KeyDesc::from("scroll down")),
+            (KeyId::from('j'), KeyDesc::from("scroll down")),
         ])
         .into()
     }

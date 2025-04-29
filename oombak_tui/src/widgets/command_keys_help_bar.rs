@@ -12,19 +12,25 @@ use ratatui::{
 use crate::styles::command_keys_help_bar::{DESCRIPTION_STYLE, KEY_ID_STYLE};
 
 #[derive(Clone)]
-pub struct KeyMaps(HashMap<KeyId, String>);
+pub struct KeyMaps(HashMap<KeyId, KeyDesc>);
 
-pub struct ReversedKeyMaps(BTreeMap<String, Vec<KeyId>>);
+pub struct ReversedKeyMaps(BTreeMap<KeyDesc, Vec<KeyId>>);
 
 pub struct KeyMap {
     pub key_ids: Vec<KeyId>,
-    pub description: String,
+    pub description: KeyDesc,
 }
 
 #[derive(Eq, Hash, PartialEq, Clone)]
 pub struct KeyId {
     pub key_code: KeyCode,
     pub key_modifiers: KeyModifiers,
+}
+
+#[derive(Eq, Hash, PartialEq, Clone, PartialOrd, Ord)]
+pub struct KeyDesc {
+    pub prio: i64,
+    pub desc: String,
 }
 
 pub struct CommandKeysHelpBar<'a> {
@@ -87,31 +93,31 @@ impl KeyMaps {
     }
 }
 
-impl From<HashMap<KeyId, String>> for KeyMaps {
-    fn from(value: HashMap<KeyId, String>) -> Self {
+impl From<HashMap<KeyId, KeyDesc>> for KeyMaps {
+    fn from(value: HashMap<KeyId, KeyDesc>) -> Self {
         KeyMaps(value)
     }
 }
 
 impl From<&KeyMaps> for ReversedKeyMaps {
     fn from(key_maps: &KeyMaps) -> Self {
-        let mut reversed_key_maps: BTreeMap<String, Vec<KeyId>> = BTreeMap::new();
+        let mut reversed_key_maps: BTreeMap<KeyDesc, Vec<KeyId>> = BTreeMap::new();
         for (k, v) in key_maps {
             if let Some(key_ids) = reversed_key_maps.get_mut(v) {
                 key_ids.push(k.clone());
             } else {
-                reversed_key_maps.insert(v.to_string(), vec![k.clone()]);
+                reversed_key_maps.insert(v.clone(), vec![k.clone()]);
             }
         }
         ReversedKeyMaps(reversed_key_maps)
     }
 }
 
-impl<'a> From<(&'a String, &'a Vec<KeyId>)> for KeyMap {
-    fn from(value: (&'a String, &'a Vec<KeyId>)) -> Self {
+impl<'a> From<(&'a KeyDesc, &'a Vec<KeyId>)> for KeyMap {
+    fn from(value: (&'a KeyDesc, &'a Vec<KeyId>)) -> Self {
         KeyMap {
             key_ids: value.1.to_vec(),
-            description: value.0.to_string(),
+            description: value.0.clone(),
         }
     }
 }
@@ -129,7 +135,7 @@ impl<'a> From<&'a KeyMap> for Vec<Span<'a>> {
             Span::from("["),
             Span::from(key_ids).style(KEY_ID_STYLE),
             Span::from(": "),
-            Span::from(value.description.clone()).style(DESCRIPTION_STYLE),
+            Span::from(value.description.desc.clone()).style(DESCRIPTION_STYLE),
             Span::from("] "),
         ]
     }
@@ -215,9 +221,9 @@ impl From<&ReversedKeyMaps> for Vec<KeyMap> {
 }
 
 impl<'a> IntoIterator for &'a KeyMaps {
-    type Item = (&'a KeyId, &'a String);
+    type Item = (&'a KeyId, &'a KeyDesc);
 
-    type IntoIter = hash_map::Iter<'a, KeyId, String>;
+    type IntoIter = hash_map::Iter<'a, KeyId, KeyDesc>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
@@ -225,11 +231,37 @@ impl<'a> IntoIterator for &'a KeyMaps {
 }
 
 impl<'a> IntoIterator for &'a ReversedKeyMaps {
-    type Item = (&'a String, &'a Vec<KeyId>);
+    type Item = (&'a KeyDesc, &'a Vec<KeyId>);
 
-    type IntoIter = btree_map::Iter<'a, String, Vec<KeyId>>;
+    type IntoIter = btree_map::Iter<'a, KeyDesc, Vec<KeyId>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.iter()
+    }
+}
+
+impl KeyMaps {
+    pub fn insert(&mut self, key_id: KeyId, description: KeyDesc) {
+        self.0.insert(key_id, description);
+    }
+}
+
+impl KeyDesc {
+    pub fn desc(&self) -> &str {
+        &self.desc
+    }
+
+    pub fn prio(mut self, prio: i64) -> Self {
+        self.prio = prio;
+        self
+    }
+}
+
+impl From<&str> for KeyDesc {
+    fn from(desc: &str) -> Self {
+        KeyDesc {
+            prio: 0,
+            desc: desc.to_string(),
+        }
     }
 }

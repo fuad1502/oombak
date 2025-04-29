@@ -4,7 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::component::{Component, HandleResult};
 use crate::threads::RendererMessage;
-use crate::widgets::{KeyId, KeyMaps};
+use crate::widgets::{KeyDesc, KeyId, KeyMaps};
 use oombak_sim::sim::{self, SimulationResult};
 
 use crossterm::event::{KeyCode, KeyEvent};
@@ -73,15 +73,15 @@ impl Root {
 
     fn create_key_mappings() -> KeyMaps {
         HashMap::from([
-            (KeyId::from('q'), "quit".to_string()),
-            (KeyId::from('o'), "load sim file".to_string()),
-            (KeyId::from('t'), "open terminal".to_string()),
-            (KeyId::from('s'), "open probe editor".to_string()),
-            (KeyId::from(':'), "open command line".to_string()),
-            (KeyId::from(KeyCode::Up), "scroll up".to_string()),
-            (KeyId::from('k'), "scroll up".to_string()),
-            (KeyId::from(KeyCode::Down), "scroll down".to_string()),
-            (KeyId::from('j'), "scroll down".to_string()),
+            (KeyId::from('q'), KeyDesc::from("quit")),
+            (KeyId::from('o'), KeyDesc::from("load sim file")),
+            (KeyId::from('t'), KeyDesc::from("open terminal")),
+            (KeyId::from('s'), KeyDesc::from("open probe editor")),
+            (KeyId::from(':'), KeyDesc::from("open command line")),
+            (KeyId::from(KeyCode::Up), KeyDesc::from("scroll up")),
+            (KeyId::from('k'), KeyDesc::from("scroll up")),
+            (KeyId::from(KeyCode::Down), KeyDesc::from("scroll down")),
+            (KeyId::from('j'), KeyDesc::from("scroll down")),
         ])
         .into()
     }
@@ -200,7 +200,7 @@ impl Component for Root {
     }
 
     fn get_key_mappings(&self) -> KeyMaps {
-        match self.focused_child {
+        let mut key_maps = match self.focused_child {
             Some(Child::CommandInterpreter) => {
                 self.command_interpreter.read().unwrap().get_key_mappings()
             }
@@ -209,7 +209,13 @@ impl Component for Root {
             }
             Some(Child::FileExplorer) => self.file_explorer.read().unwrap().get_key_mappings(),
             None => self.key_mappings.clone(),
-        }
+        };
+
+        key_maps.insert(
+            KeyId::from(KeyCode::F(2)),
+            KeyDesc::from("toggle help").prio(-1),
+        );
+        key_maps
     }
 }
 
