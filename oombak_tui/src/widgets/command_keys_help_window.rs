@@ -4,7 +4,7 @@ use ratatui::{
     widgets::{Cell, Row, StatefulWidget, Table, Widget},
 };
 
-use super::{command_keys_help_bar::ReversedKeyMaps, KeyMaps, ScrollState};
+use super::{KeyMaps, ReversedKeyMaps, ScrollState};
 
 pub struct CommandKeysHelpWindow<'a> {
     key_maps: &'a KeyMaps,
