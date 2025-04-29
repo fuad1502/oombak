@@ -9,18 +9,21 @@ use oombak_sim::sim::{self, SimulationResult};
 
 use crossterm::event::{KeyCode, KeyEvent};
 
-use ratatui::layout::{Constraint, Direction, Layout, Rect};
+use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
 use ratatui::widgets::{Block, Borders, Clear};
 use ratatui::Frame;
 
 use super::models::SimulationSpec;
-use super::{CommandInterpreter, FileExplorer, InstanceHierViewer, SignalsViewer, WaveViewer};
+use super::{
+    CommandInterpreter, FileExplorer, InstanceHierViewer, KeyMapsViewer, SignalsViewer, WaveViewer,
+};
 
 pub struct Root {
     message_tx: Sender<RendererMessage>,
     request_tx: Sender<sim::Request>,
     signals_viewer: SignalsViewer,
     wave_viewer: WaveViewer,
+    key_maps_viewer: KeyMapsViewer,
     instance_hier_viewer: Arc<RwLock<InstanceHierViewer>>,
     command_interpreter: Arc<RwLock<CommandInterpreter>>,
     file_explorer: Arc<RwLock<FileExplorer>>,
@@ -28,6 +31,7 @@ pub struct Root {
     simulation_spec: SimulationSpec,
     reload_simulation: bool,
     key_mappings: KeyMaps,
+    show_key_maps: bool,
 }
 
 enum Child {
@@ -49,6 +53,7 @@ impl Root {
             request_tx: request_tx.clone(),
             wave_viewer: WaveViewer::default().simulation(simulation_spec.clone()),
             signals_viewer: SignalsViewer::default().simulation(simulation_spec.clone()),
+            key_maps_viewer: KeyMapsViewer::new(key_mappings.clone()),
             instance_hier_viewer: Arc::new(RwLock::new(InstanceHierViewer::new(
                 message_tx.clone(),
                 request_tx.clone(),
@@ -62,6 +67,7 @@ impl Root {
             simulation_spec,
             reload_simulation: false,
             key_mappings,
+            show_key_maps: false,
         }
     }
 
@@ -107,6 +113,9 @@ impl Component for Root {
         }
         if matches!(self.focused_child, Some(Child::FileExplorer)) {
             self.render_file_explorer(f, rect);
+        }
+        if self.show_key_maps {
+            self.render_key_maps_viewer(f, rect);
         }
     }
 
@@ -155,6 +164,15 @@ impl Component for Root {
             }
             KeyCode::Char('o') => {
                 self.focused_child = Some(Child::FileExplorer);
+            }
+            KeyCode::F(1) => {
+                self.key_maps_viewer.prev_page();
+            }
+            KeyCode::F(2) => {
+                self.show_key_maps = !self.show_key_maps;
+            }
+            KeyCode::F(3) => {
+                self.key_maps_viewer.next_page();
             }
             _ => return HandleResult::NotHandled,
         }
@@ -208,7 +226,7 @@ impl Root {
     }
 
     fn render_instance_hier_viewer(&self, f: &mut Frame, rect: Rect) {
-        let popup_area = Self::get_popup_area(rect);
+        let popup_area = Self::get_popup_area_centered_large(rect);
         let block = Block::new().borders(Borders::ALL);
         f.render_widget(Clear, popup_area);
         self.instance_hier_viewer
@@ -218,13 +236,28 @@ impl Root {
     }
 
     fn render_file_explorer(&self, f: &mut Frame, rect: Rect) {
-        let popup_area = Self::get_popup_area(rect);
+        let popup_area = Self::get_popup_area_centered_large(rect);
         let block = Block::new().borders(Borders::ALL);
         f.render_widget(Clear, popup_area);
         self.file_explorer
             .write()
             .unwrap()
             .render_with_block(f, popup_area, block);
+    }
+
+    fn render_key_maps_viewer(&mut self, f: &mut Frame, rect: Rect) {
+        self.key_maps_viewer
+            .set_key_maps(self.get_key_mappings().clone());
+        let popup_area = Self::get_popup_area_bottom_right(rect);
+        let block = Block::new()
+            .borders(Borders::ALL)
+            .title_top("Command Keys (F2)")
+            .title_bottom(" ← F1 | F3 → ")
+            .title_alignment(Alignment::Center);
+        let inner = block.inner(popup_area);
+        f.render_widget(Clear, popup_area);
+        f.render_widget(block, popup_area);
+        self.key_maps_viewer.render_mut(f, inner);
     }
 
     fn render_command_interpreter(&self, f: &mut Frame, window_area: Rect, line_area: Rect) {
@@ -244,7 +277,7 @@ impl Root {
     }
 
     fn render_interpreter_on_window(&self, f: &mut Frame, rect: Rect) {
-        let popup_area = Self::get_popup_area(rect);
+        let popup_area = Self::get_popup_area_centered_large(rect);
         let block = Block::new().borders(Borders::ALL);
         let inner = block.inner(popup_area);
         f.render_widget(Clear, popup_area);
@@ -260,17 +293,39 @@ impl Root {
         self.signals_viewer.set_highlight(highlight_idx);
     }
 
-    fn get_popup_area(rect: Rect) -> Rect {
+    fn get_popup_area_centered_large(rect: Rect) -> Rect {
+        Self::get_popup_area_centered(rect, 3, 6)
+    }
+
+    fn get_popup_area_bottom_right(rect: Rect) -> Rect {
+        let min_width = 40;
+        let min_height = 13;
+        let top_margin = 3.max(rect.height as i64 - min_height - 3);
+        let left_margin = 6.max(rect.width as i64 - min_width - 6);
+        Self::get_popup_area(rect, top_margin as u16, 6, 3, left_margin as u16)
+    }
+
+    fn get_popup_area_centered(rect: Rect, vert_margin: u16, hor_margin: u16) -> Rect {
+        Self::get_popup_area(rect, vert_margin, hor_margin, vert_margin, hor_margin)
+    }
+
+    fn get_popup_area(
+        rect: Rect,
+        top_margin: u16,
+        right_margin: u16,
+        bottom_margin: u16,
+        left_margin: u16,
+    ) -> Rect {
         let chunks = Layout::vertical(vec![
-            Constraint::Length(2),
+            Constraint::Length(top_margin),
             Constraint::Min(0),
-            Constraint::Length(2),
+            Constraint::Length(bottom_margin),
         ])
         .split(rect);
         let chunks = Layout::horizontal(vec![
-            Constraint::Length(5),
+            Constraint::Length(left_margin),
             Constraint::Min(0),
-            Constraint::Length(5),
+            Constraint::Length(right_margin),
         ])
         .split(chunks[1]);
         chunks[1]

@@ -164,6 +164,9 @@ impl CommandInterpreter {
             (KeyCode::Left, _) => {
                 command_line_state.move_cursor_left();
             }
+            (KeyCode::F(_), _) => {
+                return HandleResult::NotHandled;
+            }
             _ => (),
         };
         self.notify_render();

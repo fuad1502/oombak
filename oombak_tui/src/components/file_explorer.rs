@@ -85,6 +85,7 @@ impl Component for FileExplorer {
                 }
             }
             KeyCode::Char('q') => return HandleResult::ReleaseFocus,
+            KeyCode::F(_) => return HandleResult::NotHandled,
             _ => (),
         }
         self.notify_render();

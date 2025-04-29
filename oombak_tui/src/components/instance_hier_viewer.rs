@@ -135,6 +135,7 @@ impl Component for InstanceHierViewer {
             KeyCode::Enter => self.perform_action_on_selected(),
             KeyCode::Down | KeyCode::Char('j') => self.scroll_down(),
             KeyCode::Up | KeyCode::Char('k') => self.scroll_up(),
+            KeyCode::F(_) => return HandleResult::NotHandled,
             _ => (),
         }
         self.notify_render();

@@ -7,7 +7,7 @@ use ratatui::{
     Frame,
 };
 
-use crate::widgets::{KeyMapHelpBar, KeyMaps};
+use crate::widgets::{CommandKeysHelpBar, KeyMaps};
 
 pub trait Component: Send + Sync {
     fn render(&mut self, f: &mut Frame, rect: Rect);
@@ -30,7 +30,7 @@ pub trait Component: Send + Sync {
 
     fn render_with_command_keys_help_bar(&mut self, f: &mut Frame, rect: Rect) {
         let key_maps = self.get_key_mappings();
-        let help_bar = KeyMapHelpBar::new(&key_maps);
+        let help_bar = CommandKeysHelpBar::new(&key_maps);
         let chunks = Layout::vertical(vec![Constraint::Min(0), Constraint::Length(1)]).split(rect);
         f.render_widget(help_bar, chunks[1]);
         self.render(f, chunks[0]);
