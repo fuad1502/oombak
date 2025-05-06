@@ -4,6 +4,9 @@ use std::sync::{Arc, RwLock};
 
 use crossterm::event::KeyCode;
 use oombak_sim::sim::{InstanceNode, LoadedDut, ProbePointsModification, Request, Signal};
+use ratatui::layout::Rect;
+use ratatui::widgets::Clear;
+use ratatui::Frame;
 use ratatui::{
     layout::{Alignment, Constraint, Layout},
     text::Line,
@@ -18,9 +21,13 @@ use crate::{
     threads::RendererMessage,
 };
 
+use super::Confirmer;
+
 pub struct InstanceHierViewer {
     message_tx: Sender<RendererMessage>,
     request_tx: Sender<Request>,
+    focused_child: Option<Child>,
+    confirmer: Arc<RwLock<Confirmer>>,
     root_node: Option<Arc<RwLock<InstanceHierNode>>>,
     probed_points: HashSet<String>,
     items_in_list: Vec<HierItem>,
@@ -29,6 +36,10 @@ pub struct InstanceHierViewer {
     signals_marked_to_add: HashSet<String>,
     signals_marked_to_remove: HashSet<String>,
     key_mappings: KeyMaps,
+}
+
+enum Child {
+    Confirmer,
 }
 
 struct InstanceHierNode {
@@ -62,9 +73,12 @@ enum HierItem {
 impl InstanceHierViewer {
     pub fn new(message_tx: Sender<RendererMessage>, request_tx: Sender<Request>) -> Self {
         let key_mappings = Self::create_key_mappings();
+        let confirmer = Arc::new(RwLock::new(Confirmer::new(message_tx.clone())));
         Self {
             message_tx,
             request_tx,
+            focused_child: None,
+            confirmer,
             root_node: None,
             items_in_list: vec![],
             list_state: ListState::default(),
@@ -89,7 +103,7 @@ impl InstanceHierViewer {
 
     fn create_key_mappings() -> KeyMaps {
         HashMap::from([
-            (KeyId::from('q'), KeyDesc::from("close window")),
+            (KeyId::from('q'), KeyDesc::from("confirm / dismiss changes")),
             (
                 KeyId::from(KeyCode::Enter),
                 KeyDesc::from("add / remove signal from probing"),
@@ -120,6 +134,10 @@ impl Component for InstanceHierViewer {
             let message = Paragraph::new("DUT not loaded").alignment(Alignment::Center);
             f.render_widget(message, rect);
         }
+
+        if matches!(self.focused_child, Some(Child::Confirmer)) {
+            self.render_confirmation_box(f, rect);
+        }
     }
 
     fn handle_key_event(
@@ -128,9 +146,23 @@ impl Component for InstanceHierViewer {
     ) -> crate::component::HandleResult {
         match key_event.code {
             KeyCode::Char('q') => {
-                self.request_modify_probe_points();
-                self.clear_marked_signals();
-                return HandleResult::ReleaseFocus;
+                if self.root_node.is_some() && !self.signals_marked_to_add.is_empty()
+                    || !self.signals_marked_to_remove.is_empty()
+                {
+                    self.focused_child = Some(Child::Confirmer);
+                    let mut text =
+                        String::from("Would you like to apply the following changes?\n\n");
+                    for s in &self.signals_marked_to_add {
+                        text += &format!("(+) {s}\n");
+                    }
+                    for s in &self.signals_marked_to_remove {
+                        text += &format!("(-) {s}\n");
+                    }
+                    self.confirmer.write().unwrap().set_text(&text);
+                } else {
+                    self.notify_render();
+                    return HandleResult::ReleaseFocus;
+                }
             }
             KeyCode::Enter => self.perform_action_on_selected(),
             KeyCode::Down | KeyCode::Char('j') => self.scroll_down(),
@@ -147,20 +179,85 @@ impl Component for InstanceHierViewer {
         HandleResult::Handled
     }
 
-    fn handle_focus_gained(&mut self) {}
+    fn handle_focus_gained(&mut self) -> HandleResult {
+        self.focused_child = None;
+        let is_confirm = self.confirmer.read().unwrap().selected_state().is_confirm();
+        if is_confirm {
+            self.request_modify_probe_points();
+            self.clear_marked_signals();
+        }
+        self.notify_render();
+        HandleResult::ReleaseFocus
+    }
 
     fn get_focused_child(&self) -> Option<Arc<RwLock<dyn Component>>> {
-        None
+        match &self.focused_child {
+            Some(Child::Confirmer) => Some(self.confirmer.clone()),
+            None => None,
+        }
     }
 
     fn get_key_mappings(&self) -> KeyMaps {
-        self.key_mappings.clone()
+        match self.focused_child {
+            Some(Child::Confirmer) => self.confirmer.read().unwrap().get_key_mappings(),
+            None => self.key_mappings.clone(),
+        }
     }
 }
 
 impl InstanceHierViewer {
     fn notify_render(&self) {
         self.message_tx.send(RendererMessage::Render).unwrap();
+    }
+
+    fn render_confirmation_box(&mut self, f: &mut Frame, rect: Rect) {
+        let popup_area = Self::get_popup_area_centered(rect, 3, 6, 30, 8);
+        f.render_widget(Clear, popup_area);
+        self.confirmer.write().unwrap().render(f, popup_area);
+    }
+
+    fn get_popup_area_centered(
+        rect: Rect,
+        vert_margin: u16,
+        hor_margin: u16,
+        max_width: u16,
+        max_height: u16,
+    ) -> Rect {
+        let vert_margin = (vert_margin as i64 * 2)
+            .max(rect.height as i64 - max_height as i64 - vert_margin as i64)
+            / 2;
+        let hor_margin = (hor_margin as i64 * 2)
+            .max(rect.width as i64 - max_width as i64 - hor_margin as i64)
+            / 2;
+        Self::get_popup_area(
+            rect,
+            vert_margin as u16,
+            hor_margin as u16,
+            vert_margin as u16,
+            hor_margin as u16,
+        )
+    }
+
+    fn get_popup_area(
+        rect: Rect,
+        top_margin: u16,
+        right_margin: u16,
+        bottom_margin: u16,
+        left_margin: u16,
+    ) -> Rect {
+        let chunks = Layout::vertical(vec![
+            Constraint::Length(top_margin),
+            Constraint::Min(0),
+            Constraint::Length(bottom_margin),
+        ])
+        .split(rect);
+        let chunks = Layout::horizontal(vec![
+            Constraint::Length(left_margin),
+            Constraint::Min(0),
+            Constraint::Length(right_margin),
+        ])
+        .split(chunks[1]);
+        chunks[1]
     }
 
     fn get_flattened_hierarchy(

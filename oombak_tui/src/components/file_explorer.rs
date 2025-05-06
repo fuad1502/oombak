@@ -96,7 +96,9 @@ impl Component for FileExplorer {
         HandleResult::NotHandled
     }
 
-    fn handle_focus_gained(&mut self) {}
+    fn handle_focus_gained(&mut self) -> HandleResult {
+        HandleResult::Handled
+    }
 
     fn get_focused_child(&self) -> Option<std::sync::Arc<std::sync::RwLock<dyn Component>>> {
         None

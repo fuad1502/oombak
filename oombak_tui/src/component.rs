@@ -16,7 +16,7 @@ pub trait Component: Send + Sync {
 
     fn handle_resize_event(&mut self, columns: u16, rows: u16) -> HandleResult;
 
-    fn handle_focus_gained(&mut self);
+    fn handle_focus_gained(&mut self) -> HandleResult;
 
     fn get_focused_child(&self) -> Option<Arc<RwLock<dyn Component>>>;
 
@@ -39,10 +39,7 @@ pub trait Component: Send + Sync {
     fn handle_event(&mut self, event: &Event) -> HandleResult {
         match self.try_propagate_event(event) {
             HandleResult::Handled => HandleResult::Handled,
-            HandleResult::ReleaseFocus => {
-                self.handle_focus_gained();
-                HandleResult::Handled
-            }
+            HandleResult::ReleaseFocus => self.handle_focus_gained(),
             HandleResult::NotHandled => match event {
                 Event::Key(key_event) => self.handle_key_event(key_event),
                 Event::Resize(columns, rows) => self.handle_resize_event(*columns, *rows),

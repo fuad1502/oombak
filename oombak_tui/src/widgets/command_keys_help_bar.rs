@@ -53,4 +53,3 @@ fn append_spans<'a>(mut line: Line<'a>, spans: Vec<Span<'a>>) -> Line<'a> {
     }
     line
 }
-

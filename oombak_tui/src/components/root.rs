@@ -185,9 +185,10 @@ impl Component for Root {
         HandleResult::Handled
     }
 
-    fn handle_focus_gained(&mut self) {
+    fn handle_focus_gained(&mut self) -> HandleResult {
         self.notify_render();
         self.focused_child = None;
+        HandleResult::Handled
     }
 
     fn get_focused_child(&self) -> Option<Arc<RwLock<dyn Component>>> {

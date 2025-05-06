@@ -1,6 +1,7 @@
 mod command_keys_help_bar;
 mod command_keys_help_window;
 mod command_line;
+mod confirmation_box;
 mod key_maps;
 mod scroll_state;
 mod terminal;
@@ -11,6 +12,8 @@ pub use command_keys_help_bar::CommandKeysHelpBar;
 pub use command_keys_help_window::CommandKeysHelpWindow;
 pub use command_line::CommandLine;
 pub use command_line::CommandLineState;
+pub use confirmation_box::ConfirmationBox;
+pub use confirmation_box::ConfirmationState;
 pub use key_maps::KeyDesc;
 pub use key_maps::KeyId;
 pub use key_maps::KeyMaps;
