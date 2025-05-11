@@ -19,17 +19,37 @@ using std::vector;
 
 class InstanceTreeBuilder : public ASTVisitor<InstanceTreeBuilder, true, true> {
 public:
-  InstanceTreeBuilder(Instance *root_instance) {
+  InstanceTreeBuilder(Instance *root_instance,
+                      std::string_view top_module_name) {
     this->root_instance = root_instance;
+    this->top_module_name = top_module_name;
+    root_instance->parent_instance = NULL;
+    root_instance->name = NULL;
+    root_instance->module_name = NULL;
+    root_instance->child_instances_len = 0;
+    root_instance->child_instances = NULL;
+    root_instance->signals_len = 0;
+    root_instance->signals = NULL;
   }
 
+  bool is_root_found() { return root_instance->name != NULL; }
+
   void handle(const InstanceSymbol &s) {
-    root_instance->parent_instance = NULL;
-    visitInstance(s, root_instance);
+    if (is_root_found()) {
+      return;
+    } else if (module_name(s) == top_module_name) {
+      visitInstance(s, root_instance);
+    } else {
+      for (auto it = s.body.membersOfType<InstanceSymbol>().begin();
+           it != s.body.membersOfType<InstanceSymbol>().end(); it.increment()) {
+        visitDefault(s);
+      }
+    }
   }
 
 private:
   Instance *root_instance;
+  std::string_view top_module_name;
 
   void visitInstance(const InstanceSymbol &symbol, Instance *instance) {
     set_name(instance, symbol);
@@ -40,7 +60,11 @@ private:
   }
 
   void set_name(Instance *instance, const InstanceSymbol &symbol) {
-    instance->name = strdup(string(symbol.name).c_str());
+    if (is_root_found()) {
+      instance->name = strdup(string(symbol.name).c_str());
+    } else {
+      instance->name = strdup(string(symbol.body.name).c_str());
+    }
     instance->module_name = strdup(string(symbol.body.name).c_str());
   }
 
@@ -153,5 +177,9 @@ private:
       else
         return false;
     };
+  }
+
+  const std::string_view &module_name(const InstanceSymbol &s) {
+    return s.body.name;
   }
 };

@@ -74,11 +74,14 @@ Instance *OombakParser::get_instance_tree(
     const std::vector<std::string_view> &source_paths,
     std::string_view top_module_name) {
   free_instance(&root_instance);
-  InstanceTreeBuilder visitor(&root_instance);
+  InstanceTreeBuilder visitor(&root_instance, top_module_name);
   Compilation compilation;
   add_syntax_trees(compilation, source_paths);
   check_compilation(compilation);
   compilation.getRoot().visit(visitor);
+  if (!visitor.is_root_found()) {
+    return NULL;
+  }
   return &root_instance;
 }
 
