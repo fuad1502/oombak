@@ -98,6 +98,7 @@ struct RequestServer {
     dut: Option<Dut>,
     probe: Option<Probe>,
     sv_path: Option<PathBuf>,
+    temp_gen_dir: Option<TempGenDir>,
     listeners: Arc<RwLock<Listeners>>,
     simulation_time: u64,
     simulation_result: SimulationResult,
@@ -108,6 +109,7 @@ impl RequestServer {
         Self {
             dut: None,
             sv_path: None,
+            temp_gen_dir: None,
             probe: None,
             listeners,
             simulation_time: 0,
@@ -156,6 +158,7 @@ impl RequestServer {
         let (temp_gen_dir, probe) = oombak_gen::build(sv_path)?;
         let loaded_dut = LoadedDut::from(&probe);
         let lib_path = temp_gen_dir.lib_path();
+        self.temp_gen_dir = Some(temp_gen_dir);
         self.dut = Some(Dut::new(lib_path.to_string_lossy().as_ref())?);
         self.sv_path = Some(sv_path.to_path_buf());
         self.probe = Some(probe);
@@ -170,6 +173,7 @@ impl RequestServer {
         self.modify_probe(probe_points_modification)?;
         let temp_gen_dir = self.rebuild_sv_path()?;
         let lib_path = temp_gen_dir.lib_path();
+        self.temp_gen_dir = Some(temp_gen_dir);
         self.dut = Some(Dut::new(lib_path.to_string_lossy().as_ref())?);
         self.reload_simulation_result()?;
         Ok(LoadedDut::from(
