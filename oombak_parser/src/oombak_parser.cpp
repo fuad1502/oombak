@@ -11,12 +11,15 @@
 using slang::ast::Compilation;
 using slang::syntax::SyntaxTree;
 
-std::vector<std::string_view>
+static std::vector<std::string_view>
 from_colon_separated_paths(const char *colon_separated_paths);
+
+static void free_instance(Instance *instance);
 
 class OombakParser {
 public:
   OombakParser();
+  ~OombakParser();
   Instance *get_instance_tree(const std::vector<std::string_view> &source_paths,
                               std::string_view top_module_name);
 
@@ -65,9 +68,12 @@ oombak_parser_parse(OombakCtx ctx, const char *source_paths,
 
 OombakParser::OombakParser() {}
 
+OombakParser::~OombakParser() { free_instance(&root_instance); }
+
 Instance *OombakParser::get_instance_tree(
     const std::vector<std::string_view> &source_paths,
     std::string_view top_module_name) {
+  free_instance(&root_instance);
   InstanceTreeBuilder visitor(&root_instance);
   Compilation compilation;
   add_syntax_trees(compilation, source_paths);
@@ -104,4 +110,15 @@ from_colon_separated_paths(const char *colon_separated_paths) {
     }
   }
   return result;
+}
+
+void free_instance(Instance *instance) {
+  delete instance->name;
+  delete instance->module_name;
+  for (int i = 0; i < instance->signals_len; i++) {
+    delete instance->signals[i].name;
+  }
+  for (int i = 0; i < instance->child_instances_len; i++) {
+    free_instance(instance->child_instances[i]);
+  }
 }
