@@ -66,7 +66,15 @@ oombak_parser_parse(OombakCtx ctx, const char *source_paths,
   }
 }
 
-OombakParser::OombakParser() {}
+OombakParser::OombakParser() {
+  root_instance.parent_instance = NULL;
+  root_instance.name = NULL;
+  root_instance.module_name = NULL;
+  root_instance.child_instances_len = 0;
+  root_instance.child_instances = NULL;
+  root_instance.signals_len = 0;
+  root_instance.signals = NULL;
+}
 
 OombakParser::~OombakParser() { free_instance(&root_instance); }
 
@@ -116,11 +124,12 @@ from_colon_separated_paths(const char *colon_separated_paths) {
 }
 
 void free_instance(Instance *instance) {
-  delete instance->name;
-  delete instance->module_name;
+  free((void *)instance->name);
+  free((void *)instance->module_name);
   for (int i = 0; i < instance->signals_len; i++) {
-    delete instance->signals[i].name;
+    free((void *)instance->signals[i].name);
   }
+  free(instance->signals);
   for (int i = 0; i < instance->child_instances_len; i++) {
     free_instance(instance->child_instances[i]);
   }
