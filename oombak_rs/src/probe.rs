@@ -95,6 +95,15 @@ impl Probe {
         }
     }
 
+    pub fn remove_signal_from_probe(&mut self, path: &str) -> OombakResult<()> {
+        if let Some(index) = self.points.iter().position(|p| p.path == path) {
+            self.points.remove(index);
+            Ok(())
+        } else {
+            Err(Error::UnknownSignal(path.to_string()).into())
+        }
+    }
+
     pub fn top_level_module_name(&self) -> &str {
         &self.top_level_module_name
     }

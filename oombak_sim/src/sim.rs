@@ -202,6 +202,9 @@ impl RequestServer {
         for path in probe_points_modification.to_add.iter() {
             probe.add_signal_to_probe(path)?;
         }
+        for path in probe_points_modification.to_remove.iter() {
+            probe.remove_signal_from_probe(path)?;
+        }
         Ok(())
     }
 
