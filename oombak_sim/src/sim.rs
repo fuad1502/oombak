@@ -12,7 +12,12 @@ use bitvec::vec::BitVec;
 use oombak_gen::TempGenDir;
 use oombak_rs::{dut::Dut, error::OombakResult, probe::Probe};
 
-use crate::error::{OombakSimError, OombakSimResult};
+use crate::{
+    error::{OombakSimError, OombakSimResult},
+    request::{self, ProbePointsModification},
+    response::{self, LoadedDut, SimulationResult, Wave},
+    Request, Response,
+};
 
 pub struct Simulator {
     request_tx: Sender<Request>,
@@ -23,35 +28,6 @@ type Listeners = Vec<Arc<RwLock<dyn Listener>>>;
 
 pub trait Listener: Send + Sync {
     fn on_receive_reponse(&mut self, response: &Response);
-}
-
-pub enum Request {
-    Run(u64),
-    SetSignal(String, BitVec<u32>),
-    Load(PathBuf),
-    ModifyProbedPoints(ProbePointsModification),
-    GetSimulationResult,
-    Terminate,
-}
-
-pub enum Response<'a> {
-    RunResult(Result<u64, String>),
-    SetSignalResult(Result<(), String>),
-    LoadResult(Result<LoadedDut, String>),
-    ModifyProbedPointsResult(Result<LoadedDut, String>),
-    SimulationResult(Result<&'a SimulationResult, String>),
-}
-
-pub use oombak_rs::parser::{InstanceNode, Signal, SignalType};
-
-pub struct ProbePointsModification {
-    pub to_add: Vec<String>,
-    pub to_remove: Vec<String>,
-}
-
-pub struct LoadedDut {
-    pub root_node: InstanceNode,
-    pub probed_points: Vec<String>,
 }
 
 impl Simulator {
@@ -77,20 +53,22 @@ impl Simulator {
         let _ = thread::spawn(move || -> Result<(), String> {
             let mut server = RequestServer::new(listeners);
             loop {
-                match request_rx.recv().map_err(|e| e.to_string())? {
-                    Request::Run(duration) => server.serve_run(duration),
-                    Request::SetSignal(signal_name, value) => {
+                let request = request_rx.recv().map_err(|e| e.to_string())?;
+                server.serving_id = request.id;
+                match request.payload {
+                    request::Payload::Run(duration) => server.serve_run(duration),
+                    request::Payload::SetSignal(signal_name, value) => {
                         server.serve_set_signal(&signal_name, &value)
                     }
-                    Request::Load(sv_path) => server.serve_load(&sv_path),
-                    Request::ModifyProbedPoints(probe_points_modification) => {
+                    request::Payload::Load(sv_path) => server.serve_load(&sv_path),
+                    request::Payload::ModifyProbedPoints(probe_points_modification) => {
                         server.serve_modify_probe_points(&probe_points_modification)
                     }
-                    Request::GetSimulationResult => server.serve_simulation_result(),
-                    Request::Terminate => {
+                    request::Payload::GetSimulationResult => server.serve_simulation_result(),
+                    request::Payload::Terminate => {
                         // TODO: Why is it necessary that we release resources here?
                         server.release_resources();
-                        break (Ok(()))
+                        break (Ok(()));
                     }
                 }
             }
@@ -99,6 +77,7 @@ impl Simulator {
 }
 
 struct RequestServer {
+    serving_id: usize,
     dut: Option<Dut>,
     probe: Option<Probe>,
     sv_path: Option<PathBuf>,
@@ -111,6 +90,7 @@ struct RequestServer {
 impl RequestServer {
     fn new(listeners: Arc<RwLock<Listeners>>) -> Self {
         Self {
+            serving_id: 0,
             dut: None,
             sv_path: None,
             temp_gen_dir: None,
@@ -123,39 +103,39 @@ impl RequestServer {
 
     fn serve_run(&mut self, duration: u64) {
         let response = match self.run(duration) {
-            Ok(duration) => Response::RunResult(Ok(duration)),
-            Err(e) => Response::RunResult(Err(e.to_string())),
+            Ok(current_time) => response::Payload::current_time(current_time),
+            Err(e) => response::Payload::Error(Box::new(e)),
         };
         self.notify_listeners(response);
     }
 
     fn serve_set_signal(&self, signal_name: &str, value: &BitVec<u32>) {
-        let response = match self.set_signal(signal_name, value) {
-            Ok(_) => Response::SetSignalResult(Ok(())),
-            Err(e) => Response::SetSignalResult(Err(e.to_string())),
+        let payload = match self.set_signal(signal_name, value) {
+            Ok(_) => response::Payload::empty(),
+            Err(e) => response::Payload::Error(Box::new(e)),
         };
-        self.notify_listeners(response);
+        self.notify_listeners(payload);
     }
 
     fn serve_load(&mut self, sv_path: &Path) {
-        let response = match self.load_dut(sv_path) {
-            Ok(loaded_dut) => Response::LoadResult(Ok(loaded_dut)),
-            Err(e) => Response::LoadResult(Err(e.to_string())),
+        let payload = match self.load_dut(sv_path) {
+            Ok(loaded_dut) => response::Payload::from(loaded_dut),
+            Err(e) => response::Payload::Error(Box::new(e)),
         };
-        self.notify_listeners(response);
+        self.notify_listeners(payload);
     }
 
     fn serve_modify_probe_points(&mut self, probe_points_modification: &ProbePointsModification) {
-        let response = match self.modify_probe_points(probe_points_modification) {
-            Ok(loaded_dut) => Response::ModifyProbedPointsResult(Ok(loaded_dut)),
-            Err(e) => Response::ModifyProbedPointsResult(Err(e.to_string())),
+        let payload = match self.modify_probe_points(probe_points_modification) {
+            Ok(loaded_dut) => response::Payload::from(loaded_dut),
+            Err(e) => response::Payload::Error(Box::new(e)),
         };
-        self.notify_listeners(response);
+        self.notify_listeners(payload);
     }
 
     fn serve_simulation_result(&self) {
-        let response = Response::SimulationResult(Ok(&self.simulation_result));
-        self.notify_listeners(response);
+        let result = response::Results::SimulationResult(&self.simulation_result);
+        self.notify_listeners(response::Payload::Result(result));
     }
 
     fn release_resources(&mut self) {
@@ -286,65 +266,13 @@ impl RequestServer {
         Ok(self.dut()?.set(signal_name, value)?)
     }
 
-    fn notify_listeners(&self, message: Response) {
+    fn notify_listeners(&self, payload: response::Payload) {
+        let response = Response {
+            id: self.serving_id,
+            payload,
+        };
         for listener in self.listeners.read().unwrap().iter() {
-            listener.write().unwrap().on_receive_reponse(&message);
-        }
-    }
-}
-
-impl From<&Probe> for LoadedDut {
-    fn from(probe: &Probe) -> Self {
-        let probed_points = probe
-            .get_probed_points()
-            .iter()
-            .map(|p| p.path().to_string())
-            .collect();
-        let root_node = probe.root_node().clone();
-        LoadedDut {
-            probed_points,
-            root_node,
-        }
-    }
-}
-
-#[derive(Clone, Default)]
-pub struct SimulationResult {
-    pub waves: Vec<Wave>,
-    pub time_step_ps: usize,
-    pub total_time: usize,
-}
-
-#[derive(Clone)]
-pub struct Wave {
-    pub signal_name: String,
-    pub width: usize,
-    pub values: Vec<(BitVec<u32>, usize, usize)>,
-}
-
-impl From<oombak_rs::dut::Signal> for Wave {
-    fn from(signal: oombak_rs::dut::Signal) -> Self {
-        Wave {
-            signal_name: signal.name,
-            width: signal.width as usize,
-            values: vec![],
-        }
-    }
-}
-
-impl Wave {
-    pub fn value_idx_at(&self, time: usize) -> Option<(usize, usize)> {
-        match self.values.binary_search_by(|v| (v.1).cmp(&time)) {
-            Ok(idx) => Some((idx, 0)),
-            Err(0) => None,
-            Err(idx) => {
-                let offset = time - self.values[idx - 1].1;
-                if offset < self.values[idx - 1].2 {
-                    Some((idx - 1, offset))
-                } else {
-                    None
-                }
-            }
+            listener.write().unwrap().on_receive_reponse(&response);
         }
     }
 }
