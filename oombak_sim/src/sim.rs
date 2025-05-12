@@ -74,8 +74,8 @@ impl Simulator {
     }
 
     fn spawn_request_server(listeners: Arc<RwLock<Listeners>>, request_rx: Receiver<Request>) {
-        let mut server = RequestServer::new(listeners);
         let _ = thread::spawn(move || -> Result<(), String> {
+            let mut server = RequestServer::new(listeners);
             loop {
                 match request_rx.recv().map_err(|e| e.to_string())? {
                     Request::Run(duration) => server.serve_run(duration),
@@ -87,7 +87,11 @@ impl Simulator {
                         server.serve_modify_probe_points(&probe_points_modification)
                     }
                     Request::GetSimulationResult => server.serve_simulation_result(),
-                    Request::Terminate => break (Ok(())),
+                    Request::Terminate => {
+                        // TODO: Why is it necessary that we release resources here?
+                        server.release_resources();
+                        break (Ok(()))
+                    }
                 }
             }
         });
@@ -154,10 +158,17 @@ impl RequestServer {
         self.notify_listeners(response);
     }
 
+    fn release_resources(&mut self) {
+        _ = self.dut.take();
+        _ = self.temp_gen_dir.take();
+    }
+
     fn load_dut(&mut self, sv_path: &Path) -> OombakSimResult<LoadedDut> {
         let (temp_gen_dir, probe) = oombak_gen::build(sv_path)?;
         let loaded_dut = LoadedDut::from(&probe);
         let lib_path = temp_gen_dir.lib_path();
+        // TODO: Why is it necessary that we release resources here?
+        self.release_resources();
         self.temp_gen_dir = Some(temp_gen_dir);
         self.dut = Some(Dut::new(lib_path.to_string_lossy().as_ref())?);
         self.sv_path = Some(sv_path.to_path_buf());
@@ -173,6 +184,8 @@ impl RequestServer {
         self.modify_probe(probe_points_modification)?;
         let temp_gen_dir = self.rebuild_sv_path()?;
         let lib_path = temp_gen_dir.lib_path();
+        // TODO: Why is it necessary that we release resources here?
+        self.release_resources();
         self.temp_gen_dir = Some(temp_gen_dir);
         self.dut = Some(Dut::new(lib_path.to_string_lossy().as_ref())?);
         self.reload_simulation_result()?;

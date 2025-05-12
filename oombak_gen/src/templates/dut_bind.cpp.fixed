@@ -3,7 +3,7 @@
 
 using namespace std;
 
-static Dut dut;
+static Dut *dut;
 static uint32_t *g_words;
 extern sig_t signals[];
 extern uint64_t num_of_signals;
@@ -13,11 +13,19 @@ sig_t *query(uint64_t *_num_of_signals) {
   return signals;
 }
 
+void __attribute__((constructor)) startup() {
+  dut = new Dut();
+}
+
+void __attribute__((destructor)) shutdown() {
+  delete dut;
+}
+
 RESULT set(char *sig_name, uint32_t *words, uint64_t num_of_words) {
   vector<uint32_t> v_words;
   for (int i = 0; i < num_of_words; i++)
     v_words.push_back(words[i]);
-  if (dut.set(std::string(sig_name), v_words)) {
+  if (dut->set(std::string(sig_name), v_words)) {
     return OK;
   } else {
     return ERR;
@@ -25,7 +33,7 @@ RESULT set(char *sig_name, uint32_t *words, uint64_t num_of_words) {
 }
 
 uint32_t *get(char *sig_name, uint64_t *n_bits) {
-  auto res = dut.get(std::string(sig_name));
+  auto res = dut->get(std::string(sig_name));
   if (!res.has_value()) {
     return NULL;
   }
@@ -39,7 +47,7 @@ uint32_t *get(char *sig_name, uint64_t *n_bits) {
 }
 
 RESULT run(uint64_t duration, uint64_t *current_time) {
-  auto res = dut.run(duration);
+  auto res = dut->run(duration);
   if (!res.has_value()) {
     return ERR;
   }
