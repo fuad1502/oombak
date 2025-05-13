@@ -15,16 +15,9 @@ pub struct TimeBar {
 pub enum TimeUnit {
     #[default]
     Picoseconds,
-    Nanoseconds,
-    Miliseconds,
 }
 
 impl TimeBar {
-    pub fn time_unit(mut self, time_unit: TimeUnit) -> Self {
-        self.time_unit = time_unit;
-        self
-    }
-
     pub fn tick_count(mut self, tick_count: usize) -> Self {
         self.tick_count = tick_count;
         self
@@ -115,8 +108,6 @@ impl std::fmt::Display for TimeUnit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             TimeUnit::Picoseconds => f.write_str("ps"),
-            TimeUnit::Nanoseconds => f.write_str("ns"),
-            TimeUnit::Miliseconds => f.write_str("ms"),
         }
     }
 }
@@ -130,7 +121,7 @@ mod test {
         widgets::StatefulWidget,
     };
 
-    use super::{ScrollState, TimeBar, TimeUnit};
+    use super::{ScrollState, TimeBar};
 
     const X0: u16 = 10;
     const Y0: u16 = 10;
@@ -258,11 +249,9 @@ mod test {
     }
 
     fn setup(viewport_length: usize) -> (TimeBar, ScrollState, Buffer, Rect) {
-        let time_bar = TimeBar::default()
-            .time_unit(TimeUnit::Nanoseconds)
-            .tick_period(10.0)
-            .tick_count(10);
-        let mut state = ScrollState::new(100);
+        let time_bar = TimeBar::default().tick_period(10.0).tick_count(10);
+        let mut state = ScrollState::default();
+        state.set_content_length(100);
 
         let area = Rect::new(X0, Y0, viewport_length as u16, 2);
         let buf = Buffer::empty(area);

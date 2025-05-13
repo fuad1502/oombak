@@ -7,13 +7,6 @@ pub struct ScrollState {
 }
 
 impl ScrollState {
-    pub fn new(content_length: usize) -> Self {
-        Self {
-            content_length,
-            ..Default::default()
-        }
-    }
-
     pub fn start_position(&self) -> usize {
         self.start_position
     }
