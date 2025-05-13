@@ -6,7 +6,6 @@ use std::{
 };
 
 use crossterm::event::{KeyCode, KeyEvent};
-use oombak_sim::sim::Request;
 use ratatui::{
     layout::Rect,
     style::Styled,
@@ -26,7 +25,7 @@ use crate::{
 
 pub struct FileExplorer {
     message_tx: Sender<RendererMessage>,
-    request_tx: Sender<Request>,
+    request_tx: Sender<oombak_sim::Request>,
     path: PathBuf,
     entries: Vec<PathBuf>,
     selected_idx: Option<usize>,
@@ -35,7 +34,10 @@ pub struct FileExplorer {
 }
 
 impl FileExplorer {
-    pub fn new(message_tx: Sender<RendererMessage>, request_tx: Sender<Request>) -> Self {
+    pub fn new(
+        message_tx: Sender<RendererMessage>,
+        request_tx: Sender<oombak_sim::Request>,
+    ) -> Self {
         let path = env::current_dir().unwrap();
         let entries = Self::get_sorted_entries(&path);
         let key_mappings = Self::create_key_mappings();
@@ -149,7 +151,9 @@ impl FileExplorer {
         let mut file_path = self.path.clone();
         let file = &self.entries[idx];
         file_path.push(file);
-        self.request_tx.send(Request::Load(file_path)).unwrap();
+        self.request_tx
+            .send(oombak_sim::Request::load(file_path))
+            .unwrap();
     }
 
     fn reset_path(&mut self) {

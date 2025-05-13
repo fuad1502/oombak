@@ -34,6 +34,16 @@ pub struct Percentage {
     completed_steps: usize,
 }
 
+impl Response<'_> {
+    pub fn result(&self) -> Option<&Results> {
+        if let Payload::Result(result) = &self.payload {
+            Some(result)
+        } else {
+            None
+        }
+    }
+}
+
 impl<'a> From<&'a SimulationResult> for Payload<'a> {
     fn from(value: &'a SimulationResult) -> Self {
         Payload::Result(Results::SimulationResult(value))

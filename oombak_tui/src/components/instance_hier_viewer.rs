@@ -3,7 +3,9 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
 use crossterm::event::KeyCode;
-use oombak_sim::sim::{InstanceNode, LoadedDut, ProbePointsModification, Request, Signal};
+use oombak_sim::request::ProbePointsModification;
+use oombak_sim::response::LoadedDut;
+use oombak_sim::{InstanceNode, Request, Signal};
 use ratatui::layout::Rect;
 use ratatui::widgets::Clear;
 use ratatui::Frame;
@@ -370,12 +372,14 @@ impl InstanceHierViewer {
     }
 
     fn request_modify_probe_points(&self) {
-        let probe_points_modification = ProbePointsModification {
+        let probe_points_modifications = ProbePointsModification {
             to_add: self.signals_marked_to_add.clone().into_iter().collect(),
             to_remove: self.signals_marked_to_remove.clone().into_iter().collect(),
         };
         self.request_tx
-            .send(Request::ModifyProbedPoints(probe_points_modification))
+            .send(oombak_sim::Request::modify_probe_points(
+                probe_points_modifications,
+            ))
             .unwrap();
     }
 

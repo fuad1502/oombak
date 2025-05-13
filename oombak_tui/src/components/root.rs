@@ -5,7 +5,6 @@ use std::sync::{Arc, RwLock};
 use crate::component::{Component, HandleResult};
 use crate::threads::RendererMessage;
 use crate::widgets::{KeyDesc, KeyId, KeyMaps};
-use oombak_sim::sim::{self, SimulationResult};
 
 use crossterm::event::{KeyCode, KeyEvent};
 
@@ -20,7 +19,7 @@ use super::{
 
 pub struct Root {
     message_tx: Sender<RendererMessage>,
-    request_tx: Sender<sim::Request>,
+    request_tx: Sender<oombak_sim::Request>,
     signals_viewer: SignalsViewer,
     wave_viewer: WaveViewer,
     key_maps_viewer: KeyMapsViewer,
@@ -29,7 +28,6 @@ pub struct Root {
     file_explorer: Arc<RwLock<FileExplorer>>,
     focused_child: Option<Child>,
     simulation_spec: SimulationSpec,
-    reload_simulation: bool,
     key_mappings: KeyMaps,
     show_key_maps: bool,
 }
@@ -43,7 +41,7 @@ enum Child {
 impl Root {
     pub fn new(
         message_tx: Sender<RendererMessage>,
-        request_tx: Sender<sim::Request>,
+        request_tx: Sender<oombak_sim::Request>,
         command_interpreter: Arc<RwLock<CommandInterpreter>>,
     ) -> Self {
         let simulation_spec = SimulationSpec::default();
@@ -65,7 +63,6 @@ impl Root {
             ))),
             focused_child: None,
             simulation_spec,
-            reload_simulation: false,
             key_mappings,
             show_key_maps: false,
         }
@@ -339,45 +336,55 @@ impl Root {
     }
 }
 
-impl sim::Listener for Root {
-    fn on_receive_reponse(&mut self, response: &sim::Response) {
-        match response {
-            sim::Response::RunResult(Ok(_)) => self.request_simulation_result(),
-            sim::Response::LoadResult(Ok(loaded_dut))
-            | sim::Response::ModifyProbedPointsResult(Ok(loaded_dut)) => {
-                self.instance_hier_viewer
-                    .write()
-                    .unwrap()
-                    .set_loaded_dut(loaded_dut);
-                self.reload_simulation = true;
-                self.request_simulation_result();
+impl oombak_sim::Listener for Root {
+    fn on_receive_reponse(&mut self, response: &oombak_sim::Response) {
+        if let Some(result) = response.result() {
+            match result {
+                oombak_sim::response::Results::CurrentTime(_) => self.request_simulation_result(),
+                oombak_sim::response::Results::LoadedDut(dut) => {
+                    self.set_loaded_dut(dut);
+                    self.reload_simulation();
+                }
+                oombak_sim::response::Results::SimulationResult(res) => self.update_simulation(res),
+                oombak_sim::response::Results::Empty => (),
             }
-            sim::Response::SimulationResult(Ok(simulation_result)) => {
-                self.update_simulation_spec(simulation_result);
-                self.notify_render();
-            }
-            _ => (),
         }
     }
 }
 
 impl Root {
-    fn update_simulation_spec(&mut self, simulation_result: &SimulationResult) {
-        if self.reload_simulation {
+    fn request_simulation_result(&self) {
+        self.request_tx
+            .send(oombak_sim::Request::get_simulation_result())
+            .unwrap();
+    }
+
+    fn set_loaded_dut(&mut self, loaded_dut: &oombak_sim::response::LoadedDut) {
+        self.instance_hier_viewer
+            .write()
+            .unwrap()
+            .set_loaded_dut(loaded_dut);
+    }
+
+    fn reload_simulation(&mut self) {
+        self.simulation_spec = SimulationSpec::default();
+        self.set_simulation();
+        self.request_simulation_result();
+    }
+
+    fn update_simulation(&mut self, simulation_result: &oombak_sim::response::SimulationResult) {
+        if self.simulation_spec.is_empty() {
             self.simulation_spec = SimulationSpec::new(simulation_result);
-            self.reload_simulation = false;
         } else {
             self.simulation_spec.update(simulation_result);
         }
+        self.set_simulation();
+    }
+
+    fn set_simulation(&mut self) {
         self.signals_viewer
             .set_simulation(self.simulation_spec.clone());
         self.wave_viewer
             .set_simulation(self.simulation_spec.clone());
-    }
-
-    fn request_simulation_result(&self) {
-        self.request_tx
-            .send(sim::Request::GetSimulationResult)
-            .unwrap();
     }
 }

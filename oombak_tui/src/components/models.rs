@@ -1,7 +1,5 @@
 use crate::utils::bitvec_str;
 
-use oombak_sim::sim::{self, SimulationResult};
-
 #[derive(Default, Clone)]
 pub struct SimulationSpec {
     pub wave_specs: Vec<WaveSpec>,
@@ -12,14 +10,14 @@ pub struct SimulationSpec {
 
 #[derive(Clone)]
 pub struct WaveSpec {
-    pub wave: sim::Wave,
+    pub wave: oombak_sim::response::Wave,
     pub height: u16,
     pub format: bitvec_str::Format,
     pub signed: bool,
 }
 
 impl SimulationSpec {
-    pub fn new(simulation_result: &SimulationResult) -> Self {
+    pub fn new(simulation_result: &oombak_sim::response::SimulationResult) -> Self {
         let mut spec = SimulationSpec {
             wave_specs: vec![],
             total_time: simulation_result.total_time,
@@ -39,7 +37,7 @@ impl SimulationSpec {
         spec
     }
 
-    pub fn update(&mut self, simulation_result: &SimulationResult) {
+    pub fn update(&mut self, simulation_result: &oombak_sim::response::SimulationResult) {
         self.time_step_ps = simulation_result.time_step_ps;
         self.total_time = simulation_result.total_time;
         self.wave_specs = simulation_result
@@ -51,5 +49,9 @@ impl SimulationSpec {
                 ..s.clone()
             })
             .collect();
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.wave_specs.is_empty()
     }
 }

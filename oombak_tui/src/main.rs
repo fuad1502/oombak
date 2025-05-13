@@ -1,4 +1,3 @@
-use oombak_sim::sim;
 use oombak_tui::{
     components,
     threads::EventThread,
@@ -10,7 +9,7 @@ use std::sync::{mpsc, Arc, RwLock};
 
 fn main() {
     let terminal = tui::init_terminal().unwrap();
-    let mut simulator = sim::Simulator::new().unwrap();
+    let mut simulator = oombak_sim::Simulator::new().unwrap();
     let (message_channel_tx, message_channel_rx) = mpsc::channel();
 
     let command_interpreter = Arc::new(RwLock::new(components::CommandInterpreter::new(
@@ -45,7 +44,7 @@ fn main() {
 
     simulator
         .get_request_channel()
-        .send(sim::Request::Terminate)
+        .send(oombak_sim::Request::terminate())
         .unwrap();
     tui::restore_terminal().unwrap();
 

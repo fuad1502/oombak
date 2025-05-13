@@ -1,5 +1,5 @@
 use bitvec::vec::BitVec;
-use oombak_sim::sim::Wave;
+use oombak_sim::response::Wave;
 use ratatui::{
     buffer::Buffer,
     layout::Rect,

@@ -11,11 +11,9 @@ use crate::{
     widgets::{CommandLine, KeyDesc, KeyId, KeyMaps, Terminal, TerminalState},
 };
 
-use oombak_sim::sim;
-
 pub struct CommandInterpreter {
     message_tx: Sender<RendererMessage>,
-    request_tx: Sender<sim::Request>,
+    request_tx: Sender<oombak_sim::Request>,
     terminal_state: TerminalState,
     line_state: LineState,
     mode: Mode,
@@ -35,7 +33,10 @@ pub enum Mode {
 }
 
 impl CommandInterpreter {
-    pub fn new(message_tx: Sender<RendererMessage>, request_tx: Sender<sim::Request>) -> Self {
+    pub fn new(
+        message_tx: Sender<RendererMessage>,
+        request_tx: Sender<oombak_sim::Request>,
+    ) -> Self {
         let key_mappings = Self::create_key_mappings();
         Self {
             message_tx,
@@ -182,20 +183,17 @@ impl CommandInterpreter {
         let command_text = self.terminal_state.command_line_state().text();
         match interpreter::interpret(command_text) {
             Ok(command) => match command {
-                interpreter::Command::Run(x) => {
-                    self.request(sim::Request::Run(x));
-                    self.terminal_state
-                        .append_output_history(Ok(format!("executed: {command_text}")));
+                interpreter::Command::Run(duration) => {
+                    let request = oombak_sim::Request::run(duration);
+                    self.dispatch_request(request);
                 }
-                interpreter::Command::Load(x) => {
-                    self.request(sim::Request::Load(x));
-                    self.terminal_state
-                        .append_output_history(Ok(format!("executed: {command_text}")));
+                interpreter::Command::Load(sv_path) => {
+                    let request = oombak_sim::Request::load(sv_path);
+                    self.dispatch_request(request);
                 }
-                interpreter::Command::Set(sig_name, value) => {
-                    self.request(sim::Request::SetSignal(sig_name, value));
-                    self.terminal_state
-                        .append_output_history(Ok(format!("executed: {command_text}")));
+                interpreter::Command::Set(signal_name, value) => {
+                    let request = oombak_sim::Request::set_signal(signal_name, value);
+                    self.dispatch_request(request);
                 }
                 interpreter::Command::Help => {
                     self.terminal_state
@@ -208,8 +206,19 @@ impl CommandInterpreter {
         }
     }
 
-    fn request(&self, request: sim::Request) {
+    fn dispatch_request(&mut self, request: oombak_sim::Request) {
+        let id = request.id;
+        let message = match &request.payload {
+            oombak_sim::request::Payload::Run(_) => "Run",
+            oombak_sim::request::Payload::SetSignal(_, _) => "SetSignal",
+            oombak_sim::request::Payload::Load(_) => "Load",
+            oombak_sim::request::Payload::ModifyProbedPoints(_) => "ModifyProbedPoints",
+            oombak_sim::request::Payload::GetSimulationResult => "GetSimulationResult",
+            oombak_sim::request::Payload::Terminate => "Terminate",
+        };
         self.request_tx.send(request).unwrap();
+        self.terminal_state
+            .append_output_history(Ok(format!("[{}] Request dispatched: {}", id, message)));
     }
 
     fn notify_render(&self) {
@@ -221,21 +230,13 @@ impl CommandInterpreter {
     }
 }
 
-impl sim::Listener for CommandInterpreter {
-    fn on_receive_reponse(&mut self, response: &sim::Response) {
-        let result = match response {
-            sim::Response::RunResult(Ok(curr_time)) => {
-                Ok(format!("run: current time = {curr_time}"))
-            }
-            sim::Response::SetSignalResult(Ok(())) => Ok("set: success".to_string()),
-            sim::Response::LoadResult(Ok(_)) => Ok("load: success".to_string()),
-            sim::Response::RunResult(Err(e)) => Err(format!("run: {e}")),
-            sim::Response::SetSignalResult(Err(e)) => Err(format!("set: {e}")),
-            sim::Response::LoadResult(Err(e)) => Err(format!("load: {e}")),
-            sim::Response::ModifyProbedPointsResult(Err(e)) => {
-                Err(format!("modify probe points: {e}"))
-            }
-            _ => return,
+impl oombak_sim::Listener for CommandInterpreter {
+    fn on_receive_reponse(&mut self, response: &oombak_sim::Response) {
+        let id = response.id;
+        let result = match &response.payload {
+            oombak_sim::response::Payload::Result(_) => Ok(format!("[{}] Completed", id)),
+            oombak_sim::response::Payload::Notification(_) => todo!(),
+            oombak_sim::response::Payload::Error(e) => Err(format!("[{}] Error: {}", id, e)),
         };
         self.terminal_state.append_output_history(result);
         self.notify_render();
