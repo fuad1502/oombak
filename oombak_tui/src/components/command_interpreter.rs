@@ -185,15 +185,21 @@ impl CommandInterpreter {
             Ok(command) => match command {
                 interpreter::Command::Run(duration) => {
                     let request = oombak_sim::Request::run(duration);
-                    self.dispatch_request(request);
+                    self.request_tx.send(request).unwrap();
+                    self.terminal_state
+                        .append_output_history(Ok(format!("{command_text}",)));
                 }
                 interpreter::Command::Load(sv_path) => {
                     let request = oombak_sim::Request::load(sv_path);
-                    self.dispatch_request(request);
+                    self.request_tx.send(request).unwrap();
+                    self.terminal_state
+                        .append_output_history(Ok(format!("{command_text}",)));
                 }
                 interpreter::Command::Set(signal_name, value) => {
                     let request = oombak_sim::Request::set_signal(signal_name, value);
-                    self.dispatch_request(request);
+                    self.request_tx.send(request).unwrap();
+                    self.terminal_state
+                        .append_output_history(Ok(format!("{command_text}",)));
                 }
                 interpreter::Command::Help => {
                     self.terminal_state
@@ -204,21 +210,6 @@ impl CommandInterpreter {
             },
             Err(message) => self.terminal_state.append_output_history(Err(message)),
         }
-    }
-
-    fn dispatch_request(&mut self, request: oombak_sim::Request) {
-        let id = request.id;
-        let message = match &request.payload {
-            oombak_sim::request::Payload::Run(_) => "Run",
-            oombak_sim::request::Payload::SetSignal(_, _) => "SetSignal",
-            oombak_sim::request::Payload::Load(_) => "Load",
-            oombak_sim::request::Payload::ModifyProbedPoints(_) => "ModifyProbedPoints",
-            oombak_sim::request::Payload::GetSimulationResult => "GetSimulationResult",
-            oombak_sim::request::Payload::Terminate => "Terminate",
-        };
-        self.request_tx.send(request).unwrap();
-        self.terminal_state
-            .append_output_history(Ok(format!("[{}] Request dispatched: {}", id, message)));
     }
 
     fn notify_render(&self) {
