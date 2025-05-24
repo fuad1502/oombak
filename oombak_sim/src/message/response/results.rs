@@ -11,7 +11,7 @@ pub struct LoadedDut {
 pub struct SimulationResult {
     pub waves: Vec<Wave>,
     pub time_step_ps: usize,
-    pub total_time: usize,
+    pub current_time: usize,
 }
 
 #[derive(Clone)]

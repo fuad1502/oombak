@@ -5,7 +5,7 @@ use bitvec::vec::BitVec;
 use crate::utils::bitvec_str;
 
 pub enum Command {
-    Run(u64),
+    Run(usize),
     Load(PathBuf),
     Set(String, BitVec<u32>),
     Quit,

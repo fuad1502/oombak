@@ -1,22 +1,22 @@
-pub mod results;
+mod results;
 
 pub use results::{LoadedDut, SimulationResult, Wave};
 
-pub struct Response<'a> {
+pub struct Response {
     pub id: usize,
-    pub payload: Payload<'a>,
+    pub payload: Payload,
 }
 
-pub enum Payload<'a> {
-    Result(Results<'a>),
+pub enum Payload {
+    Result(Results),
     Error(Box<dyn std::error::Error + Send + Sync>),
     Notification(Notifications),
 }
 
-pub enum Results<'a> {
-    CurrentTime(u64),
+pub enum Results {
+    CurrentTime(usize),
     LoadedDut(LoadedDut),
-    SimulationResult(&'a SimulationResult),
+    SimulationResult(SimulationResult),
     Empty,
 }
 
@@ -34,7 +34,7 @@ pub struct Percentage {
     completed_steps: usize,
 }
 
-impl Response<'_> {
+impl Response {
     pub fn result(&self) -> Option<&Results> {
         if let Payload::Result(result) = &self.payload {
             Some(result)
@@ -44,20 +44,24 @@ impl Response<'_> {
     }
 }
 
-impl<'a> From<&'a SimulationResult> for Payload<'a> {
-    fn from(value: &'a SimulationResult) -> Self {
+impl From<SimulationResult> for Payload {
+    fn from(value: SimulationResult) -> Self {
         Payload::Result(Results::SimulationResult(value))
     }
 }
 
-impl From<LoadedDut> for Payload<'_> {
+impl From<LoadedDut> for Payload {
     fn from(value: LoadedDut) -> Self {
         Payload::Result(Results::LoadedDut(value))
     }
 }
 
-impl Payload<'_> {
-    pub fn current_time(current_time: u64) -> Self {
+impl Payload {
+    pub fn generic_notification(message: String) -> Self {
+        Payload::Notification(Notifications::Generic(message))
+    }
+
+    pub fn current_time(current_time: usize) -> Self {
         Payload::Result(Results::CurrentTime(current_time))
     }
 

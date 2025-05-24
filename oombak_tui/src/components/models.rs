@@ -20,7 +20,7 @@ impl SimulationSpec {
     pub fn new(simulation_result: &oombak_sim::response::SimulationResult) -> Self {
         let mut spec = SimulationSpec {
             wave_specs: vec![],
-            total_time: simulation_result.total_time,
+            total_time: simulation_result.current_time,
             time_step_ps: 1,
             zoom: 1,
         };
@@ -39,7 +39,7 @@ impl SimulationSpec {
 
     pub fn update(&mut self, simulation_result: &oombak_sim::response::SimulationResult) {
         self.time_step_ps = simulation_result.time_step_ps;
-        self.total_time = simulation_result.total_time;
+        self.total_time = simulation_result.current_time;
         self.wave_specs = simulation_result
             .waves
             .iter()

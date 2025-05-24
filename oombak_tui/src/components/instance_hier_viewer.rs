@@ -5,7 +5,7 @@ use std::sync::{Arc, RwLock};
 use crossterm::event::KeyCode;
 use oombak_sim::request::ProbePointsModification;
 use oombak_sim::response::LoadedDut;
-use oombak_sim::{InstanceNode, Request, Signal};
+use oombak_sim::{InstanceNode, Signal};
 use ratatui::layout::Rect;
 use ratatui::widgets::Clear;
 use ratatui::Frame;
@@ -23,11 +23,11 @@ use crate::{
     threads::RendererMessage,
 };
 
-use super::Confirmer;
+use super::{TokioSender, Confirmer};
 
 pub struct InstanceHierViewer {
     message_tx: Sender<RendererMessage>,
-    request_tx: Sender<Request>,
+    request_tx: TokioSender<oombak_sim::Message>,
     focused_child: Option<Child>,
     confirmer: Arc<RwLock<Confirmer>>,
     root_node: Option<Arc<RwLock<InstanceHierNode>>>,
@@ -73,7 +73,10 @@ enum HierItem {
 }
 
 impl InstanceHierViewer {
-    pub fn new(message_tx: Sender<RendererMessage>, request_tx: Sender<Request>) -> Self {
+    pub fn new(
+        message_tx: Sender<RendererMessage>,
+        request_tx: TokioSender<oombak_sim::Message>,
+    ) -> Self {
         let key_mappings = Self::create_key_mappings();
         let confirmer = Arc::new(RwLock::new(Confirmer::new(message_tx.clone())));
         Self {
@@ -377,7 +380,7 @@ impl InstanceHierViewer {
             to_remove: self.signals_marked_to_remove.clone().into_iter().collect(),
         };
         self.request_tx
-            .send(oombak_sim::Request::modify_probe_points(
+            .blocking_send(oombak_sim::Request::modify_probe_points(
                 probe_points_modifications,
             ))
             .unwrap();

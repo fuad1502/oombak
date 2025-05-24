@@ -1,25 +1,28 @@
+use oombak_sim::LocalSimulator;
 use oombak_tui::{
     components,
-    threads::EventThread,
-    threads::RendererThread,
-    threads::{setup_terminate_group_panic_hook, ThreadGroup},
+    threads::{
+        setup_terminate_group_panic_hook, EventThread, RendererThread, SimulatorRequestDispatcher,
+        ThreadGroup,
+    },
     tui,
 };
 use std::sync::{mpsc, Arc, RwLock};
 
 fn main() {
     let terminal = tui::init_terminal().unwrap();
-    let mut simulator = oombak_sim::Simulator::new().unwrap();
+    let simulator = LocalSimulator::default();
+    let simulator_request_dispatcher = SimulatorRequestDispatcher::new(Arc::new(simulator));
     let (message_channel_tx, message_channel_rx) = mpsc::channel();
 
     let command_interpreter = Arc::new(RwLock::new(components::CommandInterpreter::new(
         message_channel_tx.clone(),
-        simulator.get_request_channel(),
+        simulator_request_dispatcher.channel(),
     )));
 
     let root = Arc::new(RwLock::new(components::Root::new(
         message_channel_tx.clone(),
-        simulator.get_request_channel(),
+        simulator_request_dispatcher.channel(),
         command_interpreter.clone(),
     )));
 
@@ -33,19 +36,16 @@ fn main() {
         &thread_group,
     );
 
-    simulator.register_listener(command_interpreter);
-    simulator.register_listener(root.clone());
+    simulator_request_dispatcher.register(command_interpreter);
+    simulator_request_dispatcher.register(root.clone());
     event_thread.register_event_listener(root);
 
     thread_group.add_thread(Box::new(event_thread));
     thread_group.add_thread(Box::new(renderer_thread));
+    thread_group.add_thread(Box::new(simulator_request_dispatcher));
     setup_terminate_group_panic_hook(&thread_group);
     let res = thread_group.join();
 
-    simulator
-        .get_request_channel()
-        .send(oombak_sim::Request::terminate())
-        .unwrap();
     tui::restore_terminal().unwrap();
 
     eprintln!("Thread termination status:");

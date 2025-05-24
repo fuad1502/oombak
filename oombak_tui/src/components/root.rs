@@ -3,9 +3,10 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock};
 
 use crate::component::{Component, HandleResult};
-use crate::threads::RendererMessage;
+use crate::threads::{simulator_request_dispatcher, RendererMessage};
 use crate::widgets::{KeyDesc, KeyId, KeyMaps};
 
+use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
@@ -14,12 +15,12 @@ use ratatui::Frame;
 
 use super::models::SimulationSpec;
 use super::{
-    CommandInterpreter, FileExplorer, InstanceHierViewer, KeyMapsViewer, SignalsViewer, WaveViewer,
+    CommandInterpreter, FileExplorer, InstanceHierViewer, KeyMapsViewer, SignalsViewer, WaveViewer, TokioSender
 };
 
 pub struct Root {
     message_tx: Sender<RendererMessage>,
-    request_tx: Sender<oombak_sim::Request>,
+    request_tx: TokioSender<oombak_sim::Message>,
     signals_viewer: SignalsViewer,
     wave_viewer: WaveViewer,
     key_maps_viewer: KeyMapsViewer,
@@ -41,7 +42,7 @@ enum Child {
 impl Root {
     pub fn new(
         message_tx: Sender<RendererMessage>,
-        request_tx: Sender<oombak_sim::Request>,
+        request_tx: TokioSender<oombak_sim::Message>,
         command_interpreter: Arc<RwLock<CommandInterpreter>>,
     ) -> Self {
         let simulation_spec = SimulationSpec::default();
@@ -336,14 +337,15 @@ impl Root {
     }
 }
 
-impl oombak_sim::Listener for Root {
-    fn on_receive_reponse(&mut self, response: &oombak_sim::Response) {
+#[async_trait]
+impl simulator_request_dispatcher::Listener for Root {
+    async fn on_receive_reponse(&mut self, response: &oombak_sim::Response) {
         if let Some(result) = response.result() {
             match result {
-                oombak_sim::response::Results::CurrentTime(_) => self.request_simulation_result(),
+                oombak_sim::response::Results::CurrentTime(_) => self.request_simulation_result().await,
                 oombak_sim::response::Results::LoadedDut(dut) => {
                     self.set_loaded_dut(dut);
-                    self.reload_simulation();
+                    self.reload_simulation().await;
                 }
                 oombak_sim::response::Results::SimulationResult(res) => self.update_simulation(res),
                 oombak_sim::response::Results::Empty => (),
@@ -353,9 +355,9 @@ impl oombak_sim::Listener for Root {
 }
 
 impl Root {
-    fn request_simulation_result(&self) {
+    async fn request_simulation_result(&self) {
         self.request_tx
-            .send(oombak_sim::Request::get_simulation_result())
+            .send(oombak_sim::Request::get_simulation_result()).await
             .unwrap();
     }
 
@@ -366,10 +368,10 @@ impl Root {
             .set_loaded_dut(loaded_dut);
     }
 
-    fn reload_simulation(&mut self) {
+    async fn reload_simulation(&mut self) {
         self.simulation_spec = SimulationSpec::default();
         self.set_simulation();
-        self.request_simulation_result();
+        self.request_simulation_result().await;
     }
 
     fn update_simulation(&mut self, simulation_result: &oombak_sim::response::SimulationResult) {

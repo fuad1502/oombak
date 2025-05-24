@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::mpsc::Sender};
 
+use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{style::Stylize, text::Line};
 
@@ -7,13 +8,15 @@ use crate::{
     backend::interpreter,
     component::{Component, HandleResult},
     styles::terminal::{FAIL_OUTPUT_STYLE, SUCCESS_OUTPUT_STYLE},
-    threads::RendererMessage,
+    threads::{simulator_request_dispatcher, RendererMessage},
     widgets::{CommandLine, KeyDesc, KeyId, KeyMaps, Terminal, TerminalState},
 };
 
+use super::TokioSender;
+
 pub struct CommandInterpreter {
     message_tx: Sender<RendererMessage>,
-    request_tx: Sender<oombak_sim::Request>,
+    request_tx: TokioSender<oombak_sim::Message>,
     terminal_state: TerminalState,
     line_state: LineState,
     mode: Mode,
@@ -35,7 +38,7 @@ pub enum Mode {
 impl CommandInterpreter {
     pub fn new(
         message_tx: Sender<RendererMessage>,
-        request_tx: Sender<oombak_sim::Request>,
+        request_tx: TokioSender<oombak_sim::Message>,
     ) -> Self {
         let key_mappings = Self::create_key_mappings();
         Self {
@@ -185,21 +188,21 @@ impl CommandInterpreter {
             Ok(command) => match command {
                 interpreter::Command::Run(duration) => {
                     let request = oombak_sim::Request::run(duration);
-                    self.request_tx.send(request).unwrap();
+                    self.request_tx.blocking_send(request).unwrap();
                     self.terminal_state
-                        .append_output_history(Ok(format!("{command_text}",)));
+                        .append_output_history(Ok(command_text.to_string()));
                 }
                 interpreter::Command::Load(sv_path) => {
                     let request = oombak_sim::Request::load(sv_path);
-                    self.request_tx.send(request).unwrap();
+                    self.request_tx.blocking_send(request).unwrap();
                     self.terminal_state
-                        .append_output_history(Ok(format!("{command_text}",)));
+                        .append_output_history(Ok(command_text.to_string()));
                 }
                 interpreter::Command::Set(signal_name, value) => {
                     let request = oombak_sim::Request::set_signal(signal_name, value);
-                    self.request_tx.send(request).unwrap();
+                    self.request_tx.blocking_send(request).unwrap();
                     self.terminal_state
-                        .append_output_history(Ok(format!("{command_text}",)));
+                        .append_output_history(Ok(command_text.to_string()));
                 }
                 interpreter::Command::Help => {
                     self.terminal_state
@@ -221,12 +224,13 @@ impl CommandInterpreter {
     }
 }
 
-impl oombak_sim::Listener for CommandInterpreter {
-    fn on_receive_reponse(&mut self, response: &oombak_sim::Response) {
+#[async_trait]
+impl simulator_request_dispatcher::Listener for CommandInterpreter {
+    async fn on_receive_reponse(&mut self, response: &oombak_sim::Response) {
         let id = response.id;
         let result = match &response.payload {
             oombak_sim::response::Payload::Result(_) => Ok(format!("[{}] Completed", id)),
-            oombak_sim::response::Payload::Notification(_) => todo!(),
+            oombak_sim::response::Payload::Notification(_) => Ok(format!("[{}]", id)),
             oombak_sim::response::Payload::Error(e) => Err(format!("[{}] Error: {}", id, e)),
         };
         self.terminal_state.append_output_history(result);

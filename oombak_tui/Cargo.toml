@@ -9,3 +9,5 @@ crossterm = "0.28.1"
 ratatui = "0.29.0"
 thiserror = "2.0.11"
 oombak_sim = { version="0.1.0", path="../oombak_sim" }
+tokio = { version="1.45.1", features=["full"] }
+async-trait = "0.1.88"

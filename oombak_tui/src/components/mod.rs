@@ -16,3 +16,5 @@ pub use key_maps_viewer::KeyMapsViewer;
 pub use root::Root;
 pub use signals_viewer::SignalsViewer;
 pub use wave_viewer::WaveViewer;
+
+use tokio::sync::mpsc::Sender as TokioSender;

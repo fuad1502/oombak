@@ -23,9 +23,11 @@ use crate::{
     widgets::{KeyDesc, KeyId, KeyMaps},
 };
 
+use super::TokioSender;
+
 pub struct FileExplorer {
     message_tx: Sender<RendererMessage>,
-    request_tx: Sender<oombak_sim::Request>,
+    request_tx: TokioSender<oombak_sim::Message>,
     path: PathBuf,
     entries: Vec<PathBuf>,
     selected_idx: Option<usize>,
@@ -36,7 +38,7 @@ pub struct FileExplorer {
 impl FileExplorer {
     pub fn new(
         message_tx: Sender<RendererMessage>,
-        request_tx: Sender<oombak_sim::Request>,
+        request_tx: TokioSender<oombak_sim::Message>,
     ) -> Self {
         let path = env::current_dir().unwrap();
         let entries = Self::get_sorted_entries(&path);
@@ -152,7 +154,7 @@ impl FileExplorer {
         let file = &self.entries[idx];
         file_path.push(file);
         self.request_tx
-            .send(oombak_sim::Request::load(file_path))
+            .blocking_send(oombak_sim::Request::load(file_path))
             .unwrap();
     }
 

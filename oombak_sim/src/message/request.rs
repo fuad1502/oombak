@@ -3,13 +3,17 @@ use std::path::PathBuf;
 use bitvec::vec::BitVec;
 use rand::RngCore;
 
+use super::Message;
+
+#[derive(Clone)]
 pub struct Request {
     pub id: usize,
     pub payload: Payload,
 }
 
+#[derive(Clone)]
 pub enum Payload {
-    Run(u64),
+    Run(usize),
     SetSignal(String, BitVec<u32>),
     Load(PathBuf),
     ModifyProbedPoints(ProbePointsModification),
@@ -17,46 +21,47 @@ pub enum Payload {
     Terminate,
 }
 
+#[derive(Clone)]
 pub struct ProbePointsModification {
     pub to_add: Vec<String>,
     pub to_remove: Vec<String>,
 }
 
 impl Request {
-    pub fn run(duration: u64) -> Self {
+    pub fn run(duration: usize) -> Message {
         let id = Self::random_id();
         let payload = Payload::Run(duration);
-        Self { id, payload }
+        Message::Request(Self { id, payload })
     }
 
-    pub fn set_signal(signal_name: String, value: BitVec<u32>) -> Self {
+    pub fn set_signal(signal_name: String, value: BitVec<u32>) -> Message {
         let id = Self::random_id();
         let payload = Payload::SetSignal(signal_name, value);
-        Self { id, payload }
+        Message::Request(Self { id, payload })
     }
 
-    pub fn load(sv_path: PathBuf) -> Self {
+    pub fn load(sv_path: PathBuf) -> Message {
         let id = Self::random_id();
         let payload = Payload::Load(sv_path);
-        Self { id, payload }
+        Message::Request(Self { id, payload })
     }
 
-    pub fn modify_probe_points(probe_points_modifications: ProbePointsModification) -> Self {
+    pub fn modify_probe_points(probe_points_modifications: ProbePointsModification) -> Message {
         let id = Self::random_id();
         let payload = Payload::ModifyProbedPoints(probe_points_modifications);
-        Self { id, payload }
+        Message::Request(Self { id, payload })
     }
 
-    pub fn get_simulation_result() -> Self {
+    pub fn get_simulation_result() -> Message {
         let id = Self::random_id();
         let payload = Payload::GetSimulationResult;
-        Self { id, payload }
+        Message::Request(Self { id, payload })
     }
 
-    pub fn terminate() -> Self {
+    pub fn terminate() -> Message {
         let id = Self::random_id();
         let payload = Payload::Terminate;
-        Self { id, payload }
+        Message::Request(Self { id, payload })
     }
 
     fn random_id() -> usize {
