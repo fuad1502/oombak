@@ -11,7 +11,7 @@ pub struct Request {
     pub payload: Payload,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Payload {
     Run(usize),
     SetSignal(String, BitVec<u32>),
@@ -21,7 +21,7 @@ pub enum Payload {
     Terminate,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ProbePointsModification {
     pub to_add: Vec<String>,
     pub to_remove: Vec<String>,

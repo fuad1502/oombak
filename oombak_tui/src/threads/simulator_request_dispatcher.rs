@@ -52,6 +52,11 @@ impl SimulatorRequestDispatcher {
     ) {
         while let Some(message) = rx.recv().await {
             match message {
+                Message::Request(request)
+                    if request.payload == oombak_sim::request::Payload::Terminate =>
+                {
+                    return
+                }
                 Message::Request(request) => {
                     Self::notify_request_dispatched(request.clone(), listeners.clone()).await;
                     let sim = simulator.clone();

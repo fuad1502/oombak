@@ -46,7 +46,7 @@ impl Simulator for LocalSimulator {
                 self.serve_modify_probe_points(&probe_modifications).await
             }
             request::Payload::GetSimulationResult => self.serve_simulation_result().await,
-            request::Payload::Terminate => return self.drop_channel().await,
+            request::Payload::Terminate => return,
         };
 
         let channel = self.channel.read().await;
@@ -68,11 +68,6 @@ impl Simulator for LocalSimulator {
 }
 
 impl LocalSimulator {
-    async fn drop_channel(&self) {
-        let mut current_channel = self.channel.write().await;
-        *current_channel = None;
-    }
-
     async fn serve_run(&self, duration: usize) -> response::Payload {
         let mut simulation_state = self.simulation_result.write().await;
         let dut_state = self.dut_state.read().await;
