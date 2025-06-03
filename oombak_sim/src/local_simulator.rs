@@ -9,6 +9,7 @@ use tokio::sync::{mpsc::Sender, RwLock};
 use tokio::sync::{RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::spawn_blocking;
 
+use crate::request::ProbePointsModification;
 use crate::{
     error::{OombakSimError, OombakSimResult},
     request::{self},
@@ -41,10 +42,13 @@ impl Simulator for LocalSimulator {
                 self.serve_set_signal(&signal_name, &value).await
             }
             request::Payload::Load(path) => self.serve_load(&path).await,
-            request::Payload::ModifyProbedPoints(_) => todo!(),
+            request::Payload::ModifyProbedPoints(probe_modifications) => {
+                self.serve_modify_probe_points(&probe_modifications).await
+            }
             request::Payload::GetSimulationResult => self.serve_simulation_result().await,
             request::Payload::Terminate => return self.drop_channel().await,
         };
+
         let channel = self.channel.read().await;
         if let Some(channel) = &*channel {
             channel
@@ -145,6 +149,9 @@ impl LocalSimulator {
     async fn load_dut(&self, path: &Path) -> OombakSimResult<LoadedDut> {
         {
             let mut dut_state = self.dut_state.write().await;
+            if dut_state.will_be_reloaded {
+                return Err(OombakSimError::DutIsLoading);
+            }
             dut_state.will_be_reloaded = true;
         }
 
@@ -203,36 +210,77 @@ impl LocalSimulator {
         }
     }
 
-    // fn serve_modify_probe_points(
-    //     &self,
-    //     probe_modifications: &ProbePointsModification,
-    // ) -> response::Payload {
-    // }
+    async fn serve_modify_probe_points(
+        &self,
+        probe_modifications: &ProbePointsModification,
+    ) -> response::Payload {
+        match self.modify_probe_points(probe_modifications).await {
+            Ok(dut) => response::Payload::from(dut),
+            Err(e) => response::Payload::Error(Box::new(e)),
+        }
+    }
 
-    // fn modify_probe_points(
-    //     &mut self,
-    //     probe_points_modification: &ProbePointsModification,
-    // ) -> OombakSimResult<LoadedDut> {
-    //     self.modify_probe(probe_points_modification)?;
-    //     let temp_gen_dir = self.rebuild_sv_path()?;
-    //     let lib_path = temp_gen_dir.lib_path();
-    //     // TODO: Why is it necessary that we release resources here?
-    //     self.release_resources();
-    //     self.temp_gen_dir = Some(temp_gen_dir);
-    //     self.dut = Some(Dut::new(lib_path.to_string_lossy().as_ref())?);
-    //     self.reload_simulation_result()?;
-    //     Ok(LoadedDut::from(
-    //         self.probe.as_ref().ok_or(OombakSimError::DutNotLoaded)?,
-    //     ))
-    // }
-    //
-    //
-    // fn rebuild_sv_path(&self) -> OombakSimResult<TempGenDir> {
-    //     match (&self.sv_path, &self.probe) {
-    //         (Some(sv_path), Some(probe)) => Ok(oombak_gen::build_with_probe(sv_path, probe)?),
-    //         _ => Err(OombakSimError::DutNotLoaded),
-    //     }
-    // }
+    async fn modify_probe_points(
+        &self,
+        probe_modifications: &ProbePointsModification,
+    ) -> OombakSimResult<LoadedDut> {
+        {
+            let mut dut_state = self.dut_state.write().await;
+            if dut_state.will_be_reloaded {
+                return Err(OombakSimError::DutIsLoading);
+            }
+            dut_state.will_be_reloaded = true;
+        }
+
+        let new_probe = {
+            let dut_state = self.dut_state.read().await;
+            let probe = dut_state.probe()?;
+            Self::get_modified_probe(probe, probe_modifications)?
+        };
+        let new_probe_clone = new_probe.clone();
+
+        let path = {
+            let dut_state = self.dut_state.read().await;
+            let path = dut_state.path()?;
+            PathBuf::from(path)
+        };
+
+        let (new_dut, temp_gen_dir) =
+            spawn_blocking(move || Self::regenerate_dut(&path, &new_probe))
+                .await
+                .unwrap()?;
+
+        {
+            let mut dut_state = self.dut_state.write().await;
+            dut_state.reload_path_unchanged(temp_gen_dir, new_probe_clone)?;
+        }
+
+        let dut_state = self.dut_state.read().await;
+        let mut simulation_result = self.simulation_result.write().await;
+        Self::reload_simulation_result(&mut simulation_result, &dut_state)?;
+
+        Ok(new_dut)
+    }
+
+    fn get_modified_probe(
+        probe: &Probe,
+        probe_modifications: &ProbePointsModification,
+    ) -> OombakSimResult<Probe> {
+        let mut new_probe = probe.clone();
+        for path in probe_modifications.to_add.iter() {
+            new_probe.add_signal_to_probe(path)?;
+        }
+        for path in probe_modifications.to_remove.iter() {
+            new_probe.remove_signal_from_probe(path)?;
+        }
+        Ok(new_probe)
+    }
+
+    fn regenerate_dut(path: &Path, probe: &Probe) -> OombakSimResult<(LoadedDut, TempGenDir)> {
+        let temp_gen_dir = oombak_gen::build_with_probe(path, probe)?;
+        let loaded_dut = LoadedDut::from(probe);
+        Ok((loaded_dut, temp_gen_dir))
+    }
 }
 
 impl DutState {
@@ -264,19 +312,19 @@ impl DutState {
         }
     }
 
-    // fn modify_probe(
-    //     &mut self,
-    //     probe_modifications: &ProbePointsModification,
-    // ) -> OombakSimResult<()> {
-    //     let probe = self.probe.as_mut().ok_or(OombakSimError::DutNotLoaded)?;
-    //     for path in probe_modifications.to_add.iter() {
-    //         probe.add_signal_to_probe(path)?;
-    //     }
-    //     for path in probe_modifications.to_remove.iter() {
-    //         probe.remove_signal_from_probe(path)?;
-    //     }
-    //     Ok(())
-    // }
+    fn probe(&self) -> OombakSimResult<&Probe> {
+        match &self.probe {
+            Some(probe) => Ok(probe),
+            None => Err(OombakSimError::DutNotLoaded),
+        }
+    }
+
+    fn path(&self) -> OombakSimResult<&Path> {
+        match &self.path {
+            Some(path) => Ok(path),
+            None => Err(OombakSimError::DutNotLoaded),
+        }
+    }
 
     fn reload(
         &mut self,
@@ -289,6 +337,20 @@ impl DutState {
         self.temp_gen_dir = Some(temp_gen_dir);
         self.dut = Some(Dut::new(lib_path.to_string_lossy().as_ref())?);
         self.path = Some(sv_path.to_path_buf());
+        self.probe = Some(probe);
+        self.will_be_reloaded = false;
+        Ok(())
+    }
+
+    fn reload_path_unchanged(
+        &mut self,
+        temp_gen_dir: TempGenDir,
+        probe: Probe,
+    ) -> OombakSimResult<()> {
+        self.release_resources();
+        let lib_path = temp_gen_dir.lib_path();
+        self.temp_gen_dir = Some(temp_gen_dir);
+        self.dut = Some(Dut::new(lib_path.to_string_lossy().as_ref())?);
         self.probe = Some(probe);
         self.will_be_reloaded = false;
         Ok(())

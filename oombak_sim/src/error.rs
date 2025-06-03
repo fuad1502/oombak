@@ -8,6 +8,8 @@ pub type OombakSimResult<T> = Result<T, OombakSimError>;
 pub enum OombakSimError {
     #[error("DUT not loaded")]
     DutNotLoaded,
+    #[error("DUT is loading")]
+    DutIsLoading,
     #[error("oombak_gen: {}", _0)]
     OombakGen(OombakGenError),
     #[error("oombak_rs: {}", _0)]

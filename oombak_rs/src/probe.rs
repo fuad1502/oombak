@@ -5,6 +5,7 @@ use crate::{
     parser::{self, InstanceNode, Signal},
 };
 
+#[derive(Clone)]
 pub struct Probe {
     root_node: InstanceNode,
     points: Vec<ProbePoint>,
