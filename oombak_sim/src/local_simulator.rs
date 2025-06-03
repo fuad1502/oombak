@@ -37,7 +37,9 @@ impl Simulator for LocalSimulator {
     async fn serve(&self, request: Request) {
         let payload = match request.payload {
             request::Payload::Run(duration) => self.serve_run(duration).await,
-            request::Payload::SetSignal(_, _) => todo!(),
+            request::Payload::SetSignal(signal_name, value) => {
+                self.serve_set_signal(&signal_name, &value).await
+            }
             request::Payload::Load(path) => self.serve_load(&path).await,
             request::Payload::ModifyProbedPoints(_) => todo!(),
             request::Payload::GetSimulationResult => self.serve_simulation_result().await,
@@ -193,6 +195,14 @@ impl LocalSimulator {
         response::Payload::from(simulation_result.clone())
     }
 
+    async fn serve_set_signal(&self, signal_name: &str, value: &BitVec<u32>) -> response::Payload {
+        let dut_state = self.dut_state.read().await;
+        match dut_state.set(signal_name, value) {
+            Ok(()) => response::Payload::empty(),
+            Err(e) => response::Payload::Error(Box::new(e)),
+        }
+    }
+
     // fn serve_modify_probe_points(
     //     &self,
     //     probe_modifications: &ProbePointsModification,
@@ -223,10 +233,6 @@ impl LocalSimulator {
     //         _ => Err(OombakSimError::DutNotLoaded),
     //     }
     // }
-    //
-    // fn set_signal(&self, signal_name: &str, value: &BitVec<u32>) -> OombakSimResult<()> {
-    //     Ok(self.dut()?.set(signal_name, value)?)
-    // }
 }
 
 impl DutState {
@@ -240,6 +246,13 @@ impl DutState {
     fn get(&self, signal_name: &str) -> OombakSimResult<BitVec<u32>> {
         match &self.dut {
             Some(dut) => Ok(dut.get(signal_name)?),
+            None => Err(OombakSimError::DutNotLoaded),
+        }
+    }
+
+    fn set(&self, signal_name: &str, value: &BitVec<u32>) -> OombakSimResult<()> {
+        match &self.dut {
+            Some(dut) => Ok(dut.set(signal_name, value)?),
             None => Err(OombakSimError::DutNotLoaded),
         }
     }
