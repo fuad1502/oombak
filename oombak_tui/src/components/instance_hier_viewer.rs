@@ -23,7 +23,7 @@ use crate::{
     threads::RendererMessage,
 };
 
-use super::{TokioSender, Confirmer};
+use super::{Confirmer, TokioSender};
 
 pub struct InstanceHierViewer {
     message_tx: Sender<RendererMessage>,

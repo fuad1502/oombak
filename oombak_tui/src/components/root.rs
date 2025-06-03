@@ -15,7 +15,8 @@ use ratatui::Frame;
 
 use super::models::SimulationSpec;
 use super::{
-    CommandInterpreter, FileExplorer, InstanceHierViewer, KeyMapsViewer, SignalsViewer, WaveViewer, TokioSender
+    CommandInterpreter, FileExplorer, InstanceHierViewer, KeyMapsViewer, SignalsViewer,
+    TokioSender, WaveViewer,
 };
 
 pub struct Root {
@@ -342,7 +343,9 @@ impl simulator_request_dispatcher::Listener for Root {
     async fn on_receive_reponse(&mut self, response: &oombak_sim::Response) {
         if let Some(result) = response.result() {
             match result {
-                oombak_sim::response::Results::CurrentTime(_) => self.request_simulation_result().await,
+                oombak_sim::response::Results::CurrentTime(_) => {
+                    self.request_simulation_result().await
+                }
                 oombak_sim::response::Results::LoadedDut(dut) => {
                     self.set_loaded_dut(dut);
                     self.reload_simulation().await;
@@ -357,7 +360,8 @@ impl simulator_request_dispatcher::Listener for Root {
 impl Root {
     async fn request_simulation_result(&self) {
         self.request_tx
-            .send(oombak_sim::Request::get_simulation_result()).await
+            .send(oombak_sim::Request::get_simulation_result())
+            .await
             .unwrap();
     }
 
