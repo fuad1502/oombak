@@ -84,7 +84,10 @@ impl SimulatorRequestDispatcher {
     fn request_dispatched_notification(request: &oombak_sim::Request) -> oombak_sim::Response {
         let message = format!("`{}` request dispatched", request.payload);
         let notification = oombak_sim::response::Payload::generic_notification(message);
-        oombak_sim::Response { id: request.id, payload: notification }
+        oombak_sim::Response {
+            id: request.id,
+            payload: notification,
+        }
     }
 
     async fn notify(response: oombak_sim::response::Response, listeners: Arc<RwLock<Listeners>>) {
