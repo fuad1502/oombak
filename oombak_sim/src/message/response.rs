@@ -29,6 +29,7 @@ pub enum Notifications {
     Generic(String),
 }
 
+#[derive(Clone)]
 pub struct Percentage {
     num_of_steps: usize,
     completed_steps: usize,
@@ -59,6 +60,10 @@ impl From<LoadedDut> for Payload {
 impl Payload {
     pub fn generic_notification(message: String) -> Self {
         Payload::Notification(Notifications::Generic(message))
+    }
+
+    pub fn progress(message: String, percentage: Percentage) -> Self {
+        Payload::Notification(Notifications::Progress(percentage, message))
     }
 
     pub fn current_time(current_time: usize) -> Self {
