@@ -229,9 +229,11 @@ impl simulator_request_dispatcher::Listener for CommandInterpreter {
     async fn on_receive_reponse(&mut self, response: &oombak_sim::Response) {
         let id = response.id;
         let result = match &response.payload {
-            oombak_sim::response::Payload::Result(_) => Ok(format!("[{}] Completed", id)),
-            oombak_sim::response::Payload::Notification(_) => Ok(format!("[{}]", id)),
-            oombak_sim::response::Payload::Error(e) => Err(format!("[{}] Error: {}", id, e)),
+            oombak_sim::response::Payload::Result(_) => Ok(format!("[ID: {:x}] Finished", id)),
+            oombak_sim::response::Payload::Notification(notification) => {
+                Ok(format!("[ID: {:x}] {}", id, notification))
+            }
+            oombak_sim::response::Payload::Error(e) => Err(format!("[ID: {:x}] Error: {}", id, e)),
         };
         self.terminal_state.append_output_history(result);
         self.notify_render();

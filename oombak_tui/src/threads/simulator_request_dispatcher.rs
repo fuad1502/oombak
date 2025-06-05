@@ -58,9 +58,9 @@ impl SimulatorRequestDispatcher {
                     return
                 }
                 Message::Request(request) => {
-                    Self::notify_request_dispatched(request.clone(), listeners.clone()).await;
+                    Self::notify_request_dispatched(&request, listeners.clone()).await;
                     let sim = simulator.clone();
-                    tokio::spawn(async move { sim.serve(request).await });
+                    tokio::spawn(async move { sim.serve(&request).await });
                 }
                 Message::Response(response) => Self::notify(response, listeners.clone()).await,
             }
@@ -68,14 +68,10 @@ impl SimulatorRequestDispatcher {
     }
 
     async fn notify_request_dispatched(
-        request: oombak_sim::request::Request,
+        request: &oombak_sim::Request,
         listeners: Arc<RwLock<Listeners>>,
     ) {
-        let notification = oombak_sim::response::Notifications::Generic("".to_string());
-        let response = oombak_sim::Response {
-            id: request.id,
-            payload: oombak_sim::response::Payload::Notification(notification),
-        };
+        let response = Self::request_dispatched_notification(request);
         for listener in listeners.read().unwrap().iter() {
             listener
                 .write()
@@ -83,6 +79,12 @@ impl SimulatorRequestDispatcher {
                 .on_receive_reponse(&response)
                 .await;
         }
+    }
+
+    fn request_dispatched_notification(request: &oombak_sim::Request) -> oombak_sim::Response {
+        let message = format!("`{}` request dispatched", request.payload);
+        let notification = oombak_sim::response::Payload::generic_notification(message);
+        oombak_sim::Response { id: request.id, payload: notification }
     }
 
     async fn notify(response: oombak_sim::response::Response, listeners: Arc<RwLock<Listeners>>) {
