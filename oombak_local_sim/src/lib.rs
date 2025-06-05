@@ -8,7 +8,7 @@ use bitvec::vec::BitVec;
 
 use oombak_gen::TempGenDir;
 use oombak_rs::{dut::Dut, probe::Probe};
-use oscillator::OscillatorGroup;
+use oscillator::{Oscillator, OscillatorGroup};
 use tokio::{
     sync::{mpsc::Sender, RwLock, RwLockReadGuard, RwLockWriteGuard},
     task::spawn_blocking,
@@ -47,6 +47,10 @@ impl Simulator for LocalSimulator {
             request::Payload::SetSignal(signal_name, value) => {
                 self.serve_set_signal(signal_name, value).await
             }
+            request::Payload::SetPeriodic(signal_name, period, low_value, high_value) => {
+                self.serve_set_periodic(signal_name, *period, low_value, high_value)
+                    .await
+            }
             request::Payload::Load(path) => self.serve_load(path, request.id).await,
             request::Payload::ModifyProbedPoints(probe_modifications) => {
                 self.serve_modify_probe_points(probe_modifications, request.id)
@@ -59,10 +63,7 @@ impl Simulator for LocalSimulator {
         let channel = self.channel.read().await;
         if let Some(channel) = &*channel {
             channel
-                .send(Message::Response(response::Response {
-                    id: request.id,
-                    payload,
-                }))
+                .send(Message::response(request.id, payload))
                 .await
                 .unwrap();
         }
@@ -76,12 +77,12 @@ impl Simulator for LocalSimulator {
 
 impl LocalSimulator {
     async fn serve_run(&self, duration: usize) -> response::Payload {
-        let mut simulation_state = self.simulation_result.write().await;
         let dut_state = self.dut_state.read().await;
+        let mut simulation_result = self.simulation_result.write().await;
         let mut oscillator_group = self.oscillator_group.write().await;
         match self.run(
             duration,
-            &mut simulation_state,
+            &mut simulation_result,
             &dut_state,
             &mut oscillator_group,
         ) {
@@ -252,6 +253,46 @@ impl LocalSimulator {
             Ok(()) => response::Payload::empty(),
             Err(e) => response::Payload::Error(Box::new(e)),
         }
+    }
+
+    async fn serve_set_periodic(
+        &self,
+        signal_name: &str,
+        period: usize,
+        low_value: &BitVec<u32>,
+        high_value: &BitVec<u32>,
+    ) -> response::Payload {
+        let dut_state = self.dut_state.read().await;
+        let simulation_result = self.simulation_result.read().await;
+        let mut oscillator_group = self.oscillator_group.write().await;
+
+        match Self::check_oscillator_parameters(signal_name, low_value, high_value, &dut_state) {
+            Ok(()) => (),
+            Err(e) => return response::Payload::Error(Box::new(e)),
+        }
+
+        let oscillator = Oscillator::new(
+            signal_name.to_string(),
+            period,
+            simulation_result.current_time,
+            low_value.clone(),
+            high_value.clone(),
+        );
+        oscillator_group.insert(oscillator);
+        response::Payload::empty()
+    }
+
+    fn check_oscillator_parameters(
+        signal_name: &str,
+        low_value: &BitVec<u32>,
+        high_value: &BitVec<u32>,
+        dut_state: &RwLockReadGuard<'_, DutState>,
+    ) -> OombakSimResult<()> {
+        let current_value = dut_state.get(signal_name)?;
+        dut_state.set(signal_name, low_value)?;
+        dut_state.set(signal_name, high_value)?;
+        dut_state.set(signal_name, &current_value)?;
+        Ok(())
     }
 
     async fn serve_modify_probe_points(
