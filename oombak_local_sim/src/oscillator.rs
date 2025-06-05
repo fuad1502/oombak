@@ -49,6 +49,10 @@ impl OscillatorGroup {
         }
         None
     }
+
+    pub fn clear(&mut self) {
+        self.priority_queue.clear();
+    }
 }
 
 impl Oscillator {

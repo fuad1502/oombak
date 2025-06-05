@@ -206,6 +206,11 @@ impl LocalSimulator {
             dut_state.reload(path, temp_gen_dir, new_probe)?;
         }
 
+        {
+            let mut oscillator_group = self.oscillator_group.write().await;
+            oscillator_group.clear();
+        }
+
         let dut_state = self.dut_state.read().await;
         let mut simulation_result = self.simulation_result.write().await;
         Self::reload_simulation_result(&mut simulation_result, &dut_state)?;
@@ -249,6 +254,8 @@ impl LocalSimulator {
 
     async fn serve_set_signal(&self, signal_name: &str, value: &BitVec<u32>) -> response::Payload {
         let dut_state = self.dut_state.read().await;
+        let mut oscillator_group = self.oscillator_group.write().await;
+        oscillator_group.remove(signal_name);
         match dut_state.set(signal_name, value) {
             Ok(()) => response::Payload::empty(),
             Err(e) => response::Payload::Error(Box::new(e)),
@@ -346,6 +353,11 @@ impl LocalSimulator {
         {
             let mut dut_state = self.dut_state.write().await;
             dut_state.reload_path_unchanged(temp_gen_dir, new_probe_clone)?;
+        }
+
+        {
+            let mut oscillator_group = self.oscillator_group.write().await;
+            oscillator_group.clear();
         }
 
         let dut_state = self.dut_state.read().await;
