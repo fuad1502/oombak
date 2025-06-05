@@ -44,9 +44,10 @@ impl Simulator for LocalSimulator {
             request::Payload::SetSignal(signal_name, value) => {
                 self.serve_set_signal(signal_name, value).await
             }
-            request::Payload::Load(path) => self.serve_load(path).await,
+            request::Payload::Load(path) => self.serve_load(path, request.id).await,
             request::Payload::ModifyProbedPoints(probe_modifications) => {
-                self.serve_modify_probe_points(probe_modifications).await
+                self.serve_modify_probe_points(probe_modifications, request.id)
+                    .await
             }
             request::Payload::GetSimulationResult => self.serve_simulation_result().await,
             request::Payload::Terminate => return,
@@ -137,14 +138,14 @@ impl LocalSimulator {
         Ok(new_values)
     }
 
-    async fn serve_load(&self, sv_path: &Path) -> response::Payload {
-        match self.load_dut(sv_path).await {
+    async fn serve_load(&self, sv_path: &Path, message_id: usize) -> response::Payload {
+        match self.load_dut(sv_path, message_id).await {
             Ok(loaded_dut) => response::Payload::from(loaded_dut),
             Err(e) => response::Payload::Error(Box::new(e)),
         }
     }
 
-    async fn load_dut(&self, path: &Path) -> OombakSimResult<LoadedDut> {
+    async fn load_dut(&self, path: &Path, message_id: usize) -> OombakSimResult<LoadedDut> {
         {
             let mut dut_state = self.dut_state.write().await;
             if dut_state.will_be_reloaded {
@@ -154,10 +155,12 @@ impl LocalSimulator {
         }
 
         let path_buf = path.to_path_buf();
-        let (new_dut, temp_gen_dir, new_probe) =
-            spawn_blocking(move || Self::generate_new_dut(&path_buf))
-                .await
-                .unwrap()?;
+        let notification_channel = self.channel.read().await.clone();
+        let (new_dut, temp_gen_dir, new_probe) = spawn_blocking(move || {
+            Self::generate_new_dut(&path_buf, notification_channel, message_id)
+        })
+        .await
+        .unwrap()?;
 
         {
             let mut dut_state = self.dut_state.write().await;
@@ -171,8 +174,13 @@ impl LocalSimulator {
         Ok(new_dut)
     }
 
-    fn generate_new_dut(path: &Path) -> OombakSimResult<(LoadedDut, TempGenDir, Probe)> {
-        let (temp_gen_dir, probe) = oombak_gen::build(path)?;
+    fn generate_new_dut(
+        path: &Path,
+        notification_channel: Option<Sender<Message>>,
+        message_id: usize,
+    ) -> OombakSimResult<(LoadedDut, TempGenDir, Probe)> {
+        let builder = oombak_gen::Builder::new(notification_channel, message_id);
+        let (temp_gen_dir, probe) = builder.build(path)?;
         let loaded_dut = LoadedDut::from(&probe);
         Ok((loaded_dut, temp_gen_dir, probe))
     }
@@ -211,8 +219,12 @@ impl LocalSimulator {
     async fn serve_modify_probe_points(
         &self,
         probe_modifications: &ProbePointsModification,
+        message_id: usize,
     ) -> response::Payload {
-        match self.modify_probe_points(probe_modifications).await {
+        match self
+            .modify_probe_points(probe_modifications, message_id)
+            .await
+        {
             Ok(dut) => response::Payload::from(dut),
             Err(e) => response::Payload::Error(Box::new(e)),
         }
@@ -221,6 +233,7 @@ impl LocalSimulator {
     async fn modify_probe_points(
         &self,
         probe_modifications: &ProbePointsModification,
+        message_id: usize,
     ) -> OombakSimResult<LoadedDut> {
         {
             let mut dut_state = self.dut_state.write().await;
@@ -243,10 +256,13 @@ impl LocalSimulator {
             PathBuf::from(path)
         };
 
-        let (new_dut, temp_gen_dir) =
-            spawn_blocking(move || Self::regenerate_dut(&path, &new_probe))
-                .await
-                .unwrap()?;
+        let notification_channel = self.channel.read().await.clone();
+
+        let (new_dut, temp_gen_dir) = spawn_blocking(move || {
+            Self::regenerate_dut(&path, &new_probe, notification_channel, message_id)
+        })
+        .await
+        .unwrap()?;
 
         {
             let mut dut_state = self.dut_state.write().await;
@@ -274,8 +290,14 @@ impl LocalSimulator {
         Ok(new_probe)
     }
 
-    fn regenerate_dut(path: &Path, probe: &Probe) -> OombakSimResult<(LoadedDut, TempGenDir)> {
-        let temp_gen_dir = oombak_gen::build_with_probe(path, probe)?;
+    fn regenerate_dut(
+        path: &Path,
+        probe: &Probe,
+        notification_channel: Option<Sender<Message>>,
+        message_id: usize,
+    ) -> OombakSimResult<(LoadedDut, TempGenDir)> {
+        let builder = oombak_gen::Builder::new(notification_channel, message_id);
+        let temp_gen_dir = builder.build_with_probe(path, probe)?;
         let loaded_dut = LoadedDut::from(probe);
         Ok((loaded_dut, temp_gen_dir))
     }
