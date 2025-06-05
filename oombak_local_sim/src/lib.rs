@@ -7,13 +7,13 @@ use bitvec::vec::BitVec;
 
 use oombak_gen::TempGenDir;
 use oombak_rs::{dut::Dut, probe::Probe};
-use tokio::sync::{mpsc::Sender, RwLock};
-use tokio::sync::{RwLockReadGuard, RwLockWriteGuard};
-use tokio::task::spawn_blocking;
+use tokio::{
+    sync::{mpsc::Sender, RwLock, RwLockReadGuard, RwLockWriteGuard},
+    task::spawn_blocking,
+};
 
-use oombak_sim::request::ProbePointsModification;
 use oombak_sim::{
-    request::{self},
+    request::{self, ProbePointsModification},
     response::{self, LoadedDut, SimulationResult, Wave},
     Message, Request, Simulator,
 };
