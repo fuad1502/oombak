@@ -35,15 +35,15 @@ struct DutState {
 
 #[async_trait]
 impl Simulator for LocalSimulator {
-    async fn serve(&self, request: Request) {
-        let payload = match request.payload {
-            request::Payload::Run(duration) => self.serve_run(duration).await,
+    async fn serve(&self, request: &Request) {
+        let payload = match &request.payload {
+            request::Payload::Run(duration) => self.serve_run(*duration).await,
             request::Payload::SetSignal(signal_name, value) => {
-                self.serve_set_signal(&signal_name, &value).await
+                self.serve_set_signal(signal_name, value).await
             }
-            request::Payload::Load(path) => self.serve_load(&path).await,
+            request::Payload::Load(path) => self.serve_load(path).await,
             request::Payload::ModifyProbedPoints(probe_modifications) => {
-                self.serve_modify_probe_points(&probe_modifications).await
+                self.serve_modify_probe_points(probe_modifications).await
             }
             request::Payload::GetSimulationResult => self.serve_simulation_result().await,
             request::Payload::Terminate => return,
