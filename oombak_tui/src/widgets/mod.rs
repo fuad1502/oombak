@@ -20,6 +20,7 @@ pub use key_maps::KeyMaps;
 pub use key_maps::ReversedKeyMaps;
 pub use scroll_state::ScrollState;
 pub use terminal::Terminal;
+pub use terminal::TerminalOutput;
 pub use terminal::TerminalState;
 pub use time_bar::TimeBar;
 pub use waveform::Waveform;

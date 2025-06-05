@@ -7,9 +7,9 @@ use ratatui::{style::Stylize, text::Line};
 use crate::{
     backend::interpreter,
     component::{Component, HandleResult},
-    styles::terminal::{FAIL_OUTPUT_STYLE, SUCCESS_OUTPUT_STYLE},
+    styles::terminal::{ERROR_OUTPUT_STYLE, NORMAL_OUTPUT_STYLE, NOTIFICATION_OUTPUT_STYLE},
     threads::{simulator_request_dispatcher, RendererMessage},
-    widgets::{CommandLine, KeyDesc, KeyId, KeyMaps, Terminal, TerminalState},
+    widgets::{CommandLine, KeyDesc, KeyId, KeyMaps, Terminal, TerminalOutput, TerminalState},
 };
 
 use super::TokioSender;
@@ -122,8 +122,15 @@ impl CommandInterpreter {
             }
             LineState::NotActive => {
                 let line = match self.terminal_state.output_history().last() {
-                    Some(Ok(res)) => Line::from(&res[..]).style(SUCCESS_OUTPUT_STYLE),
-                    Some(Err(res)) => Line::from(&res[..]).style(FAIL_OUTPUT_STYLE),
+                    Some(TerminalOutput::Normal(res)) => {
+                        Line::from(&res[..]).style(NORMAL_OUTPUT_STYLE)
+                    }
+                    Some(TerminalOutput::Notification(res)) => {
+                        Line::from(&res[..]).style(NOTIFICATION_OUTPUT_STYLE)
+                    }
+                    Some(TerminalOutput::Error(res)) => {
+                        Line::from(&res[..]).style(ERROR_OUTPUT_STYLE)
+                    }
                     _ => Line::from(" "),
                 };
                 f.render_widget(line.on_dark_gray(), rect);
@@ -190,28 +197,32 @@ impl CommandInterpreter {
                     let request = oombak_sim::Request::run(duration);
                     self.request_tx.blocking_send(request).unwrap();
                     self.terminal_state
-                        .append_output_history(Ok(command_text.to_string()));
+                        .append_output_history(TerminalOutput::Normal(command_text.to_string()));
                 }
                 interpreter::Command::Load(sv_path) => {
                     let request = oombak_sim::Request::load(sv_path);
                     self.request_tx.blocking_send(request).unwrap();
                     self.terminal_state
-                        .append_output_history(Ok(command_text.to_string()));
+                        .append_output_history(TerminalOutput::Normal(command_text.to_string()));
                 }
                 interpreter::Command::Set(signal_name, value) => {
                     let request = oombak_sim::Request::set_signal(signal_name, value);
                     self.request_tx.blocking_send(request).unwrap();
                     self.terminal_state
-                        .append_output_history(Ok(command_text.to_string()));
+                        .append_output_history(TerminalOutput::Normal(command_text.to_string()));
                 }
                 interpreter::Command::Help => {
                     self.terminal_state
-                        .append_output_history(Ok(interpreter::help().to_string()));
+                        .append_output_history(TerminalOutput::Normal(
+                            interpreter::help().to_string(),
+                        ));
                 }
                 interpreter::Command::Quit => self.notify_quit(),
                 interpreter::Command::Noop => (),
             },
-            Err(message) => self.terminal_state.append_output_history(Err(message)),
+            Err(message) => self
+                .terminal_state
+                .append_output_history(TerminalOutput::Error(message)),
         }
     }
 
@@ -229,11 +240,15 @@ impl simulator_request_dispatcher::Listener for CommandInterpreter {
     async fn on_receive_reponse(&mut self, response: &oombak_sim::Response) {
         let id = response.id;
         let result = match &response.payload {
-            oombak_sim::response::Payload::Result(_) => Ok(format!("[ID: {:x}] Finished", id)),
-            oombak_sim::response::Payload::Notification(notification) => {
-                Ok(format!("[ID: {:x}] {}", id, notification))
+            oombak_sim::response::Payload::Result(_) => {
+                TerminalOutput::Normal(format!("[ID: {:x}] Finished", id))
             }
-            oombak_sim::response::Payload::Error(e) => Err(format!("[ID: {:x}] Error: {}", id, e)),
+            oombak_sim::response::Payload::Notification(notification) => {
+                TerminalOutput::Notification(format!("[ID: {:x}] {}", id, notification))
+            }
+            oombak_sim::response::Payload::Error(e) => {
+                TerminalOutput::Error(format!("[ID: {:x}] Error: {}", id, e))
+            }
         };
         self.terminal_state.append_output_history(result);
         self.notify_render();

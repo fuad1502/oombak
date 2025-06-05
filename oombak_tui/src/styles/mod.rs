@@ -19,8 +19,9 @@ pub mod terminal {
 
     pub const COMMAND_LINE_STYLE: Style = Style::new().bg(Color::Blue);
     pub const COMMAND_LINE_HEADER_STYLE: Style = Style::new().fg(Color::Black).bg(Color::Yellow);
-    pub const SUCCESS_OUTPUT_STYLE: Style = Style::new().fg(Color::Green);
-    pub const FAIL_OUTPUT_STYLE: Style = Style::new().fg(Color::Red);
+    pub const NORMAL_OUTPUT_STYLE: Style = Style::new().fg(Color::Green);
+    pub const NOTIFICATION_OUTPUT_STYLE: Style = Style::new().fg(Color::Gray);
+    pub const ERROR_OUTPUT_STYLE: Style = Style::new().fg(Color::Red);
     pub const TEXT_CURSOR_STYLE: Style = Style::new().fg(Color::Black).bg(Color::White);
 }
 

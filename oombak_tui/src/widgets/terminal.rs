@@ -5,7 +5,7 @@ use ratatui::{
     widgets::{List, ListDirection, ListItem, ListState, StatefulWidget},
 };
 
-use crate::styles::terminal::{FAIL_OUTPUT_STYLE, SUCCESS_OUTPUT_STYLE};
+use crate::styles::terminal::{ERROR_OUTPUT_STYLE, NORMAL_OUTPUT_STYLE, NOTIFICATION_OUTPUT_STYLE};
 
 use super::{CommandLine, CommandLineState};
 
@@ -15,8 +15,14 @@ pub struct Terminal {}
 #[derive(Default)]
 pub struct TerminalState {
     command_line_state: CommandLineState,
-    output_history: Vec<Result<String, String>>,
+    output_history: Vec<TerminalOutput>,
     history_list_state: ListState,
+}
+
+pub enum TerminalOutput {
+    Normal(String),
+    Notification(String),
+    Error(String),
 }
 
 impl StatefulWidget for Terminal {
@@ -37,14 +43,21 @@ impl Terminal {
     }
 
     fn new_list_items_from_output_history<'a>(
-        output_history: &[Result<String, String>],
+        output_history: &[TerminalOutput],
     ) -> Vec<ListItem<'a>> {
         output_history
             .iter()
             .rev()
             .map(|h| match h {
-                Ok(output) => ListItem::from(format!("> {output}")).set_style(SUCCESS_OUTPUT_STYLE),
-                Err(output) => ListItem::from(format!("> {output}")).set_style(FAIL_OUTPUT_STYLE),
+                TerminalOutput::Normal(output) => {
+                    ListItem::from(format!("> {output}")).set_style(NORMAL_OUTPUT_STYLE)
+                }
+                TerminalOutput::Notification(output) => {
+                    ListItem::from(format!("> {output}")).set_style(NOTIFICATION_OUTPUT_STYLE)
+                }
+                TerminalOutput::Error(output) => {
+                    ListItem::from(format!("> {output}")).set_style(ERROR_OUTPUT_STYLE)
+                }
             })
             .collect()
     }
@@ -59,11 +72,11 @@ impl TerminalState {
         &mut self.command_line_state
     }
 
-    pub fn output_history(&self) -> &Vec<Result<String, String>> {
+    pub fn output_history(&self) -> &Vec<TerminalOutput> {
         &self.output_history
     }
 
-    pub fn append_output_history(&mut self, output: Result<String, String>) {
+    pub fn append_output_history(&mut self, output: TerminalOutput) {
         self.output_history.push(output);
     }
 }
