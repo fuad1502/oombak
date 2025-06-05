@@ -211,6 +211,17 @@ impl CommandInterpreter {
                     self.terminal_state
                         .append_output_history(TerminalOutput::Normal(command_text.to_string()));
                 }
+                interpreter::Command::SetPeriodic(signal_name, period, low_value, high_value) => {
+                    let request = oombak_sim::Request::set_periodic(
+                        signal_name,
+                        period,
+                        low_value,
+                        high_value,
+                    );
+                    self.request_tx.blocking_send(request).unwrap();
+                    self.terminal_state
+                        .append_output_history(TerminalOutput::Normal(command_text.to_string()));
+                }
                 interpreter::Command::Help => {
                     self.terminal_state
                         .append_output_history(TerminalOutput::Normal(

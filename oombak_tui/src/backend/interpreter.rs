@@ -8,6 +8,7 @@ pub enum Command {
     Run(usize),
     Load(PathBuf),
     Set(String, BitVec<u32>),
+    SetPeriodic(String, usize, BitVec<u32>, BitVec<u32>),
     Quit,
     Help,
     Noop,
@@ -22,10 +23,10 @@ struct CommandInfo {
 
 type Parser = Box<dyn Fn(&[&str]) -> Result<Command, String> + Send + Sync>;
 
-static ALL_COMMAND_INFO: OnceLock<[CommandInfo; 5]> = OnceLock::new();
+static ALL_COMMAND_INFO: OnceLock<[CommandInfo; 6]> = OnceLock::new();
 static HELP: OnceLock<String> = OnceLock::new();
 
-fn all_command_info() -> &'static [CommandInfo; 5] {
+fn all_command_info() -> &'static [CommandInfo; 6] {
     ALL_COMMAND_INFO.get_or_init(|| {
         [
             CommandInfo {
@@ -45,6 +46,17 @@ fn all_command_info() -> &'static [CommandInfo; 5] {
                 description: "sets the signal value",
                 args: vec!["signal name", "value"],
                 parser: Box::new(parse_set),
+            },
+            CommandInfo {
+                name: "set-periodic",
+                description: "set periodic signal value",
+                args: vec![
+                    "signal name",
+                    "period",
+                    "low state value",
+                    "high state value",
+                ],
+                parser: Box::new(parse_set_periodic),
             },
             CommandInfo {
                 name: "quit",
@@ -108,6 +120,24 @@ fn parse_set(args: &[&str]) -> Result<Command, String> {
     match bitvec_str::parse(args[1]) {
         Ok(value) => Ok(Command::Set(args[0].to_string(), value)),
         Err(e) => Err(e),
+    }
+}
+
+fn parse_set_periodic(args: &[&str]) -> Result<Command, String> {
+    match (
+        args[1].parse::<usize>(),
+        bitvec_str::parse(args[2]),
+        bitvec_str::parse(args[3]),
+    ) {
+        (Ok(period), Ok(low_value), Ok(high_value)) => Ok(Command::SetPeriodic(
+            args[0].to_string(),
+            period,
+            low_value,
+            high_value,
+        )),
+        (Err(e), _, _) => Err(e.to_string()),
+        (_, Err(e), _) => Err(e),
+        (_, _, Err(e)) => Err(e),
     }
 }
 
