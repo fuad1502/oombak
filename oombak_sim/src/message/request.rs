@@ -69,3 +69,16 @@ impl Request {
         rng.next_u32() as usize
     }
 }
+
+impl std::fmt::Display for Payload {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Payload::Run(duration) => write!(f, "Run({duration})"),
+            Payload::SetSignal(signal_name, _) => write!(f, "SetSignal({signal_name})"),
+            Payload::Load(path) => write!(f, "Load({})", path.to_str().unwrap()),
+            Payload::ModifyProbedPoints(_) => write!(f, "ModifyProbedPoints"),
+            Payload::GetSimulationResult => write!(f, "GetSimulationResult"),
+            Payload::Terminate => write!(f, "Terminate"),
+        }
+    }
+}

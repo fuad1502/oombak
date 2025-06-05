@@ -86,3 +86,18 @@ impl Percentage {
         self.completed_steps as f32 / self.num_of_steps as f32
     }
 }
+
+impl std::fmt::Display for Percentage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}/{}", self.completed_steps, self.num_of_steps)
+    }
+}
+
+impl std::fmt::Display for Notifications {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Notifications::Progress(percentage, message) => write!(f, "{message} ({percentage})"),
+            Notifications::Generic(message) => write!(f, "{message}"),
+        }
+    }
+}
