@@ -266,9 +266,10 @@ impl LocalSimulator {
         let simulation_result = self.simulation_result.read().await;
         let mut oscillator_group = self.oscillator_group.write().await;
 
-        match Self::check_oscillator_parameters(signal_name, low_value, high_value, &dut_state) {
-            Ok(()) => (),
-            Err(e) => return response::Payload::Error(Box::new(e)),
+        if let Err(e) =
+            Self::check_oscillator_parameters(signal_name, low_value, high_value, &dut_state)
+        {
+            return response::Payload::Error(Box::new(e));
         }
 
         let oscillator = Oscillator::new(
@@ -288,10 +289,9 @@ impl LocalSimulator {
         high_value: &BitVec<u32>,
         dut_state: &RwLockReadGuard<'_, DutState>,
     ) -> OombakSimResult<()> {
-        let current_value = dut_state.get(signal_name)?;
         dut_state.set(signal_name, low_value)?;
         dut_state.set(signal_name, high_value)?;
-        dut_state.set(signal_name, &current_value)?;
+        dut_state.set(signal_name, low_value)?;
         Ok(())
     }
 
