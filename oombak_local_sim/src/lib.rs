@@ -1,4 +1,5 @@
 mod error;
+mod oscillator;
 
 use std::path::{Path, PathBuf};
 
@@ -7,6 +8,7 @@ use bitvec::vec::BitVec;
 
 use oombak_gen::TempGenDir;
 use oombak_rs::{dut::Dut, probe::Probe};
+use oscillator::OscillatorGroup;
 use tokio::{
     sync::{mpsc::Sender, RwLock, RwLockReadGuard, RwLockWriteGuard},
     task::spawn_blocking,
@@ -25,6 +27,7 @@ pub struct LocalSimulator {
     channel: RwLock<Option<Sender<Message>>>,
     simulation_result: RwLock<SimulationResult>,
     dut_state: RwLock<DutState>,
+    oscillator_group: RwLock<OscillatorGroup>,
 }
 
 #[derive(Default)]
@@ -75,7 +78,13 @@ impl LocalSimulator {
     async fn serve_run(&self, duration: usize) -> response::Payload {
         let mut simulation_state = self.simulation_result.write().await;
         let dut_state = self.dut_state.read().await;
-        match self.run(duration, &mut simulation_state, &dut_state) {
+        let mut oscillator_group = self.oscillator_group.write().await;
+        match self.run(
+            duration,
+            &mut simulation_state,
+            &dut_state,
+            &mut oscillator_group,
+        ) {
             Ok(current_time) => response::Payload::current_time(current_time),
             Err(e) => response::Payload::Error(Box::new(e)),
         }
@@ -86,17 +95,46 @@ impl LocalSimulator {
         duration: usize,
         simulation_result: &mut RwLockWriteGuard<'_, SimulationResult>,
         dut_state: &RwLockReadGuard<'_, DutState>,
+        oscillator_group: &mut RwLockWriteGuard<'_, OscillatorGroup>,
     ) -> OombakSimResult<usize> {
         let target_time = simulation_result.current_time + duration;
         while simulation_result.current_time != target_time {
-            let curr_time = dut_state.run(duration)?;
+            let current_time = simulation_result.current_time;
+            let run_duration =
+                Self::calculate_run_duration(current_time, target_time, oscillator_group);
+            let current_time = dut_state.run(run_duration)?;
             Self::append_new_values_to_simulation_result_until(
-                curr_time,
+                current_time,
                 simulation_result,
                 dut_state,
             )?;
+            Self::set_triggered_oscillator_values(current_time, dut_state, oscillator_group)?;
         }
         Ok(simulation_result.current_time)
+    }
+
+    fn calculate_run_duration(
+        current_time: usize,
+        target_time: usize,
+        oscillator_group: &mut RwLockWriteGuard<'_, OscillatorGroup>,
+    ) -> usize {
+        if let Some(next_trigger_time) = oscillator_group.next_trigger_time() {
+            if next_trigger_time < target_time {
+                return next_trigger_time - current_time;
+            }
+        }
+        target_time - current_time
+    }
+
+    fn set_triggered_oscillator_values(
+        current_time: usize,
+        dut_state: &RwLockReadGuard<'_, DutState>,
+        oscillator_group: &mut RwLockWriteGuard<'_, OscillatorGroup>,
+    ) -> OombakSimResult<()> {
+        while let Some((signal_name, value)) = oscillator_group.try_pop(current_time) {
+            dut_state.set(&signal_name, &value)?;
+        }
+        Ok(())
     }
 
     fn append_new_values_to_simulation_result_until(
