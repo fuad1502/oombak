@@ -1,3 +1,5 @@
+mod error;
+
 use std::path::{Path, PathBuf};
 
 use async_trait::async_trait;
@@ -9,13 +11,14 @@ use tokio::sync::{mpsc::Sender, RwLock};
 use tokio::sync::{RwLockReadGuard, RwLockWriteGuard};
 use tokio::task::spawn_blocking;
 
-use crate::request::ProbePointsModification;
-use crate::{
-    error::{OombakSimError, OombakSimResult},
+use oombak_sim::request::ProbePointsModification;
+use oombak_sim::{
     request::{self},
     response::{self, LoadedDut, SimulationResult, Wave},
     Message, Request, Simulator,
 };
+
+use crate::error::{OombakSimError, OombakSimResult};
 
 #[derive(Default)]
 pub struct LocalSimulator {

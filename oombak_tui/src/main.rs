@@ -1,4 +1,4 @@
-use oombak_sim::LocalSimulator;
+use oombak_local_sim::LocalSimulator;
 use oombak_tui::{
     components,
     threads::{

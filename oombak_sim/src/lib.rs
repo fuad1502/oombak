@@ -1,9 +1,6 @@
-pub mod error;
-mod local_simulator;
 mod message;
 mod simulator;
 
-pub use local_simulator::LocalSimulator;
 pub use message::request;
 pub use message::request::Request;
 pub use message::response;
