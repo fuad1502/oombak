@@ -55,6 +55,11 @@ impl SignalsViewer {
         }
     }
 
+    pub fn selected_signal_name(&self) -> Option<&str> {
+        self.selected_idx
+            .map(|i| self.simulation.wave_specs[i].wave.signal_name.as_str())
+    }
+
     pub fn render_mut(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
         let items = self.create_list_items(rect.width);
         let list = List::new(items);

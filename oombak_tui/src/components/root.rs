@@ -4,6 +4,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::component::{Component, HandleResult};
 use crate::threads::{simulator_request_dispatcher, RendererMessage};
+use crate::utils;
 use crate::widgets::{KeyDesc, KeyId, KeyMaps};
 
 use async_trait::async_trait;
@@ -14,6 +15,7 @@ use ratatui::widgets::{Block, Borders, Clear};
 use ratatui::Frame;
 
 use super::models::SimulationSpec;
+use super::signal_properties_editor::SignalPropertiesEditor;
 use super::{
     CommandInterpreter, FileExplorer, InstanceHierViewer, KeyMapsViewer, SignalsViewer,
     TokioSender, WaveViewer,
@@ -28,6 +30,7 @@ pub struct Root {
     instance_hier_viewer: Arc<RwLock<InstanceHierViewer>>,
     command_interpreter: Arc<RwLock<CommandInterpreter>>,
     file_explorer: Arc<RwLock<FileExplorer>>,
+    signal_properties_editor: Arc<RwLock<SignalPropertiesEditor>>,
     focused_child: Option<Child>,
     simulation_spec: SimulationSpec,
     key_mappings: KeyMaps,
@@ -38,6 +41,7 @@ enum Child {
     CommandInterpreter,
     InstanceHierView,
     FileExplorer,
+    SignalPropertiesEditor,
 }
 
 impl Root {
@@ -62,6 +66,9 @@ impl Root {
             file_explorer: Arc::new(RwLock::new(FileExplorer::new(
                 message_tx.clone(),
                 request_tx.clone(),
+            ))),
+            signal_properties_editor: Arc::new(RwLock::new(SignalPropertiesEditor::new(
+                message_tx.clone(),
             ))),
             focused_child: None,
             simulation_spec,
@@ -112,6 +119,9 @@ impl Component for Root {
         }
         if matches!(self.focused_child, Some(Child::FileExplorer)) {
             self.render_file_explorer(f, rect);
+        }
+        if matches!(self.focused_child, Some(Child::SignalPropertiesEditor)) {
+            self.render_signal_properties_editor(f, rect);
         }
         if self.show_key_maps {
             self.render_key_maps_viewer(f, rect);
@@ -164,6 +174,15 @@ impl Component for Root {
             KeyCode::Char('o') => {
                 self.focused_child = Some(Child::FileExplorer);
             }
+            KeyCode::Enter => {
+                if let Some(signal_name) = self.signals_viewer.selected_signal_name() {
+                    self.signal_properties_editor
+                        .write()
+                        .unwrap()
+                        .set_signal_name(signal_name);
+                    self.focused_child = Some(Child::SignalPropertiesEditor);
+                }
+            }
             KeyCode::F(1) => {
                 self.key_maps_viewer.prev_page();
             }
@@ -195,19 +214,14 @@ impl Component for Root {
             Some(Child::CommandInterpreter) => Some(self.command_interpreter.clone()),
             Some(Child::InstanceHierView) => Some(self.instance_hier_viewer.clone()),
             Some(Child::FileExplorer) => Some(self.file_explorer.clone()),
+            Some(Child::SignalPropertiesEditor) => Some(self.signal_properties_editor.clone()),
             None => None,
         }
     }
 
     fn get_key_mappings(&self) -> KeyMaps {
-        let mut key_maps = match self.focused_child {
-            Some(Child::CommandInterpreter) => {
-                self.command_interpreter.read().unwrap().get_key_mappings()
-            }
-            Some(Child::InstanceHierView) => {
-                self.instance_hier_viewer.read().unwrap().get_key_mappings()
-            }
-            Some(Child::FileExplorer) => self.file_explorer.read().unwrap().get_key_mappings(),
+        let mut key_maps = match self.get_focused_child() {
+            Some(child) => child.read().unwrap().get_key_mappings(),
             None => self.key_mappings.clone(),
         };
 
@@ -251,10 +265,18 @@ impl Root {
             .render_with_block(f, popup_area, block);
     }
 
+    fn render_signal_properties_editor(&self, f: &mut Frame, rect: Rect) {
+        let popup_area = Self::get_popup_area_centered_small(rect);
+        self.signal_properties_editor
+            .write()
+            .unwrap()
+            .render(f, popup_area);
+    }
+
     fn render_key_maps_viewer(&mut self, f: &mut Frame, rect: Rect) {
         self.key_maps_viewer
             .set_key_maps(self.get_key_mappings().clone());
-        let popup_area = Self::get_popup_area_bottom_right(rect);
+        let popup_area = utils::layout::get_popup_area_bottom_right(rect);
         let block = Block::new()
             .borders(Borders::ALL)
             .title_top("Command Keys (F2)")
@@ -300,41 +322,11 @@ impl Root {
     }
 
     fn get_popup_area_centered_large(rect: Rect) -> Rect {
-        Self::get_popup_area_centered(rect, 3, 6)
+        utils::layout::get_popup_area_centered(rect, 3, 6)
     }
 
-    fn get_popup_area_bottom_right(rect: Rect) -> Rect {
-        let min_width = 40;
-        let min_height = 13;
-        let top_margin = 3.max(rect.height as i64 - min_height - 3);
-        let left_margin = 6.max(rect.width as i64 - min_width - 6);
-        Self::get_popup_area(rect, top_margin as u16, 6, 3, left_margin as u16)
-    }
-
-    fn get_popup_area_centered(rect: Rect, vert_margin: u16, hor_margin: u16) -> Rect {
-        Self::get_popup_area(rect, vert_margin, hor_margin, vert_margin, hor_margin)
-    }
-
-    fn get_popup_area(
-        rect: Rect,
-        top_margin: u16,
-        right_margin: u16,
-        bottom_margin: u16,
-        left_margin: u16,
-    ) -> Rect {
-        let chunks = Layout::vertical(vec![
-            Constraint::Length(top_margin),
-            Constraint::Min(0),
-            Constraint::Length(bottom_margin),
-        ])
-        .split(rect);
-        let chunks = Layout::horizontal(vec![
-            Constraint::Length(left_margin),
-            Constraint::Min(0),
-            Constraint::Length(right_margin),
-        ])
-        .split(chunks[1]);
-        chunks[1]
+    fn get_popup_area_centered_small(rect: Rect) -> Rect {
+        utils::layout::get_popup_area_centered(rect, 9, 18)
     }
 }
 

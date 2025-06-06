@@ -5,6 +5,9 @@ mod instance_hier_viewer;
 mod key_maps_viewer;
 pub mod models;
 mod root;
+mod selector;
+mod signal_properties_editor;
+mod signal_value_setter;
 mod signals_viewer;
 mod wave_viewer;
 
