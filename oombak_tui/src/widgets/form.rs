@@ -1,6 +1,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
+    style::{Color, Style},
     widgets::{Block, Clear, Paragraph, StatefulWidget, Widget},
 };
 
@@ -127,14 +128,19 @@ impl Form {
         input_state: &mut CommandLineState,
         highlight: bool,
     ) {
-        let block = Block::bordered();
-        let block = if highlight {
-            block.style(HIGHLIGHTED_INPUT_FIELD_BORDER_STYLE)
-        } else {
-            block.style(NORMAL_FIELD_BORDER_STYLE)
-        };
-        let input_field = CommandLine::default().no_header().style(INPUT_FIELD_STYLE);
+        let mut block = Block::bordered();
         let inner_area = block.inner(area);
+        let mut input_field = CommandLine::default()
+            .no_header()
+            .line_style(INPUT_FIELD_STYLE);
+
+        if highlight {
+            block = block.style(HIGHLIGHTED_INPUT_FIELD_BORDER_STYLE);
+        } else {
+            block = block.style(NORMAL_FIELD_BORDER_STYLE);
+            input_field = input_field.cursor_style(Style::new().bg(Color::Reset).fg(Color::Reset));
+        };
+
         block.render(area, buf);
         input_field.render(inner_area, buf, input_state);
     }

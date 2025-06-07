@@ -9,7 +9,10 @@ use crate::{
     widgets::KeyMaps,
 };
 
-use super::{selector::Selector, signal_value_setter::SignalValueSetter};
+use super::{
+    periodic_signal_setter::PeriodicSignalSetter, selector::Selector,
+    signal_value_setter::SignalValueSetter,
+};
 
 pub struct SignalPropertiesEditor {
     selector: Selector,
@@ -26,7 +29,7 @@ impl SignalPropertiesEditor {
             ),
             (
                 "Set periodic signal value".to_string(),
-                Arc::new(RwLock::new(SignalValueSetter::new(
+                Arc::new(RwLock::new(PeriodicSignalSetter::new(
                     renderer_channel.clone(),
                 ))),
             ),

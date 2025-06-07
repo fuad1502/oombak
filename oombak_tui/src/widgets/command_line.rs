@@ -10,7 +10,8 @@ use super::ScrollState;
 
 pub struct CommandLine {
     no_header: bool,
-    style: Style,
+    line_style: Style,
+    cursor_style: Style,
 }
 
 #[derive(Default)]
@@ -29,9 +30,14 @@ impl StatefulWidget for CommandLine {
         buf: &mut ratatui::prelude::Buffer,
         state: &mut Self::State,
     ) {
+        let input_width = if self.no_header {
+            area.width as usize
+        } else {
+            (area.width as usize).saturating_sub(Self::HEADER.len() + 1)
+        };
         state
             .scroll_state
-            .set_viewport_length(area.width as usize - (Self::HEADER.len() + 1) - 1);
+            .set_viewport_length(input_width.saturating_sub(1));
 
         let start_idx = state.scroll_state.start_position();
         let highlight_idx =
@@ -45,7 +51,7 @@ impl StatefulWidget for CommandLine {
             Span::from(Self::HEADER).style(COMMAND_LINE_HEADER_STYLE),
             Span::from(" "),
             Span::from(before_highlight),
-            Span::from(highlight).style(TEXT_CURSOR_STYLE),
+            Span::from(highlight).style(self.cursor_style),
             Span::from(after_highlight),
         ];
         if self.no_header {
@@ -53,7 +59,7 @@ impl StatefulWidget for CommandLine {
             command_line_components.remove(0);
         }
 
-        let command_line = Line::from(command_line_components).style(self.style);
+        let command_line = Line::from(command_line_components).style(self.line_style);
 
         command_line.render(area, buf);
     }
@@ -63,7 +69,8 @@ impl Default for CommandLine {
     fn default() -> Self {
         Self {
             no_header: false,
-            style: COMMAND_LINE_STYLE,
+            line_style: COMMAND_LINE_STYLE,
+            cursor_style: TEXT_CURSOR_STYLE,
         }
     }
 }
@@ -76,8 +83,13 @@ impl CommandLine {
         self
     }
 
-    pub fn style(mut self, style: Style) -> Self {
-        self.style = style;
+    pub fn line_style(mut self, style: Style) -> Self {
+        self.line_style = style;
+        self
+    }
+
+    pub fn cursor_style(mut self, style: Style) -> Self {
+        self.cursor_style = style;
         self
     }
 }

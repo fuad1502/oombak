@@ -4,6 +4,7 @@ mod file_explorer;
 mod instance_hier_viewer;
 mod key_maps_viewer;
 pub mod models;
+mod periodic_signal_setter;
 mod root;
 mod selector;
 mod signal_properties_editor;
