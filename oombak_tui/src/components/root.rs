@@ -266,7 +266,7 @@ impl Root {
     }
 
     fn render_signal_properties_editor(&self, f: &mut Frame, rect: Rect) {
-        let popup_area = Self::get_popup_area_centered_small(rect);
+        let popup_area = Self::get_popup_area_centered_large(rect);
         self.signal_properties_editor
             .write()
             .unwrap()
@@ -322,11 +322,9 @@ impl Root {
     }
 
     fn get_popup_area_centered_large(rect: Rect) -> Rect {
-        utils::layout::get_popup_area_centered(rect, 3, 6)
-    }
-
-    fn get_popup_area_centered_small(rect: Rect) -> Rect {
-        utils::layout::get_popup_area_centered(rect, 9, 18)
+        let width = rect.width - 6;
+        let height = rect.height - 12;
+        utils::layout::get_popup_area_centered(rect, width, height)
     }
 }
 

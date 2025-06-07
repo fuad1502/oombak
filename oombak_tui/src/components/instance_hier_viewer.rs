@@ -187,7 +187,7 @@ impl Component for InstanceHierViewer {
     fn handle_focus_gained(&mut self) -> HandleResult {
         self.focused_child = None;
         let is_confirm = self.confirmer.read().unwrap().selected_state().is_confirm();
-        if is_confirm {
+        if is_confirm.unwrap_or(false) {
             self.request_modify_probe_points();
             self.clear_marked_signals();
         }

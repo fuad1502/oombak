@@ -8,8 +8,14 @@ pub fn get_popup_area_bottom_right(rect: Rect) -> Rect {
     get_popup_area(rect, top_margin as u16, 6, 3, left_margin as u16)
 }
 
-pub fn get_popup_area_centered(rect: Rect, vert_margin: u16, hor_margin: u16) -> Rect {
-    get_popup_area(rect, vert_margin, hor_margin, vert_margin, hor_margin)
+pub fn get_popup_area_centered(rect: Rect, width: u16, height: u16) -> Rect {
+    let height = height.min(rect.height);
+    let width = width.min(rect.width);
+    let top_margin = (rect.height - height) / 2;
+    let bottom_margin = rect.height - top_margin - height;
+    let left_margin = (rect.width - width) / 2;
+    let right_margin = rect.width - left_margin - width;
+    get_popup_area(rect, top_margin, right_margin, bottom_margin, left_margin)
 }
 
 pub fn get_popup_area(

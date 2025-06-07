@@ -1,4 +1,5 @@
 use ratatui::{
+    style::Style,
     text::{Line, Span},
     widgets::{StatefulWidget, Widget},
 };
@@ -7,8 +8,10 @@ use crate::styles::terminal::{COMMAND_LINE_HEADER_STYLE, COMMAND_LINE_STYLE, TEX
 
 use super::ScrollState;
 
-#[derive(Default)]
-pub struct CommandLine {}
+pub struct CommandLine {
+    no_header: bool,
+    style: Style,
+}
 
 #[derive(Default)]
 pub struct CommandLineState {
@@ -38,19 +41,45 @@ impl StatefulWidget for CommandLine {
         let before_highlight = state.text.get(start_idx..highlight_idx).unwrap_or(" ");
         let after_highlight = state.text.get(highlight_idx + 1..).unwrap_or(" ");
 
-        let command_line = Line::from(vec![
+        let mut command_line_components = vec![
             Span::from(Self::HEADER).style(COMMAND_LINE_HEADER_STYLE),
             Span::from(" "),
             Span::from(before_highlight),
             Span::from(highlight).style(TEXT_CURSOR_STYLE),
             Span::from(after_highlight),
-        ]);
-        command_line.style(COMMAND_LINE_STYLE).render(area, buf);
+        ];
+        if self.no_header {
+            command_line_components.remove(0);
+            command_line_components.remove(0);
+        }
+
+        let command_line = Line::from(command_line_components).style(self.style);
+
+        command_line.render(area, buf);
+    }
+}
+
+impl Default for CommandLine {
+    fn default() -> Self {
+        Self {
+            no_header: false,
+            style: COMMAND_LINE_STYLE,
+        }
     }
 }
 
 impl CommandLine {
     const HEADER: &'static str = " >>> ";
+
+    pub fn no_header(mut self) -> Self {
+        self.no_header = true;
+        self
+    }
+
+    pub fn style(mut self, style: Style) -> Self {
+        self.style = style;
+        self
+    }
 }
 
 impl CommandLineState {

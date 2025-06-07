@@ -69,23 +69,21 @@ impl Selector {
         let inner_area = block.inner(render_area);
         let list =
             List::new(self.selection.iter().map(|s| &s.0[..])).highlight_style(SELECTED_ITEM_STYLE);
-        f.render_widget(Clear::default(), render_area);
+        f.render_widget(Clear, render_area);
         f.render_widget(block, render_area);
         f.render_stateful_widget(list, inner_area, &mut self.list_state);
     }
 
     fn try_select_default_item(&mut self) {
-        if self.list_state.selected() == None {
+        if self.list_state.selected().is_none() {
             self.list_state.select_first();
         }
     }
 
     fn get_render_area(&self, rect: Rect) -> Rect {
-        let height = usize::min(rect.height as usize, self.selection.len() + 2);
-        let width = usize::min(rect.width as usize, self.max_content_width() + 2);
-        let vert_margin = (rect.height - height as u16) / 2;
-        let hor_margin = (rect.width - width as u16) / 2;
-        utils::layout::get_popup_area_centered(rect, vert_margin, hor_margin)
+        let height = u16::min(rect.height, self.selection.len() as u16 + 2);
+        let width = u16::min(rect.width, self.max_content_width() as u16 + 2);
+        utils::layout::get_popup_area_centered(rect, width, height)
     }
 
     fn max_content_width(&self) -> usize {

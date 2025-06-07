@@ -17,7 +17,7 @@ pub mod file_explorer {
 pub mod terminal {
     use super::*;
 
-    pub const COMMAND_LINE_STYLE: Style = Style::new().bg(Color::Blue);
+    pub const COMMAND_LINE_STYLE: Style = Style::new().bg(Color::Blue).fg(Color::Reset);
     pub const COMMAND_LINE_HEADER_STYLE: Style = Style::new().fg(Color::Black).bg(Color::Yellow);
     pub const NORMAL_OUTPUT_STYLE: Style = Style::new().fg(Color::Green);
     pub const NOTIFICATION_OUTPUT_STYLE: Style = Style::new().fg(Color::Gray);
@@ -57,4 +57,12 @@ pub mod command_keys_help_bar {
     pub const KEY_ID_STYLE: Style = Style::new().fg(Color::Blue).add_modifier(Modifier::BOLD);
     pub const DESCRIPTION_STYLE: Style =
         Style::new().fg(Color::Green).add_modifier(Modifier::ITALIC);
+}
+
+pub mod form {
+    use super::*;
+
+    pub const HIGHLIGHTED_INPUT_FIELD_BORDER_STYLE: Style = Style::new().fg(Color::Red);
+    pub const NORMAL_FIELD_BORDER_STYLE: Style = Style::new().fg(Color::Reset);
+    pub const INPUT_FIELD_STYLE: Style = Style::new().bg(Color::Reset).fg(Color::Reset);
 }
