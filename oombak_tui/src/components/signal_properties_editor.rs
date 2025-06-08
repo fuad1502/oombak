@@ -1,6 +1,7 @@
 use std::sync::{mpsc::Sender, Arc, RwLock};
 
 use crossterm::event::KeyEvent;
+use oombak_sim::response::LoadedDut;
 use ratatui::{layout::Rect, Frame};
 
 use crate::{
@@ -10,25 +11,28 @@ use crate::{
 };
 
 use super::{
-    periodic_signal_setter::PeriodicSignalSetter, selector::Selector,
+    periodic_signal_setter::PeriodicSignalSetter,
+    selector::{Selection, Selector},
     signal_value_setter::SignalValueSetter,
 };
 
 pub struct SignalPropertiesEditor {
     selector: Selector,
+    signal_name: Option<String>,
+    input_ports: Vec<String>,
 }
 
 impl SignalPropertiesEditor {
     pub fn new(renderer_channel: Sender<RendererMessage>) -> Self {
-        let selection: Vec<(String, Arc<RwLock<dyn Component>>)> = vec![
-            (
-                "Set signal value".to_string(),
+        let selection = vec![
+            Selection::new(
+                "Set signal value",
                 Arc::new(RwLock::new(SignalValueSetter::new(
                     renderer_channel.clone(),
                 ))),
             ),
-            (
-                "Set periodic signal value".to_string(),
+            Selection::new(
+                "Set periodic signal value",
                 Arc::new(RwLock::new(PeriodicSignalSetter::new(
                     renderer_channel.clone(),
                 ))),
@@ -36,11 +40,47 @@ impl SignalPropertiesEditor {
         ];
         Self {
             selector: Selector::new(selection, renderer_channel),
+            signal_name: None,
+            input_ports: vec![],
         }
     }
 
     pub fn set_signal_name(&mut self, signal_name: &str) {
+        self.signal_name = Some(signal_name.to_string());
         self.selector.set_title(format!("[{signal_name}]"));
+        self.enable_or_disable_selections();
+    }
+
+    pub fn set_loaded_dut(&mut self, loaded_dut: &LoadedDut) {
+        self.set_input_ports(loaded_dut);
+        self.enable_or_disable_selections();
+    }
+
+    fn set_input_ports(&mut self, loaded_dut: &LoadedDut) {
+        self.input_ports.clear();
+        for port in loaded_dut.root_node.get_ports() {
+            if port.is_input_port() {
+                self.input_ports.push(port.name.clone());
+            }
+        }
+    }
+
+    fn enable_or_disable_selections(&mut self) {
+        if self.is_signal_settable() {
+            self.selector.enable_selection(0);
+            self.selector.enable_selection(1);
+        } else {
+            self.selector.disable_selection(0);
+            self.selector.disable_selection(1);
+        }
+    }
+
+    fn is_signal_settable(&self) -> bool {
+        if let Some(name) = &self.signal_name {
+            self.input_ports.contains(name)
+        } else {
+            false
+        }
     }
 }
 

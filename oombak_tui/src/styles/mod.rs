@@ -59,6 +59,12 @@ pub mod command_keys_help_bar {
         Style::new().fg(Color::Green).add_modifier(Modifier::ITALIC);
 }
 
+pub mod selector {
+    use super::*;
+
+    pub const DISABLED_ITEM_STYLE: Style = Style::new().fg(Color::DarkGray);
+}
+
 pub mod form {
     use super::*;
 

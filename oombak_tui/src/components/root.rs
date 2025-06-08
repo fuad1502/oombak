@@ -360,6 +360,10 @@ impl Root {
             .write()
             .unwrap()
             .set_loaded_dut(loaded_dut);
+        self.signal_properties_editor
+            .write()
+            .unwrap()
+            .set_loaded_dut(loaded_dut);
     }
 
     async fn reload_simulation(&mut self) {

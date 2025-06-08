@@ -1,6 +1,7 @@
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::{Alignment, Rect},
+    text::Text,
     widgets::{Block, Clear, List, ListState},
     Frame,
 };
@@ -11,14 +12,14 @@ use std::{
 
 use crate::{
     component::{Component, HandleResult},
-    styles::global::SELECTED_ITEM_STYLE,
+    styles::{global::SELECTED_ITEM_STYLE, selector::DISABLED_ITEM_STYLE},
     threads::RendererMessage,
     utils,
     widgets::{KeyDesc, KeyId, KeyMaps},
 };
 
 pub struct Selector {
-    selection: Vec<(String, Arc<RwLock<dyn Component>>)>,
+    selection: Vec<Selection>,
     title: String,
     list_state: ListState,
     child: Option<usize>,
@@ -26,11 +27,14 @@ pub struct Selector {
     renderer_channel: Sender<RendererMessage>,
 }
 
+pub struct Selection {
+    name: String,
+    component: Arc<RwLock<dyn Component>>,
+    disabled: bool,
+}
+
 impl Selector {
-    pub fn new(
-        selection: Vec<(String, Arc<RwLock<dyn Component>>)>,
-        renderer_channel: Sender<RendererMessage>,
-    ) -> Self {
+    pub fn new(selection: Vec<Selection>, renderer_channel: Sender<RendererMessage>) -> Self {
         Self {
             selection,
             title: String::new(),
@@ -43,6 +47,24 @@ impl Selector {
 
     pub fn set_title(&mut self, title: String) {
         self.title = title;
+    }
+
+    pub fn enable_selection(&mut self, idx: usize) -> bool {
+        if let Some(selection) = self.selection.get_mut(idx) {
+            selection.disabled = false;
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn disable_selection(&mut self, idx: usize) -> bool {
+        if let Some(selection) = self.selection.get_mut(idx) {
+            selection.disabled = true;
+            true
+        } else {
+            false
+        }
     }
 
     fn create_key_maps() -> KeyMaps {
@@ -67,8 +89,14 @@ impl Selector {
             .title(&self.title[..])
             .title_alignment(Alignment::Center);
         let inner_area = block.inner(render_area);
-        let list =
-            List::new(self.selection.iter().map(|s| &s.0[..])).highlight_style(SELECTED_ITEM_STYLE);
+        let list = List::new(self.selection.iter().map(|s| {
+            if s.disabled {
+                Text::from(&s.name[..]).style(DISABLED_ITEM_STYLE)
+            } else {
+                Text::from(&s.name[..])
+            }
+        }))
+        .highlight_style(SELECTED_ITEM_STYLE);
         f.render_widget(Clear, render_area);
         f.render_widget(block, render_area);
         f.render_stateful_widget(list, inner_area, &mut self.list_state);
@@ -91,7 +119,11 @@ impl Selector {
     }
 
     fn max_selection_text_width(&self) -> usize {
-        self.selection.iter().map(|s| s.0.len()).max().unwrap_or(0)
+        self.selection
+            .iter()
+            .map(|s| s.name.len())
+            .max()
+            .unwrap_or(0)
     }
 }
 
@@ -107,7 +139,12 @@ impl Component for Selector {
         match key_event.code {
             KeyCode::Up => self.list_state.select_previous(),
             KeyCode::Down => self.list_state.select_next(),
-            KeyCode::Enter => self.child = self.list_state.selected(),
+            KeyCode::Enter => {
+                self.child = self
+                    .list_state
+                    .selected()
+                    .filter(|i| !self.selection[*i].disabled);
+            }
             KeyCode::Char('q') => return HandleResult::ReleaseFocus,
             _ => (),
         }
@@ -125,13 +162,23 @@ impl Component for Selector {
     }
 
     fn get_focused_child(&self) -> Option<Arc<RwLock<dyn Component>>> {
-        self.child.map(|i| self.selection[i].1.clone())
+        self.child.map(|i| self.selection[i].component.clone())
     }
 
     fn get_key_mappings(&self) -> KeyMaps {
         match self.get_focused_child() {
             Some(component) => component.read().unwrap().get_key_mappings(),
             None => self.key_maps.clone(),
+        }
+    }
+}
+
+impl Selection {
+    pub fn new(name: &str, component: Arc<RwLock<dyn Component>>) -> Self {
+        Self {
+            name: name.to_string(),
+            component,
+            disabled: true,
         }
     }
 }
