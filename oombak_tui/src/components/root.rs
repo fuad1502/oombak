@@ -69,6 +69,7 @@ impl Root {
             ))),
             signal_properties_editor: Arc::new(RwLock::new(SignalPropertiesEditor::new(
                 message_tx.clone(),
+                request_tx.clone(),
             ))),
             focused_child: None,
             simulation_spec,
@@ -322,8 +323,8 @@ impl Root {
     }
 
     fn get_popup_area_centered_large(rect: Rect) -> Rect {
-        let width = rect.width - 6;
-        let height = rect.height - 12;
+        let width = rect.width - 12;
+        let height = rect.height - 6;
         utils::layout::get_popup_area_centered(rect, width, height)
     }
 }

@@ -197,7 +197,7 @@ impl FormState {
                 Some(FormHighlight::Apply)
             }
             Some(FormHighlight::InputField(x)) => Some(FormHighlight::InputField(x + 1)),
-            Some(FormHighlight::Apply) => Some(FormHighlight::Apply),
+            Some(FormHighlight::Apply) => Some(FormHighlight::Cancel),
             Some(FormHighlight::Cancel) => Some(FormHighlight::Cancel),
             None => None,
         }
@@ -237,5 +237,20 @@ impl FormState {
         if let Some(FormHighlight::InputField(x)) = self.highlight {
             self.input_fields[x].input_state.backspace()
         }
+    }
+
+    pub fn is_apply(&self) -> bool {
+        matches!(self.highlight, Some(FormHighlight::Apply))
+    }
+
+    pub fn is_cancel(&self) -> bool {
+        matches!(self.highlight, Some(FormHighlight::Cancel))
+    }
+
+    pub fn entries(&self) -> Vec<String> {
+        self.input_fields
+            .iter()
+            .map(|i| i.input_state.text().to_string())
+            .collect()
     }
 }

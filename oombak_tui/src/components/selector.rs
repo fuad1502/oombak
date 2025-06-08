@@ -49,6 +49,10 @@ impl Selector {
         self.title = title;
     }
 
+    pub fn set_selection(&mut self, selection: Vec<Selection>) {
+        self.selection = selection;
+    }
+
     pub fn enable_selection(&mut self, idx: usize) -> bool {
         if let Some(selection) = self.selection.get_mut(idx) {
             selection.disabled = false;
@@ -70,7 +74,9 @@ impl Selector {
     fn create_key_maps() -> KeyMaps {
         KeyMaps::from(HashMap::from([
             (KeyId::from('q'), KeyDesc::from("Close window")),
+            (KeyId::from('k'), KeyDesc::from("Move cursor up")),
             (KeyId::from(KeyCode::Up), KeyDesc::from("Move cursor up")),
+            (KeyId::from('j'), KeyDesc::from("Move cursor down")),
             (
                 KeyId::from(KeyCode::Down),
                 KeyDesc::from("Move cursor down"),
@@ -137,8 +143,8 @@ impl Component for Selector {
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult {
         match key_event.code {
-            KeyCode::Up => self.list_state.select_previous(),
-            KeyCode::Down => self.list_state.select_next(),
+            KeyCode::Up | KeyCode::Char('k') => self.list_state.select_previous(),
+            KeyCode::Down | KeyCode::Char('j') => self.list_state.select_next(),
             KeyCode::Enter => {
                 self.child = self
                     .list_state

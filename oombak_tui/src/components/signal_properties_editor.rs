@@ -6,6 +6,7 @@ use ratatui::{layout::Rect, Frame};
 
 use crate::{
     component::{Component, HandleResult},
+    components::TokioSender,
     threads::RendererMessage,
     widgets::KeyMaps,
 };
@@ -20,40 +21,58 @@ pub struct SignalPropertiesEditor {
     selector: Selector,
     signal_name: Option<String>,
     input_ports: Vec<String>,
+    renderer_channel: Sender<RendererMessage>,
+    sim_request_channel: TokioSender<oombak_sim::Message>,
 }
 
 impl SignalPropertiesEditor {
-    pub fn new(renderer_channel: Sender<RendererMessage>) -> Self {
-        let selection = vec![
-            Selection::new(
-                "Set signal value",
-                Arc::new(RwLock::new(SignalValueSetter::new(
-                    renderer_channel.clone(),
-                ))),
-            ),
-            Selection::new(
-                "Set periodic signal value",
-                Arc::new(RwLock::new(PeriodicSignalSetter::new(
-                    renderer_channel.clone(),
-                ))),
-            ),
-        ];
+    pub fn new(
+        renderer_channel: Sender<RendererMessage>,
+        sim_request_channel: TokioSender<oombak_sim::Message>,
+    ) -> Self {
         Self {
-            selector: Selector::new(selection, renderer_channel),
+            selector: Selector::new(vec![], renderer_channel.clone()),
             signal_name: None,
             input_ports: vec![],
+            renderer_channel,
+            sim_request_channel,
         }
     }
 
     pub fn set_signal_name(&mut self, signal_name: &str) {
         self.signal_name = Some(signal_name.to_string());
         self.selector.set_title(format!("[{signal_name}]"));
+        self.set_selection();
         self.enable_or_disable_selections();
     }
 
     pub fn set_loaded_dut(&mut self, loaded_dut: &LoadedDut) {
         self.set_input_ports(loaded_dut);
         self.enable_or_disable_selections();
+    }
+
+    fn set_selection(&mut self) {
+        if let Some(name) = &self.signal_name {
+            let selection = vec![
+                Selection::new(
+                    "Set signal value",
+                    Arc::new(RwLock::new(SignalValueSetter::new(
+                        name.to_string(),
+                        self.renderer_channel.clone(),
+                        self.sim_request_channel.clone(),
+                    ))),
+                ),
+                Selection::new(
+                    "Set periodic signal value",
+                    Arc::new(RwLock::new(PeriodicSignalSetter::new(
+                        name.to_string(),
+                        self.renderer_channel.clone(),
+                        self.sim_request_channel.clone(),
+                    ))),
+                ),
+            ];
+            self.selector.set_selection(selection);
+        }
     }
 
     fn set_input_ports(&mut self, loaded_dut: &LoadedDut) {
