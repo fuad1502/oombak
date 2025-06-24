@@ -16,7 +16,7 @@ use tokio::{
 
 use oombak_sim::{
     request::{self, ProbePointsModification},
-    response::{self, LoadedDut, SimulationResult, Wave},
+    response::{self, CompactWaveValue, LoadedDut, SimulationResult, Wave},
     Message, Request, Simulator,
 };
 
@@ -151,15 +151,8 @@ impl LocalSimulator {
             .iter_mut()
             .zip(new_values.into_iter())
         {
-            if let Some((value, _start, count)) = wave.values.last_mut() {
-                if *value == new_value {
-                    *count += duration;
-                } else {
-                    wave.values.push((new_value, current_time, duration));
-                }
-            } else {
-                wave.values.push((new_value, current_time, duration));
-            }
+            let compact_new_value = CompactWaveValue::new(new_value, duration);
+            wave.append(compact_new_value);
         }
         simulation_result.current_time = end_time;
         Ok(())

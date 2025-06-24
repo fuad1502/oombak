@@ -1,6 +1,6 @@
 mod results;
 
-pub use results::{LoadedDut, SimulationResult, Wave};
+pub use results::{CompactWaveValue, LoadedDut, SimulationResult, Wave};
 
 pub struct Response {
     pub id: usize,
