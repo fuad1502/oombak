@@ -67,13 +67,11 @@ impl StatefulWidget for Waveform<'_> {
     {
         state.set_viewport_length(area.width as usize);
         let (compact_values, plot_offset) = self.slice_wave(&self.wave_spec.wave, state);
-        let lines = match self.wave_spec.plot_type {
-            PlotType::Digital => {
-                self.digital_plot(compact_values, plot_offset, state.viewport_length())
-            }
-            PlotType::Analog => {
+        let lines = match (&self.wave_spec.plot_type, self.wave_spec.wave.width) {
+            (PlotType::Analog, _) | (PlotType::Digital, 1) => {
                 self.analog_plot(compact_values, plot_offset, state.viewport_length())
             }
+            _ => self.digital_plot(compact_values, plot_offset, state.viewport_length()),
         };
         self.render_lines(&lines, area, buf);
         self.add_cursor_highlight(buf, area, state.selected_position(), lines.len() as u16);
@@ -345,7 +343,7 @@ impl AnalogLevelMapper {
 
     fn map(&self, value: &BitVec<u32>) -> usize {
         self.limits
-            .partition_point(|l| *l < Self::u32_from(value) as f64 - self.min_value)
+            .partition_point(|l| *l <= Self::u32_from(value) as f64 - self.min_value)
     }
 
     fn u32_from(value: &BitVec<u32>) -> u32 {
