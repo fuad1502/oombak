@@ -9,7 +9,7 @@ use ratatui::{
 };
 
 use crate::{
-    components::models::WaveSpec,
+    components::models::{PlotType, WaveSpec},
     styles::wave_viewer::{CURSOR_STYLE, WAVEFORM_STYLE},
     utils::bitvec_str,
 };
@@ -67,7 +67,14 @@ impl StatefulWidget for Waveform<'_> {
     {
         state.set_viewport_length(area.width as usize);
         let (compact_values, plot_offset) = self.slice_wave(&self.wave_spec.wave, state);
-        let lines = self.plot_values_as_lines(compact_values, plot_offset, state.viewport_length());
+        let lines = match self.wave_spec.plot_type {
+            PlotType::Digital => {
+                self.digital_plot(compact_values, plot_offset, state.viewport_length())
+            }
+            PlotType::Analog => {
+                self.analog_plot(compact_values, plot_offset, state.viewport_length())
+            }
+        };
         self.render_lines(&lines, area, buf);
         self.add_cursor_highlight(buf, area, state.selected_position(), lines.len() as u16);
     }
@@ -102,7 +109,7 @@ impl Waveform<'_> {
         NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(self.zoom as u32)
     }
 
-    fn plot_values_as_lines(
+    fn digital_plot(
         &self,
         compact_values: Vec<CompactWaveValue>,
         plot_offset: usize,
@@ -117,6 +124,80 @@ impl Waveform<'_> {
             Self::draw_body(&mut lines, &word, height);
             Self::draw_tail(&mut lines, &word, height, is_end_value);
         }
+        Self::trim_plot_start(&lines, plot_offset, viewport_length)
+    }
+
+    fn analog_plot(
+        &self,
+        compact_values: Vec<CompactWaveValue>,
+        plot_offset: usize,
+        viewport_length: usize,
+    ) -> Vec<String> {
+        let height = self.wave_spec.height as usize;
+        let num_of_levels = 2 * height + 1;
+        let mut lines = vec![String::new(); num_of_levels];
+        let level_mapper = AnalogLevelMapper::new(&compact_values, num_of_levels);
+        for (compact_value, next_compact_value) in
+            compact_values.iter().zip(compact_values.iter().skip(1))
+        {
+            let level = level_mapper.map(compact_value.value());
+            let next_level = level_mapper.map(next_compact_value.value());
+            let duration = compact_value.duration() * self.unit_width();
+            Self::draw_level(&mut lines, level, duration, next_level);
+        }
+        if let Some(compact_value) = compact_values.last() {
+            let level = level_mapper.map(compact_value.value());
+            let duration = compact_value.duration() * self.unit_width();
+            Self::draw_level(&mut lines, level, duration, level);
+        }
+        Self::trim_plot_start(&lines, plot_offset, viewport_length)
+    }
+
+    fn draw_level(lines: &mut Vec<String>, level: usize, duration: usize, next_level: usize) {
+        let target_row = lines.len() - level - 1;
+        for _ in 0..(duration - 1) {
+            for (row, line) in lines.iter_mut().enumerate() {
+                if row == target_row {
+                    *line += "─";
+                } else {
+                    *line += " ";
+                }
+            }
+        }
+        Self::draw_level_transition(lines, level, next_level);
+    }
+
+    fn draw_level_transition(lines: &mut Vec<String>, level: usize, next_level: usize) {
+        let is_increasing = next_level > level;
+        let is_decreasing = next_level < level;
+        let start_row = lines.len() - level - 1;
+        let end_row = lines.len() - next_level - 1;
+        for (row, line) in lines.iter_mut().enumerate() {
+            if row == start_row && is_increasing {
+                *line += "┘";
+            } else if row == start_row && is_decreasing {
+                *line += "┐";
+            } else if row == end_row && is_increasing {
+                *line += "┌";
+            } else if row == end_row && is_decreasing {
+                *line += "└";
+            } else if is_increasing && (row > end_row && row < start_row) {
+                *line += "│";
+            } else if is_decreasing && (row < end_row && row > start_row) {
+                *line += "│";
+            } else if row == start_row && !is_increasing && !is_decreasing {
+                *line += "─";
+            } else {
+                *line += " ";
+            }
+        }
+    }
+
+    fn trim_plot_start(
+        lines: &[String],
+        plot_offset: usize,
+        viewport_length: usize,
+    ) -> Vec<String> {
         lines
             .iter()
             .map(|l| l.chars().skip(plot_offset).take(viewport_length).collect())
@@ -228,6 +309,50 @@ impl Waveform<'_> {
                     *line += " ";
                 }
             }
+        }
+    }
+}
+
+struct AnalogLevelMapper {
+    limits: Vec<f64>,
+    min_value: f64,
+}
+
+impl AnalogLevelMapper {
+    fn new(compact_values: &Vec<CompactWaveValue>, num_of_levels: usize) -> Self {
+        let (limits, min_value) = Self::calculate_limits(compact_values, num_of_levels);
+        Self { limits, min_value }
+    }
+
+    fn calculate_limits(
+        compact_values: &Vec<CompactWaveValue>,
+        num_of_levels: usize,
+    ) -> (Vec<f64>, f64) {
+        if compact_values.is_empty() {
+            return (vec![], 0f64);
+        }
+
+        let values = compact_values.iter().map(|v| Self::u32_from(v.value()));
+        let max_value = values.clone().max().unwrap();
+        let min_value = values.min().unwrap();
+        let limits = (1..num_of_levels)
+            .map(|i| i as u32)
+            .map(|i| (i * (max_value - min_value)) as f64 / num_of_levels as f64)
+            .collect();
+
+        (limits, min_value as f64)
+    }
+
+    fn map(&self, value: &BitVec<u32>) -> usize {
+        self.limits
+            .partition_point(|l| *l < Self::u32_from(value) as f64 - self.min_value)
+    }
+
+    fn u32_from(value: &BitVec<u32>) -> u32 {
+        match value.last_one() {
+            Some(i) if i > 31 => unimplemented!(),
+            Some(_) => value.clone().into_vec()[0],
+            None => 0u32,
         }
     }
 }

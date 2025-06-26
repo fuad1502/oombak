@@ -12,8 +12,15 @@ pub struct SimulationSpec {
 pub struct WaveSpec {
     pub wave: oombak_sim::response::Wave,
     pub height: u16,
+    pub plot_type: PlotType,
     pub format: bitvec_str::Format,
     pub signed: bool,
+}
+
+#[derive(Clone)]
+pub enum PlotType {
+    Digital,
+    Analog,
 }
 
 impl SimulationSpec {
@@ -30,6 +37,7 @@ impl SimulationSpec {
             .map(|w| WaveSpec {
                 wave: w.clone(),
                 height: 1,
+                plot_type: PlotType::Digital,
                 format: bitvec_str::Format::Binary,
                 signed: true,
             })
