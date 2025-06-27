@@ -21,7 +21,7 @@ impl ScrollState {
 
     pub fn set_content_length(&mut self, content_length: usize) {
         self.content_length = content_length;
-        if self.selected_position >= content_length {
+        if self.start_position + self.selected_position >= content_length {
             self.last();
         }
     }
@@ -50,8 +50,8 @@ impl ScrollState {
     }
 
     pub fn last(&mut self) {
-        self.start_position = self.content_length.saturating_sub(self.viewport_length);
         let effective_viewport_length = usize::min(self.viewport_length, self.content_length);
+        self.start_position = self.content_length - effective_viewport_length;
         self.selected_position = effective_viewport_length.saturating_sub(1);
     }
 
@@ -66,7 +66,7 @@ impl ScrollState {
 
     fn is_at_end(&self) -> bool {
         let effective_viewport_length = usize::min(self.viewport_length, self.content_length);
-        self.start_position == self.content_length.saturating_sub(self.viewport_length)
+        self.start_position == self.content_length - effective_viewport_length
             && self.selected_position == effective_viewport_length.saturating_sub(1)
     }
 

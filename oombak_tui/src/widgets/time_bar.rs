@@ -1,4 +1,10 @@
-use ratatui::{buffer::Buffer, layout::Rect, style::Style, widgets::StatefulWidget};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Style, Stylize},
+    text::Span,
+    widgets::{StatefulWidget, Widget},
+};
 
 use crate::styles::wave_viewer::{CURSOR_STYLE, TIMEBAR_STYLE};
 
@@ -34,23 +40,30 @@ impl StatefulWidget for TimeBar {
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         state.set_viewport_length(area.width as usize);
-        if area.width >= 1 && area.height >= 2 {
+        if area.width >= 1 && area.height >= 3 {
+            self.render_time_indicator(area, buf, state);
             let lines = self.plot_into_lines(state);
-            buf.set_string(area.x, area.y, &lines[0], TIMEBAR_STYLE);
-            buf.set_string(area.x, area.y + 1, &lines[1], TIMEBAR_STYLE);
+            buf.set_string(area.x, area.y + 1, &lines[0], TIMEBAR_STYLE);
+            buf.set_string(area.x, area.y + 2, &lines[1], TIMEBAR_STYLE);
             Self::set_highlight(buf, area, state, CURSOR_STYLE);
         }
     }
 }
 
 impl TimeBar {
+    fn render_time_indicator(&self, area: Rect, buf: &mut Buffer, state: &ScrollState) {
+        let time_indicator_area = Rect::new(area.x, area.y, area.width, 1);
+        let span = Span::from(format!(" {:10} ", self.format(self.current_time(state))))
+            .style(Style::default().black().on_magenta());
+        span.render(time_indicator_area, buf);
+    }
+
     fn plot_into_lines(&self, state: &ScrollState) -> [String; 2] {
         let number_of_ticks = state.viewport_length() / self.tick_count + 2;
         let floored_start_position = self.floored_start_position(state);
         let mut lines = [String::new(), String::new()];
 
-        let start_time =
-            floored_start_position as f64 * (self.tick_period / self.tick_count as f64);
+        let start_time = self.time_from_position(floored_start_position);
         for i in 0..number_of_ticks {
             let time = start_time + i as f64 * self.tick_period;
             lines[0] += &self.new_tick_segment_upper(time);
@@ -64,7 +77,7 @@ impl TimeBar {
     fn set_highlight(buf: &mut Buffer, area: Rect, state: &ScrollState, highlight_style: Style) {
         if area.width >= 1 && area.height >= 2 && state.viewport_length() >= 1 {
             buf.set_style(
-                Rect::new(area.x + state.selected_position() as u16, area.y, 1, 2),
+                Rect::new(area.x + state.selected_position() as u16, area.y + 1, 1, 2),
                 highlight_style,
             );
         }
@@ -99,8 +112,16 @@ impl TimeBar {
         state.start_position() / self.tick_count * self.tick_count
     }
 
+    fn current_time(&self, state: &ScrollState) -> f64 {
+        self.time_from_position(state.start_position() + state.selected_position())
+    }
+
+    fn time_from_position(&self, position: usize) -> f64 {
+        position as f64 * (self.tick_period / self.tick_count as f64)
+    }
+
     fn format(&self, time: f64) -> String {
-        format!("{} {}", time, self.time_unit)
+        format!("{:3.2} {}", time, self.time_unit)
     }
 }
 

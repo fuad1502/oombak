@@ -98,7 +98,7 @@ impl Waveform<'_> {
 
         let sliced_wave = wave
             .slice(start_time, end_time)
-            .expect("logic error: wave.slice(start_time, end_time) should succeed");
+            .expect(&format!("logic error: wave.slice(start_time, end_time) should succeed: {start_time} / {end_time} | {} {}", state.start_position(), state.selected_position()));
 
         (sliced_wave, plot_offset)
     }

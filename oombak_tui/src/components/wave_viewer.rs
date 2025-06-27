@@ -89,7 +89,7 @@ impl WaveViewer {
             .tick_count(tick_count)
             .tick_period(tick_period);
 
-        let chunks = Layout::vertical(vec![Constraint::Min(0), Constraint::Length(2)]).split(rect);
+        let chunks = Layout::vertical(vec![Constraint::Min(0), Constraint::Length(3)]).split(rect);
         f.render_stateful_widget(list, chunks[0], &mut self.list_state);
         f.render_stateful_widget(time_bar, chunks[1], &mut self.scroll_state);
     }
