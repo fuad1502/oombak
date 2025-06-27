@@ -28,6 +28,7 @@ pub struct LocalSimulator {
     simulation_result: RwLock<SimulationResult>,
     dut_state: RwLock<DutState>,
     oscillator_group: RwLock<OscillatorGroup>,
+    is_dut_reloading: RwLock<bool>,
 }
 
 #[derive(Default)]
@@ -36,7 +37,6 @@ struct DutState {
     probe: Option<Probe>,
     path: Option<PathBuf>,
     temp_gen_dir: Option<TempGenDir>,
-    will_be_reloaded: bool,
 }
 
 #[async_trait]
@@ -171,21 +171,20 @@ impl LocalSimulator {
     }
 
     async fn serve_load(&self, sv_path: &Path, message_id: usize) -> response::Payload {
-        match self.load_dut(sv_path, message_id).await {
-            Ok(loaded_dut) => response::Payload::from(loaded_dut),
+        match self.try_set_is_dut_reloading() {
+            Ok(()) => {
+                let load_result = self.load_dut(sv_path, message_id).await;
+                self.reset_is_dut_reloading().await;
+                match load_result {
+                    Ok(dut) => response::Payload::from(dut),
+                    Err(e) => response::Payload::Error(Box::new(e)),
+                }
+            }
             Err(e) => response::Payload::Error(Box::new(e)),
         }
     }
 
     async fn load_dut(&self, path: &Path, message_id: usize) -> OombakSimResult<LoadedDut> {
-        {
-            let mut dut_state = self.dut_state.write().await;
-            if dut_state.will_be_reloaded {
-                return Err(OombakSimError::DutIsLoading);
-            }
-            dut_state.will_be_reloaded = true;
-        }
-
         let path_buf = path.to_path_buf();
         let notification_channel = self.channel.read().await.clone();
         let (new_dut, temp_gen_dir, new_probe) = spawn_blocking(move || {
@@ -300,11 +299,17 @@ impl LocalSimulator {
         probe_modifications: &ProbePointsModification,
         message_id: usize,
     ) -> response::Payload {
-        match self
-            .modify_probe_points(probe_modifications, message_id)
-            .await
-        {
-            Ok(dut) => response::Payload::from(dut),
+        match self.try_set_is_dut_reloading() {
+            Ok(()) => {
+                let load_result = self
+                    .modify_probe_points(probe_modifications, message_id)
+                    .await;
+                self.reset_is_dut_reloading().await;
+                match load_result {
+                    Ok(dut) => response::Payload::from(dut),
+                    Err(e) => response::Payload::Error(Box::new(e)),
+                }
+            }
             Err(e) => response::Payload::Error(Box::new(e)),
         }
     }
@@ -314,14 +319,6 @@ impl LocalSimulator {
         probe_modifications: &ProbePointsModification,
         message_id: usize,
     ) -> OombakSimResult<LoadedDut> {
-        {
-            let mut dut_state = self.dut_state.write().await;
-            if dut_state.will_be_reloaded {
-                return Err(OombakSimError::DutIsLoading);
-            }
-            dut_state.will_be_reloaded = true;
-        }
-
         let new_probe = {
             let dut_state = self.dut_state.read().await;
             let probe = dut_state.probe()?;
@@ -385,6 +382,18 @@ impl LocalSimulator {
         let loaded_dut = LoadedDut::from(probe);
         Ok((loaded_dut, temp_gen_dir))
     }
+
+    fn try_set_is_dut_reloading(&self) -> OombakSimResult<()> {
+        match self.is_dut_reloading.try_write() {
+            Ok(mut x) if !*x => *x = true,
+            _ => return Err(OombakSimError::DutIsLoading),
+        };
+        Ok(())
+    }
+
+    async fn reset_is_dut_reloading(&self) {
+        *self.is_dut_reloading.write().await = false;
+    }
 }
 
 impl DutState {
@@ -442,7 +451,6 @@ impl DutState {
         self.dut = Some(Dut::new(lib_path.to_string_lossy().as_ref())?);
         self.path = Some(sv_path.to_path_buf());
         self.probe = Some(probe);
-        self.will_be_reloaded = false;
         Ok(())
     }
 
@@ -456,7 +464,6 @@ impl DutState {
         self.temp_gen_dir = Some(temp_gen_dir);
         self.dut = Some(Dut::new(lib_path.to_string_lossy().as_ref())?);
         self.probe = Some(probe);
-        self.will_be_reloaded = false;
         Ok(())
     }
 
