@@ -68,7 +68,15 @@ impl Wave {
         let mut slice = vec![];
         let first_value = self.compact_values[start_idx].value.clone();
         let first_duration = self.compact_values[start_idx].duration - start_offset;
-        slice.push(CompactWaveValue::new(first_value, first_duration));
+        let last_value = self.compact_values[end_idx].value.clone();
+        let last_duration = end_offset + 1;
+
+        if start_idx != end_idx {
+            slice.push(CompactWaveValue::new(first_value, first_duration));
+        } else {
+            let duration = end_offset - start_offset + 1;
+            slice.push(CompactWaveValue::new(first_value, duration));
+        }
 
         if end_idx - start_idx > 1 {
             let mut middle_part = Vec::from(&self.compact_values[start_idx + 1..end_idx]);
@@ -76,8 +84,6 @@ impl Wave {
         }
 
         if end_idx != start_idx {
-            let last_value = self.compact_values[end_idx].value.clone();
-            let last_duration = end_offset + 1;
             slice.push(CompactWaveValue::new(last_value, last_duration));
         }
 
