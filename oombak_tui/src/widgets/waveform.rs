@@ -98,7 +98,7 @@ impl Waveform<'_> {
 
         let sliced_wave = wave
             .slice(start_time, end_time)
-            .expect(&format!("logic error: wave.slice(start_time, end_time) should succeed: {start_time} / {end_time} | {} {}", state.start_position(), state.selected_position()));
+            .expect("logic error: wave.slice(start_time, end_time) should succeed");
 
         (sliced_wave, plot_offset)
     }
@@ -151,7 +151,7 @@ impl Waveform<'_> {
         Self::trim_plot_start(&lines, plot_offset, viewport_length)
     }
 
-    fn draw_level(lines: &mut Vec<String>, level: usize, duration: usize, next_level: usize) {
+    fn draw_level(lines: &mut [String], level: usize, duration: usize, next_level: usize) {
         let target_row = lines.len() - level - 1;
         for _ in 0..(duration - 1) {
             for (row, line) in lines.iter_mut().enumerate() {
@@ -165,7 +165,7 @@ impl Waveform<'_> {
         Self::draw_level_transition(lines, level, next_level);
     }
 
-    fn draw_level_transition(lines: &mut Vec<String>, level: usize, next_level: usize) {
+    fn draw_level_transition(lines: &mut [String], level: usize, next_level: usize) {
         let is_increasing = next_level > level;
         let is_decreasing = next_level < level;
         let start_row = lines.len() - level - 1;
@@ -179,9 +179,9 @@ impl Waveform<'_> {
                 *line += "┌";
             } else if row == end_row && is_decreasing {
                 *line += "└";
-            } else if is_increasing && (row > end_row && row < start_row) {
-                *line += "│";
-            } else if is_decreasing && (row < end_row && row > start_row) {
+            } else if (is_increasing && (row > end_row && row < start_row))
+                || (is_decreasing && (row < end_row && row > start_row))
+            {
                 *line += "│";
             } else if row == start_row && !is_increasing && !is_decreasing {
                 *line += "─";
@@ -317,13 +317,13 @@ struct AnalogLevelMapper {
 }
 
 impl AnalogLevelMapper {
-    fn new(compact_values: &Vec<CompactWaveValue>, num_of_levels: usize) -> Self {
+    fn new(compact_values: &[CompactWaveValue], num_of_levels: usize) -> Self {
         let (limits, min_value) = Self::calculate_limits(compact_values, num_of_levels);
         Self { limits, min_value }
     }
 
     fn calculate_limits(
-        compact_values: &Vec<CompactWaveValue>,
+        compact_values: &[CompactWaveValue],
         num_of_levels: usize,
     ) -> (Vec<f64>, f64) {
         if compact_values.is_empty() {
