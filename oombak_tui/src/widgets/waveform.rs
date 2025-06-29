@@ -135,23 +135,24 @@ impl Waveform<'_> {
         let num_of_levels = 2 * height + 1;
         let mut lines = vec![String::new(); num_of_levels];
         let level_mapper = AnalogLevelMapper::new(&compact_values, num_of_levels);
-        for (compact_value, next_compact_value) in
-            compact_values.iter().zip(compact_values.iter().skip(1))
-        {
-            let level = level_mapper.map(compact_value.value());
-            let next_level = level_mapper.map(next_compact_value.value());
-            let duration = compact_value.duration() * self.unit_width();
-            Self::draw_level(&mut lines, level, duration, next_level);
-        }
-        if let Some(compact_value) = compact_values.last() {
+        if let Some(compact_value) = compact_values.first() {
             let level = level_mapper.map(compact_value.value());
             let duration = compact_value.duration() * self.unit_width();
             Self::draw_level(&mut lines, level, duration, level);
         }
+        for (compact_value, prev_compact_value) in
+            compact_values.iter().skip(1).zip(compact_values.iter())
+        {
+            let level = level_mapper.map(compact_value.value());
+            let prev_level = level_mapper.map(prev_compact_value.value());
+            let duration = compact_value.duration() * self.unit_width();
+            Self::draw_level(&mut lines, level, duration, prev_level);
+        }
         Self::trim_plot_start(&lines, plot_offset, viewport_length)
     }
 
-    fn draw_level(lines: &mut [String], level: usize, duration: usize, next_level: usize) {
+    fn draw_level(lines: &mut [String], level: usize, duration: usize, prev_level: usize) {
+        Self::draw_level_transition(lines, prev_level, level);
         let target_row = lines.len() - level - 1;
         for _ in 0..(duration - 1) {
             for (row, line) in lines.iter_mut().enumerate() {
@@ -162,7 +163,6 @@ impl Waveform<'_> {
                 }
             }
         }
-        Self::draw_level_transition(lines, level, next_level);
     }
 
     fn draw_level_transition(lines: &mut [String], level: usize, next_level: usize) {
