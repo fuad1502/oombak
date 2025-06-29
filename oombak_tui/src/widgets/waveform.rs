@@ -68,10 +68,15 @@ impl StatefulWidget for Waveform<'_> {
         state.set_viewport_length(area.width as usize);
         let (compact_values, plot_offset) = self.slice_wave(&self.wave_spec.wave, state);
         let lines = match (&self.wave_spec.plot_type, self.wave_spec.wave.width) {
-            (PlotType::Analog, _) | (PlotType::Digital, 1) => {
+            (PlotType::Analog, _) => {
                 self.analog_plot(compact_values, plot_offset, state.viewport_length())
             }
-            _ => self.digital_plot(compact_values, plot_offset, state.viewport_length()),
+            (PlotType::Digital, 1) => {
+                self.single_bit_plot(compact_values, plot_offset, state.viewport_length())
+            }
+            (PlotType::Digital, _) => {
+                self.digital_plot(compact_values, plot_offset, state.viewport_length())
+            }
         };
         self.render_lines(&lines, area, buf);
         self.add_cursor_highlight(buf, area, state.selected_position(), lines.len() as u16);
@@ -125,6 +130,23 @@ impl Waveform<'_> {
         Self::trim_plot_start(&lines, plot_offset, viewport_length)
     }
 
+    fn single_bit_plot(
+        &self,
+        compact_values: Vec<CompactWaveValue>,
+        plot_offset: usize,
+        viewport_length: usize,
+    ) -> Vec<String> {
+        let height = self.wave_spec.height as usize;
+        let num_of_levels = 2 * height + 1;
+        let level_mapper = AnalogLevelMapper::digital(num_of_levels);
+        self.analog_plot_with_level_mapper(
+            compact_values,
+            plot_offset,
+            viewport_length,
+            level_mapper,
+        )
+    }
+
     fn analog_plot(
         &self,
         compact_values: Vec<CompactWaveValue>,
@@ -133,13 +155,30 @@ impl Waveform<'_> {
     ) -> Vec<String> {
         let height = self.wave_spec.height as usize;
         let num_of_levels = 2 * height + 1;
-        let mut lines = vec![String::new(); num_of_levels];
         let level_mapper = AnalogLevelMapper::new(&compact_values, num_of_levels);
+        self.analog_plot_with_level_mapper(
+            compact_values,
+            plot_offset,
+            viewport_length,
+            level_mapper,
+        )
+    }
+
+    fn analog_plot_with_level_mapper(
+        &self,
+        compact_values: Vec<CompactWaveValue>,
+        plot_offset: usize,
+        viewport_length: usize,
+        level_mapper: AnalogLevelMapper,
+    ) -> Vec<String> {
+        let mut lines = vec![String::new(); level_mapper.num_of_levels()];
+
         if let Some(compact_value) = compact_values.first() {
             let level = level_mapper.map(compact_value.value());
             let duration = compact_value.duration() * self.unit_width();
             Self::draw_level(&mut lines, level, duration, level);
         }
+
         for (compact_value, prev_compact_value) in
             compact_values.iter().skip(1).zip(compact_values.iter())
         {
@@ -148,6 +187,7 @@ impl Waveform<'_> {
             let duration = compact_value.duration() * self.unit_width();
             Self::draw_level(&mut lines, level, duration, prev_level);
         }
+
         Self::trim_plot_start(&lines, plot_offset, viewport_length)
     }
 
@@ -320,6 +360,16 @@ impl AnalogLevelMapper {
     fn new(compact_values: &[CompactWaveValue], num_of_levels: usize) -> Self {
         let (limits, min_value) = Self::calculate_limits(compact_values, num_of_levels);
         Self { limits, min_value }
+    }
+
+    fn digital(num_of_levels: usize) -> Self {
+        let limits = vec![0.5; num_of_levels - 1];
+        let min_value = 0.0;
+        Self { limits, min_value }
+    }
+
+    fn num_of_levels(&self) -> usize {
+        self.limits.len() + 1
     }
 
     fn calculate_limits(
