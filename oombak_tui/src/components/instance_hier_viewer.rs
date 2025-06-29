@@ -1,13 +1,15 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, RwLockReadGuard};
 
 use crossterm::event::KeyCode;
 use oombak_sim::request::ProbePointsModification;
 use oombak_sim::response::LoadedDut;
 use oombak_sim::{InstanceNode, Signal};
 use ratatui::layout::Rect;
-use ratatui::widgets::Clear;
+use ratatui::style::Stylize;
+use ratatui::text::{Span, Text};
+use ratatui::widgets::{Block, BorderType, Clear};
 use ratatui::Frame;
 use ratatui::{
     layout::{Alignment, Constraint, Layout},
@@ -55,6 +57,7 @@ struct InstanceHierNode {
 #[derive(Clone)]
 struct InstanceHierLeaf {
     path: String,
+    module_name: String,
     signal: Signal,
     is_added: bool,
     marker: Marker,
@@ -128,7 +131,20 @@ impl Component for InstanceHierViewer {
             let (list_items, items_in_list) = Self::get_flattened_hierarchy(node);
             self.items_in_list = items_in_list;
             let list = List::new(list_items).highlight_style(SELECTED_ITEM_STYLE);
-            f.render_stateful_widget(list, rect, &mut self.list_state);
+            let block = Block::bordered().border_type(BorderType::Rounded);
+
+            let main_areas =
+                Layout::horizontal(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
+                    .split(rect);
+            let item_detail_area =
+                Layout::vertical(vec![Constraint::Length(9), Constraint::Min(0)])
+                    .split(main_areas[1])[0];
+            let list_area = main_areas[0];
+            let inner_list_area = block.inner(list_area);
+
+            f.render_widget(block, list_area);
+            f.render_stateful_widget(list, inner_list_area, &mut self.list_state);
+            self.render_item_detail(f, item_detail_area);
         } else {
             let rect = Layout::vertical(vec![
                 Constraint::Percentage(50),
@@ -405,6 +421,93 @@ impl InstanceHierViewer {
             self.selected_item_idx = Some(usize::saturating_sub(idx, 1));
         }
     }
+
+    fn render_item_detail(&self, frame: &mut Frame, area: Rect) {
+        let block = Block::bordered().border_type(BorderType::Rounded);
+        let inner_area = block.inner(area);
+        let lines = self.item_detail_lines();
+        frame.render_widget(block, area);
+        frame.render_widget(Text::from(lines), inner_area);
+    }
+
+    fn item_detail_lines(&self) -> Vec<Line> {
+        if let Some(item) = self.get_selected_item() {
+            match item {
+                HierItem::Instance(node) => Self::instance_detail_lines(node.read().unwrap()),
+                HierItem::Signal(leaf) => Self::signal_detail_lines(leaf.read().unwrap()),
+            }
+        } else {
+            vec![]
+        }
+    }
+
+    fn instance_detail_lines(hier_node: RwLockReadGuard<InstanceHierNode>) -> Vec<Line> {
+        let type_name = Span::from("module").magenta();
+        let instance_name = Span::from(hier_node.instance_name());
+        let module_name = Span::from(hier_node.module_name.clone());
+        let instance_path = Span::from(hier_node.instance_path());
+
+        let type_name_header = Span::from("Item type     : ").bold();
+        let instance_name_header = Span::from("Name          : ").bold();
+        let module_name_header = Span::from("Module name   : ").bold();
+        let instance_path_header = Span::from("Instance path : ").bold();
+
+        let type_line = Line::from(vec![type_name_header, type_name]);
+        let instance_name_line = Line::from(vec![instance_name_header, instance_name]);
+        let module_name_line = Line::from(vec![module_name_header, module_name]);
+        let instance_path_line = Line::from(vec![instance_path_header, instance_path]);
+
+        vec![
+            type_line,
+            instance_name_line,
+            module_name_line,
+            instance_path_line,
+        ]
+    }
+
+    fn signal_detail_lines(hier_leaf: RwLockReadGuard<InstanceHierLeaf>) -> Vec<Line> {
+        let type_name = Span::from("signal").cyan();
+        let signal_name = Span::from(hier_leaf.signal.name.clone());
+        let module_name = Span::from(hier_leaf.module_name.clone());
+        let instance_path = Span::from(hier_leaf.instance_path().clone());
+        let signal_type = Span::from(hier_leaf.signal.signal_type.to_string());
+        let signal_bit_width = Span::from(hier_leaf.signal.bit_width().to_string());
+        let is_added = match hier_leaf.is_added {
+            true => Span::from("Yes").light_green(),
+            false => Span::from("No").light_red(),
+        };
+        let is_marked = match hier_leaf.marker {
+            Marker::NotMarked => Span::from(""),
+            Marker::MarkedForAdd => Span::from(" (marked for add)").light_yellow(),
+            Marker::MarkedForRemove => Span::from(" (marked for remove)").light_yellow(),
+        };
+
+        let type_name_header = Span::from("Item type     : ").bold();
+        let signal_name_header = Span::from("Name          : ").bold();
+        let module_name_header = Span::from("Module name   : ").bold();
+        let instance_path_header = Span::from("Instance path : ").bold();
+        let signal_type_header = Span::from("Type          : ").bold();
+        let signal_bit_width_header = Span::from("Bit width     : ").bold();
+        let is_added_header = Span::from("Is added      : ").bold();
+
+        let type_line = Line::from(vec![type_name_header, type_name]);
+        let module_name_line = Line::from(vec![module_name_header, module_name]);
+        let instance_path_line = Line::from(vec![instance_path_header, instance_path]);
+        let signal_name_line = Line::from(vec![signal_name_header, signal_name]);
+        let signal_type_line = Line::from(vec![signal_type_header, signal_type]);
+        let signal_bit_width_line = Line::from(vec![signal_bit_width_header, signal_bit_width]);
+        let is_added_line = Line::from(vec![is_added_header, is_added, is_marked]);
+
+        vec![
+            type_line,
+            module_name_line,
+            instance_path_line,
+            signal_name_line,
+            signal_type_line,
+            signal_bit_width_line,
+            is_added_line,
+        ]
+    }
 }
 
 impl InstanceHierNode {
@@ -428,7 +531,7 @@ impl InstanceHierNode {
         let leafs = instance_node
             .signals
             .iter()
-            .map(|s| InstanceHierLeaf::new(s, &path, probed_points))
+            .map(|s| InstanceHierLeaf::new(s, &path, &instance_node.module_name, probed_points))
             .map(RwLock::new)
             .map(Arc::new)
             .collect();
@@ -440,10 +543,28 @@ impl InstanceHierNode {
             children,
         }
     }
+
+    fn instance_name(&self) -> String {
+        self.path.split(".").last().unwrap().to_string()
+    }
+
+    fn instance_path(&self) -> String {
+        let mut path: Vec<&str> = self.path.split(".").collect();
+        path.pop();
+
+        let mut path = path.join("/");
+        path.insert(0, '/');
+        path
+    }
 }
 
 impl InstanceHierLeaf {
-    fn new(signal: &Signal, parent_path: &str, probed_points: &HashSet<String>) -> Self {
+    fn new(
+        signal: &Signal,
+        parent_path: &str,
+        module_name: &str,
+        probed_points: &HashSet<String>,
+    ) -> Self {
         let path = if parent_path.is_empty() {
             signal.name.to_string()
         } else {
@@ -452,9 +573,19 @@ impl InstanceHierLeaf {
         let is_added = probed_points.contains(&path);
         InstanceHierLeaf {
             path,
+            module_name: module_name.to_string(),
             signal: signal.clone(),
             is_added,
             marker: Marker::NotMarked,
         }
+    }
+
+    fn instance_path(&self) -> String {
+        let mut path: Vec<&str> = self.path.split(".").collect();
+        path.pop();
+
+        let mut path = path.join("/");
+        path.insert(0, '/');
+        path
     }
 }
