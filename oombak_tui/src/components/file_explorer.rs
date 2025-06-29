@@ -1,15 +1,18 @@
 use std::{
     collections::HashMap,
     env, fs,
+    io::BufRead,
     path::{Path, PathBuf},
     sync::mpsc::Sender,
 };
 
 use crossterm::event::{KeyCode, KeyEvent};
+use file_type::FileType;
 use ratatui::{
-    layout::Rect,
-    style::Styled,
-    widgets::{List, ListItem, ListState},
+    layout::{Constraint, Layout, Rect},
+    style::{Color, Modifier, Style, Styled, Stylize},
+    text::{Line, Span, Text},
+    widgets::{Block, BorderType, List, ListItem, ListState},
     Frame,
 };
 
@@ -75,7 +78,23 @@ impl Component for FileExplorer {
             self.selected_idx = Some(0);
         }
         let list = List::new(items).highlight_style(SELECTED_ITEM_STYLE);
-        f.render_stateful_widget(list, rect, &mut self.list_state);
+
+        let main_areas =
+            Layout::horizontal(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
+                .split(rect);
+        let right_areas =
+            Layout::vertical(vec![Constraint::Length(5), Constraint::Min(0)]).split(main_areas[1]);
+        let list_area = main_areas[0];
+        let file_detail_area = right_areas[0];
+        let file_preview_area = right_areas[1];
+
+        let list_block = Block::bordered().border_type(BorderType::Rounded);
+        let list_inner_area = list_block.inner(list_area);
+
+        f.render_widget(list_block, list_area);
+        f.render_stateful_widget(list, list_inner_area, &mut self.list_state);
+        self.render_file_details(f, file_detail_area);
+        self.render_file_preview(f, file_preview_area);
     }
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult {
@@ -185,6 +204,143 @@ impl FileExplorer {
                 self.selected_idx = Some(i - 1);
             }
         }
+    }
+
+    fn render_file_details(&self, frame: &mut Frame, area: Rect) {
+        let block = Block::bordered().border_type(BorderType::Rounded);
+        let inner_area = block.inner(area);
+        let lines = self.file_detail_lines();
+        frame.render_widget(block, area);
+        frame.render_widget(Text::from(lines), inner_area);
+    }
+
+    fn file_detail_lines(&self) -> Vec<Line> {
+        if let Some(file_path) = self.highlighted_file_path() {
+            let file_name = Self::file_name_from_path(file_path);
+            let (file_type, detailed_type) = Self::file_type_from_path(file_path);
+
+            let file_name_header = Span::from("File name : ").add_modifier(Modifier::BOLD);
+            let file_type_header = Span::from("File type : ").add_modifier(Modifier::BOLD);
+            let file_name = Span::from(file_name);
+            let file_type = if &file_type == "Directory" {
+                Span::from(file_type).style(Style::default().fg(Color::Blue))
+            } else {
+                Span::from(file_type)
+            };
+
+            let detailed_type_line = if let Some(detailed_type) = detailed_type {
+                let detailed_type_header = Span::from("Details   : ").add_modifier(Modifier::BOLD);
+                let detailed_type = if detailed_type.contains("Verilog") {
+                    Span::from(detailed_type).style(Style::default().fg(Color::Green))
+                } else {
+                    Span::from(detailed_type).style(Style::default().fg(Color::Red))
+                };
+                Line::from(vec![detailed_type_header, detailed_type])
+            } else {
+                Line::from("")
+            };
+
+            vec![
+                Line::from(vec![file_name_header, file_name]),
+                Line::from(vec![file_type_header, file_type]),
+                detailed_type_line,
+            ]
+        } else if let Some(0) = self.selected_idx {
+            let span = Span::from("Go to parent directory")
+                .style(Style::default().add_modifier(Modifier::ITALIC));
+            vec![Line::from(span)]
+        } else {
+            vec![]
+        }
+    }
+
+    fn file_name_from_path(file_path: &Path) -> String {
+        file_path
+            .file_name()
+            .map(|s| s.to_str().unwrap_or("<invalid>"))
+            .unwrap_or("<invalid>")
+            .to_string()
+    }
+
+    fn file_type_from_path(file_path: &Path) -> (String, Option<String>) {
+        if file_path.is_dir() {
+            ("Directory".to_string(), None)
+        } else if file_path.is_symlink() {
+            let link_path = std::fs::read_link(file_path).unwrap();
+            if file_path.exists() {
+                (
+                    format!("Symbolic link to: {}", link_path.to_str().unwrap()),
+                    Some(Self::detailed_file_type_from_path(file_path)),
+                )
+            } else {
+                (
+                    format!("Broken symbolic link to: {}", link_path.to_str().unwrap()),
+                    None,
+                )
+            }
+        } else {
+            (
+                "Regular file".to_string(),
+                Some(Self::detailed_file_type_from_path(file_path)),
+            )
+        }
+    }
+
+    fn detailed_file_type_from_path(file_path: &Path) -> String {
+        FileType::try_from_file(file_path)
+            .expect("file not found")
+            .name()
+            .to_string()
+    }
+
+    fn render_file_preview(&self, frame: &mut Frame, area: Rect) {
+        let block = Block::bordered().border_type(BorderType::Rounded);
+        let inner_area = block.inner(area);
+        let lines = self.file_preview_lines(inner_area.height as usize);
+        frame.render_widget(block, area);
+        frame.render_widget(Text::from(lines), inner_area);
+    }
+
+    fn file_preview_lines(&self, max_num_of_lines: usize) -> Vec<Line> {
+        if let Some(true) = self.is_highlighted_file_text_file() {
+            let file_path = self.highlighted_file_path().unwrap();
+            let file = std::fs::File::open(file_path).unwrap();
+            let reader = std::io::BufReader::new(file);
+            reader
+                .lines()
+                .take(max_num_of_lines)
+                .filter_map(|l| l.ok())
+                .map(Line::from)
+                .collect()
+        } else {
+            vec![]
+        }
+    }
+
+    fn is_highlighted_file_text_file(&self) -> Option<bool> {
+        if let Some(file_path) = self.highlighted_file_path() {
+            if file_path.is_dir() {
+                return Some(false);
+            }
+
+            Some(
+                FileType::try_from_file(file_path)
+                    .expect("file not found")
+                    .media_types()
+                    .iter()
+                    .filter(|t| t.starts_with("text") || t.starts_with("application/json"))
+                    .count()
+                    > 0,
+            )
+        } else {
+            None
+        }
+    }
+
+    fn highlighted_file_path(&self) -> Option<&PathBuf> {
+        self.selected_idx
+            .filter(|i| *i > 0)
+            .map(|i| &self.entries[i - 1])
     }
 
     fn new_list_items<'a>(&self) -> Vec<ListItem<'a>> {
