@@ -11,7 +11,7 @@ use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
-use ratatui::widgets::{Block, Borders, Clear};
+use ratatui::widgets::{Block, BorderType, Borders, Clear};
 use ratatui::Frame;
 
 use super::models::SimulationSpec;
@@ -248,7 +248,7 @@ impl Root {
 
     fn render_instance_hier_viewer(&self, f: &mut Frame, rect: Rect) {
         let popup_area = Self::get_popup_area_centered_large(rect);
-        let block = Block::new().borders(Borders::ALL);
+        let block = Block::bordered().border_type(BorderType::Rounded);
         f.render_widget(Clear, popup_area);
         self.instance_hier_viewer
             .write()
@@ -258,7 +258,7 @@ impl Root {
 
     fn render_file_explorer(&self, f: &mut Frame, rect: Rect) {
         let popup_area = Self::get_popup_area_centered_large(rect);
-        let block = Block::new().borders(Borders::ALL);
+        let block = Block::bordered().border_type(BorderType::Rounded);
         f.render_widget(Clear, popup_area);
         self.file_explorer
             .write()
@@ -307,7 +307,9 @@ impl Root {
 
     fn render_interpreter_on_window(&self, f: &mut Frame, rect: Rect) {
         let popup_area = Self::get_popup_area_centered_large(rect);
-        let block = Block::new().borders(Borders::ALL);
+        let block = Block::new()
+            .borders(Borders::ALL)
+            .border_type(BorderType::Rounded);
         let inner = block.inner(popup_area);
         f.render_widget(Clear, popup_area);
         f.render_widget(block, popup_area);

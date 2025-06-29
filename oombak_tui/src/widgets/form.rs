@@ -2,7 +2,7 @@ use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
     style::{Color, Style},
-    widgets::{Block, Clear, Paragraph, StatefulWidget, Widget},
+    widgets::{Block, BorderType, Clear, Paragraph, StatefulWidget, Widget},
 };
 
 use crate::{
@@ -40,7 +40,7 @@ impl StatefulWidget for Form {
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
         let area = Self::get_render_area(area, state);
-        let block = Block::bordered();
+        let block = Block::bordered().border_type(BorderType::Rounded);
         let inner_area = block.inner(area);
         let areas = Layout::vertical(vec![
             Constraint::Length(Self::input_fields_height(state) as u16),
@@ -128,7 +128,7 @@ impl Form {
         input_state: &mut CommandLineState,
         highlight: bool,
     ) {
-        let mut block = Block::bordered();
+        let mut block = Block::bordered().border_type(BorderType::Rounded);
         let inner_area = block.inner(area);
         let mut input_field = CommandLine::default()
             .no_header()

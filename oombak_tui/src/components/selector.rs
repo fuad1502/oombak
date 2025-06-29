@@ -2,7 +2,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::{Alignment, Rect},
     text::Text,
-    widgets::{Block, Clear, List, ListState},
+    widgets::{Block, BorderType, Clear, List, ListState},
     Frame,
 };
 use std::{
@@ -93,7 +93,8 @@ impl Selector {
         let render_area = self.get_render_area(rect);
         let block = Block::bordered()
             .title(&self.title[..])
-            .title_alignment(Alignment::Center);
+            .title_alignment(Alignment::Center)
+            .border_type(BorderType::Rounded);
         let inner_area = block.inner(render_area);
         let list = List::new(self.selection.iter().map(|s| {
             if s.disabled {
