@@ -1,6 +1,9 @@
 mod oombak_parser_sys;
 
-use std::ffi::{c_char, CStr, CString};
+use std::{
+    ffi::{c_char, CStr, CString},
+    fmt::Display,
+};
 use thiserror::Error;
 
 use crate::error::{OombakError, OombakResult};
@@ -140,6 +143,20 @@ impl Signal {
         match &self.signal_type {
             SignalType::UnpackedArrPort(_, bit_width) => *bit_width,
             SignalType::UnpackedArrNetVar(bit_width) => *bit_width,
+        }
+    }
+}
+
+impl Display for SignalType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SignalType::UnpackedArrPort(Direction::In, _) => {
+                write!(f, "unpacked array (input port)")
+            }
+            SignalType::UnpackedArrPort(Direction::Out, _) => {
+                write!(f, "unpacked array (output port)")
+            }
+            SignalType::UnpackedArrNetVar(_) => write!(f, "unpacked array (net / var)"),
         }
     }
 }
