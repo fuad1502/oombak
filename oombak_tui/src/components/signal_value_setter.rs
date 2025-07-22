@@ -28,7 +28,7 @@ impl SignalValueSetter {
         renderer_channel: Sender<RendererMessage>,
         sim_request_channel: TokioSender<oombak_sim::Message>,
     ) -> Self {
-        let input_fields = vec![InputField::new("Value")];
+        let input_fields = vec![InputField::text("Value")];
         let form_state = FormState::new(input_fields);
         Self {
             signal_name,

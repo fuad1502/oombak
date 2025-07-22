@@ -68,7 +68,13 @@ pub mod selector {
 pub mod form {
     use super::*;
 
-    pub const HIGHLIGHTED_INPUT_FIELD_BORDER_STYLE: Style = Style::new().fg(Color::Red);
+    pub const HIGHLIGHTED_INPUT_FIELD_BORDER_STYLE: Style = Style::new().fg(Color::Green);
     pub const NORMAL_FIELD_BORDER_STYLE: Style = Style::new().fg(Color::Reset);
     pub const INPUT_FIELD_STYLE: Style = Style::new().bg(Color::Reset).fg(Color::Reset);
+}
+
+pub mod dropdown {
+    use super::*;
+
+    pub const ITEM_DEFAULT_STYLE: Style = Style::new().fg(Color::White);
 }

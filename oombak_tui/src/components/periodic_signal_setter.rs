@@ -29,9 +29,9 @@ impl PeriodicSignalSetter {
         sim_request_channel: TokioSender<oombak_sim::Message>,
     ) -> Self {
         let input_fields = vec![
-            InputField::new("Period"),
-            InputField::new("Low state value"),
-            InputField::new("High state value"),
+            InputField::text("Period"),
+            InputField::text("Low state value"),
+            InputField::text("High state value"),
         ];
         let form_state = FormState::new(input_fields);
         Self {

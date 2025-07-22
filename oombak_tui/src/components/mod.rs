@@ -7,6 +7,7 @@ pub mod models;
 mod periodic_signal_setter;
 mod root;
 mod selector;
+mod signal_display_properties_setter;
 mod signal_properties_editor;
 mod signal_value_setter;
 mod signals_viewer;

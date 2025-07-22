@@ -14,6 +14,7 @@ use crate::{
 use super::{
     periodic_signal_setter::PeriodicSignalSetter,
     selector::{Selection, Selector},
+    signal_display_properties_setter::SignalDisplayPropertiesSetter,
     signal_value_setter::SignalValueSetter,
 };
 
@@ -70,6 +71,12 @@ impl SignalPropertiesEditor {
                         self.sim_request_channel.clone(),
                     ))),
                 ),
+                Selection::new(
+                    "Set display settings",
+                    Arc::new(RwLock::new(SignalDisplayPropertiesSetter::new(
+                        self.renderer_channel.clone(),
+                    ))),
+                ),
             ];
             self.selector.set_selection(selection);
         }
@@ -92,6 +99,7 @@ impl SignalPropertiesEditor {
             self.selector.disable_selection(0);
             self.selector.disable_selection(1);
         }
+        self.selector.enable_selection(2);
     }
 
     fn is_signal_settable(&self) -> bool {

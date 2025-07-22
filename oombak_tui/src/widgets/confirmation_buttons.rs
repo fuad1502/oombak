@@ -20,11 +20,12 @@ impl StatefulWidget for ConfirmationButtons {
     type State = ConfirmationState;
 
     fn render(self, area: Rect, buf: &mut Buffer, state: &mut Self::State) {
+        let button_width = self.confirm_text.len().max(self.dismiss_text.len()) + 2;
         let chunks = Layout::horizontal(vec![
             Constraint::Min(0),
-            Constraint::Length(8),
+            Constraint::Length(button_width as u16),
             Constraint::Min(0),
-            Constraint::Length(8),
+            Constraint::Length(button_width as u16),
             Constraint::Min(0),
         ])
         .split(area);
