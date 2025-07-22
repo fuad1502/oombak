@@ -1,13 +1,12 @@
 use std::collections::HashMap;
 use std::sync::mpsc::Sender;
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::component::{Component, HandleResult};
 use crate::threads::{simulator_request_dispatcher, RendererMessage};
 use crate::utils;
 use crate::widgets::{KeyDesc, KeyId, KeyMaps};
 
-use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
@@ -32,7 +31,7 @@ pub struct Root {
     file_explorer: Arc<RwLock<FileExplorer>>,
     signal_properties_editor: Arc<RwLock<SignalPropertiesEditor>>,
     focused_child: Option<Child>,
-    simulation_spec: SimulationSpec,
+    simulation_spec: Arc<RwLock<SimulationSpec>>,
     key_mappings: KeyMaps,
     show_key_maps: bool,
 }
@@ -50,7 +49,7 @@ impl Root {
         request_tx: TokioSender<oombak_sim::Message>,
         command_interpreter: Arc<RwLock<CommandInterpreter>>,
     ) -> Self {
-        let simulation_spec = SimulationSpec::default();
+        let simulation_spec = Arc::new(RwLock::new(SimulationSpec::default()));
         let key_mappings = Self::create_key_mappings();
         Self {
             message_tx: message_tx.clone(),
@@ -144,12 +143,10 @@ impl Component for Root {
                 self.update_signal_viewer_highlight();
             }
             KeyCode::Char('+') | KeyCode::Char('z') => {
-                self.simulation_spec.zoom = self.simulation_spec.zoom.saturating_add(1);
                 self.wave_viewer.zoom_in();
                 self.update_signal_viewer_highlight();
             }
             KeyCode::Char('-') | KeyCode::Char('x') => {
-                self.simulation_spec.zoom = self.simulation_spec.zoom.saturating_sub(1);
                 self.wave_viewer.zoom_out();
                 self.update_signal_viewer_highlight();
             }
@@ -180,7 +177,7 @@ impl Component for Root {
                     self.signal_properties_editor
                         .write()
                         .unwrap()
-                        .set_signal_name(signal_name);
+                        .set_signal_name(&signal_name);
                     self.focused_child = Some(Child::SignalPropertiesEditor);
                 }
             }
@@ -331,19 +328,18 @@ impl Root {
     }
 }
 
-#[async_trait]
 impl simulator_request_dispatcher::Listener for Root {
-    async fn on_receive_reponse(&mut self, response: &oombak_sim::Response) {
+    fn on_receive_reponse(&mut self, response: &oombak_sim::Response) {
         if let Some(result) = response.result() {
             match result {
-                oombak_sim::response::Results::CurrentTime(_) => {
-                    self.request_simulation_result().await
-                }
+                oombak_sim::response::Results::CurrentTime(_) => self.request_simulation_result(),
                 oombak_sim::response::Results::LoadedDut(dut) => {
                     self.set_loaded_dut(dut);
-                    self.reload_simulation().await;
+                    self.reset_simulation_spec();
                 }
-                oombak_sim::response::Results::SimulationResult(res) => self.update_simulation(res),
+                oombak_sim::response::Results::SimulationResult(res) => {
+                    self.update_simulation_spec(res);
+                }
                 oombak_sim::response::Results::Empty => (),
             }
         }
@@ -351,13 +347,6 @@ impl simulator_request_dispatcher::Listener for Root {
 }
 
 impl Root {
-    async fn request_simulation_result(&self) {
-        self.request_tx
-            .send(oombak_sim::Request::get_simulation_result())
-            .await
-            .unwrap();
-    }
-
     fn set_loaded_dut(&mut self, loaded_dut: &oombak_sim::response::LoadedDut) {
         self.instance_hier_viewer
             .write()
@@ -369,25 +358,40 @@ impl Root {
             .set_loaded_dut(loaded_dut);
     }
 
-    async fn reload_simulation(&mut self) {
-        self.simulation_spec = SimulationSpec::default();
-        self.set_simulation();
-        self.request_simulation_result().await;
+    fn reset_simulation_spec(&mut self) {
+        self.simulation_spec_mut().reset();
+        self.reload_viewers();
+        self.request_simulation_result();
     }
 
-    fn update_simulation(&mut self, simulation_result: &oombak_sim::response::SimulationResult) {
-        if self.simulation_spec.is_empty() {
-            self.simulation_spec = SimulationSpec::new(simulation_result);
+    fn request_simulation_result(&self) {
+        self.request_tx
+            .blocking_send(oombak_sim::Request::get_simulation_result())
+            .unwrap();
+    }
+
+    fn update_simulation_spec(
+        &mut self,
+        simulation_result: &oombak_sim::response::SimulationResult,
+    ) {
+        if self.simulation_spec().is_empty() {
+            self.simulation_spec_mut().reset_with(simulation_result);
         } else {
-            self.simulation_spec.update(simulation_result);
+            self.simulation_spec_mut().update_with(simulation_result);
         }
-        self.set_simulation();
+        self.reload_viewers();
     }
 
-    fn set_simulation(&mut self) {
-        self.signals_viewer
-            .set_simulation(self.simulation_spec.clone());
-        self.wave_viewer
-            .set_simulation(self.simulation_spec.clone());
+    fn reload_viewers(&mut self) {
+        self.signals_viewer.reload();
+        self.wave_viewer.reload();
+    }
+
+    fn simulation_spec(&self) -> RwLockReadGuard<'_, SimulationSpec> {
+        self.simulation_spec.read().unwrap()
+    }
+
+    fn simulation_spec_mut(&mut self) -> RwLockWriteGuard<'_, SimulationSpec> {
+        self.simulation_spec.write().unwrap()
     }
 }

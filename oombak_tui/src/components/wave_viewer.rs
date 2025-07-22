@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
+
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
@@ -16,7 +18,7 @@ const NUMBER_OF_CELLS_PER_UNIT_TIME: usize = 3;
 
 #[derive(Default)]
 pub struct WaveViewer {
-    simulation: SimulationSpec,
+    simulation: Arc<RwLock<SimulationSpec>>,
     list_state: ListState,
     selected_idx: Option<usize>,
     scroll_state: ScrollState,
@@ -24,17 +26,18 @@ pub struct WaveViewer {
 }
 
 impl WaveViewer {
-    pub fn simulation(mut self, simulation: SimulationSpec) -> Self {
+    pub fn simulation(mut self, simulation: Arc<RwLock<SimulationSpec>>) -> Self {
         self.simulation = simulation;
         self
     }
 
-    pub fn set_simulation(&mut self, simulation: SimulationSpec) {
-        self.simulation = simulation;
-        if !self.simulation.wave_specs.is_empty() {
+    pub fn reload(&mut self) {
+        if !self.get_simulation().wave_specs.is_empty() {
             self.list_state.select_first();
             self.selected_idx = Some(0);
             self.update_content_length();
+        } else {
+            self.selected_idx = None;
         }
     }
 
@@ -49,8 +52,8 @@ impl WaveViewer {
     pub fn scroll_down(&mut self) {
         if let Some(idx) = self.selected_idx {
             self.list_state.select_next();
-            let new_idx = usize::saturating_add(idx, 1);
-            self.selected_idx = Some(usize::min(self.simulation.wave_specs.len() - 1, new_idx));
+            let number_of_waves = self.get_simulation().wave_specs.len();
+            self.selected_idx = Some(usize::min(number_of_waves - 1, idx + 1));
         }
     }
 
@@ -62,20 +65,26 @@ impl WaveViewer {
     }
 
     pub fn zoom_in(&mut self) {
-        self.simulation.zoom = self.simulation.zoom.saturating_add(1);
+        {
+            let mut simulation = self.get_simulation_mut();
+            simulation.zoom = simulation.zoom.saturating_add(1);
+        }
         self.update_content_length();
     }
 
     pub fn zoom_out(&mut self) {
-        self.simulation.zoom = self.simulation.zoom.saturating_sub(1);
+        {
+            let mut simulation = self.get_simulation_mut();
+            simulation.zoom = simulation.zoom.saturating_sub(1);
+        }
         self.update_content_length();
     }
 
     pub fn get_highlighted_unit_time(&self) -> usize {
         let absolute_highlight_position =
             self.scroll_state.start_position() + self.scroll_state.selected_position();
-        absolute_highlight_position
-            / (NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(self.simulation.zoom as u32))
+        let zoom = self.get_simulation().zoom;
+        absolute_highlight_position / (NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(zoom as u32))
     }
 
     pub fn render_mut(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
@@ -95,9 +104,10 @@ impl WaveViewer {
     }
 
     fn update_content_length(&mut self) {
-        self.horizontal_content_length = NUMBER_OF_CELLS_PER_UNIT_TIME
-            * 2usize.pow(self.simulation.zoom as u32)
-            * self.simulation.total_time;
+        let zoom = self.get_simulation().zoom;
+        let total_time = self.get_simulation().total_time;
+        self.horizontal_content_length =
+            NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(zoom as u32) * total_time;
         self.scroll_state
             .set_content_length(self.horizontal_content_length);
     }
@@ -105,7 +115,8 @@ impl WaveViewer {
     fn calculate_preferred_tick(&self) -> (usize, f64) {
         let multiplier = Self::nearest_power_of_2_multiplier(NUMBER_OF_CELLS_PER_UNIT_TIME, 10);
         let tick_count = NUMBER_OF_CELLS_PER_UNIT_TIME * multiplier;
-        let tick_period = multiplier as f64 / 2usize.pow(self.simulation.zoom as u32) as f64;
+        let zoom = self.get_simulation().zoom;
+        let tick_period = multiplier as f64 / 2usize.pow(zoom as u32) as f64;
         (tick_count, tick_period)
     }
 
@@ -124,7 +135,7 @@ impl WaveViewer {
         render_area_width: u16,
         scroll_state: &mut ScrollState,
     ) -> Vec<ListItem<'a>> {
-        self.simulation
+        self.get_simulation()
             .wave_specs
             .iter()
             .enumerate()
@@ -147,7 +158,7 @@ impl WaveViewer {
         render_area_width: u16,
     ) -> ListItem<'a> {
         let waveform = Waveform::new(wave_spec)
-            .zoom(self.simulation.zoom)
+            .zoom(self.get_simulation().zoom)
             .block(Block::new().borders(Borders::BOTTOM))
             .selected_style(SELECTED_WAVEFORM_STYLE)
             .selected(is_selected);
@@ -174,5 +185,13 @@ impl WaveViewer {
             line += Span::from(symbol).style(style);
         }
         line
+    }
+
+    fn get_simulation(&self) -> RwLockReadGuard<'_, SimulationSpec> {
+        self.simulation.read().unwrap()
+    }
+
+    fn get_simulation_mut(&mut self) -> RwLockWriteGuard<'_, SimulationSpec> {
+        self.simulation.write().unwrap()
     }
 }

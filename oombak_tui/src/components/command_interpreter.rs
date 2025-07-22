@@ -1,6 +1,5 @@
 use std::{collections::HashMap, sync::mpsc::Sender};
 
-use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::{style::Stylize, text::Line};
 
@@ -246,9 +245,8 @@ impl CommandInterpreter {
     }
 }
 
-#[async_trait]
 impl simulator_request_dispatcher::Listener for CommandInterpreter {
-    async fn on_receive_reponse(&mut self, response: &oombak_sim::Response) {
+    fn on_receive_reponse(&mut self, response: &oombak_sim::Response) {
         let id = response.id;
         let result = match &response.payload {
             oombak_sim::response::Payload::Result(_) => {

@@ -45,7 +45,22 @@ impl SimulationSpec {
         spec
     }
 
-    pub fn update(&mut self, simulation_result: &oombak_sim::response::SimulationResult) {
+    pub fn reset_with(&mut self, simulation_result: &oombak_sim::response::SimulationResult) {
+        let sim_spec = SimulationSpec::new(simulation_result);
+        self.wave_specs = sim_spec.wave_specs;
+        self.total_time = sim_spec.total_time;
+        self.time_step_ps = sim_spec.time_step_ps;
+        self.zoom = sim_spec.zoom;
+    }
+
+    pub fn reset(&mut self) {
+        self.wave_specs.clear();
+        self.total_time = 0;
+        self.time_step_ps = 1;
+        self.zoom = 0;
+    }
+
+    pub fn update_with(&mut self, simulation_result: &oombak_sim::response::SimulationResult) {
         self.time_step_ps = simulation_result.time_step_ps;
         self.total_time = simulation_result.current_time;
         self.wave_specs = simulation_result

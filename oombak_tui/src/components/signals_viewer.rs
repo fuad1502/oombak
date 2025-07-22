@@ -1,3 +1,5 @@
+use std::sync::{Arc, RwLock, RwLockReadGuard};
+
 use ratatui::{
     style::Style,
     symbols,
@@ -14,14 +16,14 @@ use super::models::{SimulationSpec, WaveSpec};
 
 #[derive(Default)]
 pub struct SignalsViewer {
-    simulation: SimulationSpec,
+    simulation: Arc<RwLock<SimulationSpec>>,
     list_state: ListState,
     selected_idx: Option<usize>,
     highlight_idx: usize,
 }
 
 impl SignalsViewer {
-    pub fn simulation(mut self, simulation: SimulationSpec) -> Self {
+    pub fn simulation(mut self, simulation: Arc<RwLock<SimulationSpec>>) -> Self {
         self.simulation = simulation;
         self
     }
@@ -30,9 +32,8 @@ impl SignalsViewer {
         self.highlight_idx = idx;
     }
 
-    pub fn set_simulation(&mut self, simulation: SimulationSpec) {
-        self.simulation = simulation;
-        if !self.simulation.wave_specs.is_empty() {
+    pub fn reload(&mut self) {
+        if !self.get_simulation().wave_specs.is_empty() {
             self.selected_idx = Some(0);
             self.list_state.select_first();
         } else {
@@ -43,8 +44,8 @@ impl SignalsViewer {
     pub fn scroll_down(&mut self) {
         if let Some(idx) = self.selected_idx {
             self.list_state.select_next();
-            let new_idx = usize::saturating_add(idx, 1);
-            self.selected_idx = Some(usize::min(self.simulation.wave_specs.len() - 1, new_idx));
+            let number_of_waves = self.get_simulation().wave_specs.len();
+            self.selected_idx = Some(usize::min(number_of_waves - 1, idx + 1));
         }
     }
 
@@ -55,9 +56,13 @@ impl SignalsViewer {
         }
     }
 
-    pub fn selected_signal_name(&self) -> Option<&str> {
-        self.selected_idx
-            .map(|i| self.simulation.wave_specs[i].wave.signal_name.as_str())
+    pub fn selected_signal_name(&self) -> Option<String> {
+        self.selected_idx.map(|i| {
+            self.get_simulation().wave_specs[i]
+                .wave
+                .signal_name
+                .to_string()
+        })
     }
 
     pub fn render_mut(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
@@ -67,7 +72,7 @@ impl SignalsViewer {
     }
 
     fn create_list_items<'a>(&self, width: u16) -> Vec<ListItem<'a>> {
-        self.simulation
+        self.get_simulation()
             .wave_specs
             .iter()
             .enumerate()
@@ -112,5 +117,9 @@ impl SignalsViewer {
 
     fn create_horizontal_line<'a>(width: u16) -> Line<'a> {
         symbols::line::HORIZONTAL.repeat(width as usize).into()
+    }
+
+    fn get_simulation(&self) -> RwLockReadGuard<'_, SimulationSpec> {
+        self.simulation.read().unwrap()
     }
 }

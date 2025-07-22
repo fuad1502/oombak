@@ -447,7 +447,6 @@ dependencies = [
 name = "oombak_tui"
 version = "0.1.0"
 dependencies = [
- "async-trait",
  "bitvec",
  "crossterm",
  "file_type",

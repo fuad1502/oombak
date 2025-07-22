@@ -58,26 +58,49 @@ impl SimulatorRequestDispatcher {
                     return
                 }
                 Message::Request(request) => {
-                    Self::notify_request_dispatched(&request, listeners.clone()).await;
-                    let sim = simulator.clone();
-                    tokio::spawn(async move { sim.serve(&request).await });
+                    Self::spawn_blocking_notify_request_dispatched(
+                        listeners.clone(),
+                        request.clone(),
+                    )
+                    .await;
+                    Self::spawn_simulator_serve_request(simulator.clone(), request).await;
                 }
-                Message::Response(response) => Self::notify(response, listeners.clone()).await,
+                Message::Response(response) => {
+                    Self::spawn_blocking_notify_response(listeners.clone(), response).await;
+                }
             }
         }
     }
 
-    async fn notify_request_dispatched(
-        request: &oombak_sim::Request,
+    async fn spawn_blocking_notify_request_dispatched(
         listeners: Arc<RwLock<Listeners>>,
+        request: oombak_sim::Request,
     ) {
+        tokio::task::spawn_blocking(move || Self::notify_request_dispatched(&request, listeners))
+            .await
+            .unwrap();
+    }
+
+    async fn spawn_simulator_serve_request(
+        simulator: Arc<dyn Simulator>,
+        request: oombak_sim::Request,
+    ) {
+        tokio::spawn(async move { simulator.serve(&request).await });
+    }
+
+    async fn spawn_blocking_notify_response(
+        listeners: Arc<RwLock<Listeners>>,
+        response: oombak_sim::Response,
+    ) {
+        tokio::task::spawn_blocking(|| Self::notify(response, listeners))
+            .await
+            .unwrap();
+    }
+
+    fn notify_request_dispatched(request: &oombak_sim::Request, listeners: Arc<RwLock<Listeners>>) {
         let response = Self::request_dispatched_notification(request);
         for listener in listeners.read().unwrap().iter() {
-            listener
-                .write()
-                .unwrap()
-                .on_receive_reponse(&response)
-                .await;
+            listener.write().unwrap().on_receive_reponse(&response)
         }
     }
 
@@ -90,13 +113,9 @@ impl SimulatorRequestDispatcher {
         }
     }
 
-    async fn notify(response: oombak_sim::response::Response, listeners: Arc<RwLock<Listeners>>) {
+    fn notify(response: oombak_sim::response::Response, listeners: Arc<RwLock<Listeners>>) {
         for listener in listeners.read().unwrap().iter() {
-            listener
-                .write()
-                .unwrap()
-                .on_receive_reponse(&response)
-                .await;
+            listener.write().unwrap().on_receive_reponse(&response)
         }
     }
 }
