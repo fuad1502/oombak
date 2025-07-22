@@ -279,11 +279,11 @@ impl Waveform<'_> {
         let value = bitvec_str::from(value, &option);
         let str_width = NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(self.zoom as u32) * count + 1;
         let res = if str_width - 2 >= value.len() {
-            format!("{:^1$}", value, str_width)
+            format!("{value:^str_width$}")
         } else {
             let snip_size = usize::saturating_sub(str_width, 3);
             let snip = &value[0..snip_size];
-            format!(" {snip}~ ")
+            format!(" {snip}… ")
         };
         res.chars().take(str_width).collect()
     }
@@ -293,13 +293,13 @@ impl Waveform<'_> {
         for (i, c) in word.iter().take(head_length).enumerate() {
             for (j, line) in lines.iter_mut().enumerate() {
                 if i == 0 && j == height {
-                    *line += "\u{2573}";
+                    *line += "╳";
                 } else if i > 0 && j == height {
-                    *line += &format!("{}", c);
+                    *line += &format!("{c}");
                 } else if i > 0 && j == height - i {
-                    *line += "\u{2571}";
+                    *line += "╱";
                 } else if i > 0 && j == height + i {
-                    *line += "\u{2572}";
+                    *line += "╲";
                 } else {
                     *line += " ";
                 }
@@ -318,13 +318,13 @@ impl Waveform<'_> {
         {
             for (j, line) in lines.iter_mut().enumerate() {
                 if i == height && j == height {
-                    *line += "\u{2573}";
+                    *line += "╳";
                 } else if i < height && j == height {
-                    *line += &format!("{}", c);
+                    *line += &format!("{c}");
                 } else if i < height && j == i {
-                    *line += "\u{2572}";
+                    *line += "╲";
                 } else if i < height && j == 2 * height - i {
-                    *line += "\u{2571}";
+                    *line += "╱";
                 } else {
                     *line += " ";
                 }
@@ -338,11 +338,11 @@ impl Waveform<'_> {
         for c in word.iter().skip(head_length).take(body_length) {
             for (j, line) in lines.iter_mut().enumerate() {
                 if j == height {
-                    *line += &format!("{}", c);
+                    *line += &format!("{c}");
                 } else if j == 0 {
-                    *line += "\u{2594}";
+                    *line += "▔";
                 } else if j == height * 2 {
-                    *line += "\u{2581}";
+                    *line += "▁";
                 } else {
                     *line += " ";
                 }
