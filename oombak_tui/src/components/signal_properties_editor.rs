@@ -6,7 +6,7 @@ use ratatui::{layout::Rect, Frame};
 
 use crate::{
     component::{Component, HandleResult},
-    components::TokioSender,
+    components::{models::SimulationSpec, TokioSender},
     threads::RendererMessage,
     widgets::KeyMaps,
 };
@@ -22,12 +22,14 @@ pub struct SignalPropertiesEditor {
     selector: Selector,
     signal_name: Option<String>,
     input_ports: Vec<String>,
+    simulation_spec: Arc<RwLock<SimulationSpec>>,
     renderer_channel: Sender<RendererMessage>,
     sim_request_channel: TokioSender<oombak_sim::Message>,
 }
 
 impl SignalPropertiesEditor {
     pub fn new(
+        simulation_spec: Arc<RwLock<SimulationSpec>>,
         renderer_channel: Sender<RendererMessage>,
         sim_request_channel: TokioSender<oombak_sim::Message>,
     ) -> Self {
@@ -35,6 +37,7 @@ impl SignalPropertiesEditor {
             selector: Selector::new(vec![], renderer_channel.clone()),
             signal_name: None,
             input_ports: vec![],
+            simulation_spec,
             renderer_channel,
             sim_request_channel,
         }
@@ -74,6 +77,8 @@ impl SignalPropertiesEditor {
                 Selection::new(
                     "Set display settings",
                     Arc::new(RwLock::new(SignalDisplayPropertiesSetter::new(
+                        name.to_string(),
+                        self.simulation_spec.clone(),
                         self.renderer_channel.clone(),
                     ))),
                 ),

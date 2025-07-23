@@ -27,10 +27,10 @@ pub struct FormState {
 
 pub struct InputField {
     name: String,
-    input_type: InputFieldType,
+    state: InputState,
 }
 
-pub enum InputFieldType {
+pub enum InputState {
     CommandLine(CommandLineState),
     DropDown(DropDownState),
 }
@@ -82,7 +82,7 @@ impl Form {
 
         for (i, (input_field, area)) in state.input_fields.iter_mut().zip(areas).enumerate() {
             // Opened dropdown needs to be rendered last because it draws beyond its borders
-            if let InputFieldType::DropDown(state) = &input_field.input_type {
+            if let InputState::DropDown(state) = &input_field.state {
                 if state.is_opened() {
                     opened_dropdown_idx = Some(i);
                     continue;
@@ -139,13 +139,11 @@ impl Form {
         ])
         .split(area);
         Self::render_input_field_name(areas[0], buf, &input_field.name);
-        match &mut input_field.input_type {
-            InputFieldType::CommandLine(state) => {
+        match &mut input_field.state {
+            InputState::CommandLine(state) => {
                 Self::render_input_text(areas[1], buf, state, highlight)
             }
-            InputFieldType::DropDown(state) => {
-                Self::render_dropdown(areas[1], buf, state, highlight)
-            }
+            InputState::DropDown(state) => Self::render_dropdown(areas[1], buf, state, highlight),
         }
     }
 
@@ -213,7 +211,7 @@ impl InputField {
     pub fn text(name: &str) -> Self {
         Self {
             name: name.to_string(),
-            input_type: InputFieldType::CommandLine(CommandLineState::default()),
+            state: InputState::CommandLine(CommandLineState::default()),
         }
     }
 
@@ -221,7 +219,7 @@ impl InputField {
         let items = items.iter().map(|x| String::from(*x)).collect();
         Self {
             name: name.to_string(),
-            input_type: InputFieldType::DropDown(DropDownState::new(items)),
+            state: InputState::DropDown(DropDownState::new(items)),
         }
     }
 }
@@ -332,7 +330,7 @@ impl FormState {
 
     pub fn is_dropdown(&self) -> bool {
         if let Some(FormHighlight::InputField(x)) = self.highlight {
-            if let InputFieldType::DropDown(_) = &self.input_fields[x].input_type {
+            if let InputState::DropDown(_) = &self.input_fields[x].state {
                 return true;
             }
         }
@@ -341,7 +339,7 @@ impl FormState {
 
     pub fn is_command_line(&self) -> bool {
         if let Some(FormHighlight::InputField(x)) = self.highlight {
-            if let InputFieldType::CommandLine(_) = &self.input_fields[x].input_type {
+            if let InputState::CommandLine(_) = &self.input_fields[x].state {
                 return true;
             }
         }
@@ -351,16 +349,20 @@ impl FormState {
     pub fn entries(&self) -> Vec<String> {
         self.input_fields
             .iter()
-            .map(|i| match &i.input_type {
-                InputFieldType::CommandLine(state) => state.text().to_string(),
-                InputFieldType::DropDown(state) => state.selected().unwrap_or_default().to_string(),
+            .map(|i| match &i.state {
+                InputState::CommandLine(state) => state.text().to_string(),
+                InputState::DropDown(state) => state.selected().unwrap_or_default().to_string(),
             })
             .collect()
     }
 
+    pub fn get_input_state_mut(&mut self, idx: usize) -> Option<&mut InputState> {
+        self.input_fields.get_mut(idx).map(|f| &mut f.state)
+    }
+
     fn try_get_dropdown_state_from_selected(&mut self) -> Option<&mut DropDownState> {
         if let Some(FormHighlight::InputField(x)) = self.highlight {
-            if let InputFieldType::DropDown(state) = &mut self.input_fields[x].input_type {
+            if let InputState::DropDown(state) = &mut self.input_fields[x].state {
                 return Some(state);
             }
         }
@@ -369,10 +371,32 @@ impl FormState {
 
     fn try_get_command_line_state_from_selected(&mut self) -> Option<&mut CommandLineState> {
         if let Some(FormHighlight::InputField(x)) = self.highlight {
-            if let InputFieldType::CommandLine(state) = &mut self.input_fields[x].input_type {
+            if let InputState::CommandLine(state) = &mut self.input_fields[x].state {
                 return Some(state);
             }
         }
         None
+    }
+}
+
+impl<'a> TryInto<&'a mut CommandLineState> for &'a mut InputState {
+    type Error = &'static str;
+
+    fn try_into(self) -> Result<&'a mut CommandLineState, Self::Error> {
+        match self {
+            InputState::CommandLine(state) => Ok(state),
+            InputState::DropDown(_) => Err(""),
+        }
+    }
+}
+
+impl<'a> TryInto<&'a mut DropDownState> for &'a mut InputState {
+    type Error = &'static str;
+
+    fn try_into(self) -> Result<&'a mut DropDownState, Self::Error> {
+        match self {
+            InputState::CommandLine(_) => Err(""),
+            InputState::DropDown(state) => Ok(state),
+        }
     }
 }

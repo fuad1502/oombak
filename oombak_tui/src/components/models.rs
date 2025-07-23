@@ -17,7 +17,7 @@ pub struct WaveSpec {
     pub signed: bool,
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 pub enum PlotType {
     Digital,
     Analog,
@@ -76,5 +76,17 @@ impl SimulationSpec {
 
     pub fn is_empty(&self) -> bool {
         self.wave_specs.is_empty()
+    }
+
+    pub fn get_wave_spec(&self, signal_name: &str) -> Option<&WaveSpec> {
+        self.wave_specs
+            .iter()
+            .find(|ws| ws.wave.signal_name == signal_name)
+    }
+
+    pub fn get_wave_spec_mut(&mut self, signal_name: &str) -> Option<&mut WaveSpec> {
+        self.wave_specs
+            .iter_mut()
+            .find(|ws| ws.wave.signal_name == signal_name)
     }
 }

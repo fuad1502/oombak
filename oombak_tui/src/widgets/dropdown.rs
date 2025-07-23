@@ -98,4 +98,12 @@ impl DropDownState {
     pub fn up(&mut self) {
         self.list_state.select_previous();
     }
+
+    pub fn select(&mut self, idx: usize) -> Result<(), &'static str> {
+        if idx >= self.items.len() {
+            return Err("Index out of range");
+        }
+        self.list_state.select(Some(idx));
+        Ok(())
+    }
 }

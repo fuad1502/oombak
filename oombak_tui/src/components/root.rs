@@ -67,6 +67,7 @@ impl Root {
                 request_tx.clone(),
             ))),
             signal_properties_editor: Arc::new(RwLock::new(SignalPropertiesEditor::new(
+                simulation_spec.clone(),
                 message_tx.clone(),
                 request_tx.clone(),
             ))),
