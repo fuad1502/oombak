@@ -17,7 +17,6 @@ pub struct CommandLine {
 #[derive(Default)]
 pub struct CommandLineState {
     text: String,
-    cursor_position: usize,
     scroll_state: ScrollState,
 }
 
@@ -35,13 +34,11 @@ impl StatefulWidget for CommandLine {
         } else {
             (area.width as usize).saturating_sub(Self::HEADER.len() + 1)
         };
-        state
-            .scroll_state
-            .set_viewport_length(input_width.saturating_sub(1));
+        state.scroll_state.set_viewport_length(input_width);
 
         let start_idx = state.scroll_state.start_position();
         let highlight_idx =
-            get_utf8_index(&state.text, state.cursor_position).unwrap_or(state.text.len());
+            get_utf8_index(&state.text, state.cursor_position()).unwrap_or(state.text.len());
 
         let highlight = state.text.get(highlight_idx..=highlight_idx).unwrap_or(" ");
         let before_highlight = state.text.get(start_idx..highlight_idx).unwrap_or(" ");
@@ -101,38 +98,42 @@ impl CommandLineState {
 
     pub fn clear(&mut self) {
         self.text.clear();
-        self.cursor_position = 0;
-        self.scroll_state.set_content_length(0);
+        self.scroll_state.set_content_length(1);
     }
 
     pub fn put(&mut self, ch: char) {
-        let idx = get_utf8_index(&self.text, self.cursor_position).unwrap_or(self.text.len());
+        let idx = get_utf8_index(&self.text, self.cursor_position()).unwrap_or(self.text.len());
         self.text.insert(idx, ch);
-        self.cursor_position += 1;
-        self.scroll_state.set_content_length(self.text.len());
+        self.scroll_state.set_content_length(self.text.len() + 1);
         self.scroll_state.next();
     }
 
     pub fn backspace(&mut self) {
-        if self.cursor_position >= 1 {
-            let idx = get_utf8_index(&self.text, self.cursor_position - 1).unwrap();
+        if self.cursor_position() >= 1 {
+            let idx = get_utf8_index(&self.text, self.cursor_position() - 1).unwrap();
             self.text.remove(idx);
-            self.cursor_position = self.cursor_position.saturating_sub(1);
-            self.scroll_state.set_content_length(self.text.len());
             self.scroll_state.prev();
+            self.scroll_state.set_content_length(self.text.len() + 1);
         }
     }
 
     pub fn move_cursor_right(&mut self) {
-        if self.cursor_position < self.text.len() {
-            self.cursor_position += 1;
-        }
         self.scroll_state.next();
     }
 
     pub fn move_cursor_left(&mut self) {
-        self.cursor_position = self.cursor_position.saturating_sub(1);
         self.scroll_state.prev();
+    }
+
+    pub fn set_text(&mut self, text: &str) {
+        self.clear();
+        for ch in text.chars() {
+            self.put(ch);
+        }
+    }
+
+    fn cursor_position(&self) -> usize {
+        self.scroll_state.start_position() + self.scroll_state.selected_position()
     }
 }
 

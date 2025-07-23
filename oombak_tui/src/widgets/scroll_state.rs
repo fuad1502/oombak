@@ -28,15 +28,22 @@ impl ScrollState {
 
     pub fn set_viewport_length(&mut self, viewport_length: usize) {
         self.viewport_length = viewport_length;
+        let excess_blanks = (self.start_position + self.viewport_length)
+            .saturating_sub(self.content_length)
+            .min(self.start_position);
+        if excess_blanks > 0 {
+            self.start_position -= excess_blanks;
+            self.selected_position += excess_blanks;
+        }
         if self.selected_position >= viewport_length {
-            self.last();
+            self.selected_position = viewport_length - 1;
         }
     }
 
     pub fn next(&mut self) {
         if !self.is_at_end() && self.is_at_viewport_end() {
             self.start_position += 1;
-        } else if !self.is_at_viewport_end() {
+        } else if !self.is_at_end() && !self.is_at_viewport_end() {
             self.selected_position += 1;
         }
     }
@@ -44,7 +51,7 @@ impl ScrollState {
     pub fn prev(&mut self) {
         if !self.is_at_beginning() && self.is_at_viewport_start() {
             self.start_position -= 1;
-        } else if !self.is_at_viewport_start() {
+        } else if !self.is_at_beginning() && !self.is_at_viewport_start() {
             self.selected_position -= 1;
         }
     }
@@ -56,8 +63,7 @@ impl ScrollState {
     }
 
     fn is_at_viewport_end(&self) -> bool {
-        let effective_viewport_length = usize::min(self.viewport_length, self.content_length);
-        self.selected_position == effective_viewport_length.saturating_sub(1)
+        self.selected_position == self.viewport_length.saturating_sub(1)
     }
 
     fn is_at_viewport_start(&self) -> bool {
@@ -65,9 +71,7 @@ impl ScrollState {
     }
 
     fn is_at_end(&self) -> bool {
-        let effective_viewport_length = usize::min(self.viewport_length, self.content_length);
-        self.start_position == self.content_length - effective_viewport_length
-            && self.selected_position == effective_viewport_length.saturating_sub(1)
+        self.start_position + self.selected_position + 1 == self.content_length
     }
 
     fn is_at_beginning(&self) -> bool {
