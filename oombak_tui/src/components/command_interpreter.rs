@@ -250,13 +250,13 @@ impl simulator_request_dispatcher::Listener for CommandInterpreter {
         let id = response.id;
         let result = match &response.payload {
             oombak_sim::response::Payload::Result(_) => {
-                TerminalOutput::Normal(format!("[ID: {:x}] Finished", id))
+                TerminalOutput::Normal(format!("[ID: {id:x}] Finished"))
             }
             oombak_sim::response::Payload::Notification(notification) => {
-                TerminalOutput::Notification(format!("[ID: {:x}] {}", id, notification))
+                TerminalOutput::Notification(format!("[ID: {id:x}] {notification}"))
             }
             oombak_sim::response::Payload::Error(e) => {
-                TerminalOutput::Error(format!("[ID: {:x}] Error: {}", id, e))
+                TerminalOutput::Error(format!("[ID: {id:x}] Error: {e}"))
             }
         };
         self.terminal_state.append_output_history(result);

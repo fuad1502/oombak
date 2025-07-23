@@ -58,7 +58,7 @@ impl StatefulWidget for CommandKeysHelpWindow<'_> {
         state.set_viewport_length(1);
         state.set_content_length(num_pages);
         let current_page = state.start_position() + 1;
-        let text = Text::from(format!("Page {} of {}", current_page, num_pages));
+        let text = Text::from(format!("Page {current_page} of {num_pages}"));
 
         let start_column = (current_page - 1) * fitted_columns;
         let end_column = start_column + fitted_columns - 1;

@@ -21,6 +21,6 @@ pub fn any_to_string(any: &Box<dyn Any + Send>) -> String {
     } else if let Some(message) = any.downcast_ref::<String>() {
         message.clone()
     } else {
-        format!("{:?}", any)
+        format!("{any:?}")
     }
 }
