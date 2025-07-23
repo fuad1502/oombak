@@ -10,6 +10,7 @@ use crate::{
     component::{Component, HandleResult},
     components::models::{PlotType, SimulationSpec},
     threads::RendererMessage,
+    utils::bitvec_str::Radix,
     widgets::{CommandLineState, DropDownState, Form, FormState, InputField, KeyMaps},
 };
 
@@ -27,7 +28,8 @@ impl SignalDisplayPropertiesSetter {
         renderer_channel: Sender<RendererMessage>,
     ) -> Self {
         let input_fields = vec![
-            InputField::dropdown("Radix", &["Binary", "Hexadecimal", "Decimal"]),
+            InputField::dropdown("Radix", &["Binary", "Hexadecimal", "Octal", "Decimal"]),
+            InputField::dropdown("Signedness", &["Unsigned", "Signed"]),
             InputField::dropdown("Plot type", &["Digital", "Analog"]),
             InputField::text("Plot height"),
         ];
@@ -51,7 +53,7 @@ impl SignalDisplayPropertiesSetter {
         simulation_spec: RwLockReadGuard<'_, SimulationSpec>,
     ) {
         let state: &mut CommandLineState = form_state
-            .get_input_state_mut(2)
+            .get_input_state_mut(3)
             .unwrap()
             .try_into()
             .unwrap();
@@ -59,7 +61,7 @@ impl SignalDisplayPropertiesSetter {
         state.set_text(&height.to_string());
 
         let state: &mut DropDownState = form_state
-            .get_input_state_mut(1)
+            .get_input_state_mut(2)
             .unwrap()
             .try_into()
             .unwrap();
@@ -71,17 +73,76 @@ impl SignalDisplayPropertiesSetter {
             PlotType::Digital => state.select(0).unwrap(),
             PlotType::Analog => state.select(1).unwrap(),
         };
+
+        let state: &mut DropDownState = form_state
+            .get_input_state_mut(1)
+            .unwrap()
+            .try_into()
+            .unwrap();
+        let signed = simulation_spec.get_wave_spec(signal_name).unwrap().signed;
+        if signed {
+            state.select(1).unwrap()
+        } else {
+            state.select(0).unwrap()
+        };
+
+        let state: &mut DropDownState = form_state
+            .get_input_state_mut(0)
+            .unwrap()
+            .try_into()
+            .unwrap();
+        let radix = simulation_spec.get_wave_spec(signal_name).unwrap().radix;
+        match radix {
+            Radix::Binary => state.select(0).unwrap(),
+            Radix::Hexadecimal => state.select(1).unwrap(),
+            Radix::Octal => state.select(2).unwrap(),
+            Radix::Decimal => state.select(3).unwrap(),
+        };
     }
 
-    fn parse_user_input(entries: &[String]) -> Result<(PlotType, u16), String> {
-        let plot_type = match &entries[1][..] {
+    fn parse_user_input(entries: &[String]) -> Result<(Radix, bool, PlotType, u16), String> {
+        let radix = match &entries[0][..] {
+            "Binary" => Radix::Binary,
+            "Hexadecimal" => Radix::Hexadecimal,
+            "Octal" => Radix::Octal,
+            "Decimal" => Radix::Decimal,
+            _ => panic!(""),
+        };
+
+        let signed = match &entries[1][..] {
+            "Unsigned" => false,
+            "Signed" => true,
+            _ => panic!(""),
+        };
+
+        let plot_type = match &entries[2][..] {
             "Analog" => PlotType::Analog,
             "Digital" => PlotType::Digital,
             _ => panic!(""),
         };
-        let height = str::parse(&entries[2])
+
+        let height = str::parse(&entries[3])
             .map_err(|e| format!("Cannot convert height input ({}) to u16: {}", entries[2], e))?;
-        Ok((plot_type, height))
+
+        Ok((radix, signed, plot_type, height))
+    }
+
+    fn set_wave_spec_radix(&mut self, radix: Radix) {
+        self.simulation_spec
+            .write()
+            .unwrap()
+            .get_wave_spec_mut(&self.signal_name)
+            .unwrap()
+            .radix = radix;
+    }
+
+    fn set_wave_spec_signed(&mut self, signed: bool) {
+        self.simulation_spec
+            .write()
+            .unwrap()
+            .get_wave_spec_mut(&self.signal_name)
+            .unwrap()
+            .signed = signed;
     }
 
     fn set_wave_spec_plot_type(&mut self, plot_type: PlotType) {
@@ -119,8 +180,10 @@ impl Component for SignalDisplayPropertiesSetter {
             KeyCode::Backspace => self.form_state.backspace(),
             KeyCode::Enter => {
                 if self.form_state.is_apply() {
-                    let (plot_type, height) =
+                    let (radix, signed, plot_type, height) =
                         Self::parse_user_input(&self.form_state.entries()).unwrap();
+                    self.set_wave_spec_radix(radix);
+                    self.set_wave_spec_signed(signed);
                     self.set_wave_spec_plot_type(plot_type);
                     if matches!(plot_type, PlotType::Analog) {
                         self.set_wave_spec_height(height);

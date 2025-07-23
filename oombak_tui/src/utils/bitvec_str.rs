@@ -4,13 +4,13 @@ use crate::components::models;
 
 #[derive(Clone)]
 pub struct Option {
-    pub format: Format,
+    pub radix: Radix,
     pub width: usize,
     pub twos_complement: bool,
 }
 
 #[derive(Copy, Clone)]
-pub enum Format {
+pub enum Radix {
     Binary,
     Hexadecimal,
     Octal,
@@ -18,11 +18,11 @@ pub enum Format {
 }
 
 pub fn from(bit_vec: &BitVec<u32>, option: &Option) -> String {
-    match option.format {
-        Format::Binary => binary(bit_vec, option.width, option.twos_complement),
-        Format::Hexadecimal => hexadecimal(bit_vec, option.width, option.twos_complement),
-        Format::Octal => octal(bit_vec, option.width, option.twos_complement),
-        Format::Decimal => decimal(bit_vec, option.width, option.twos_complement),
+    match option.radix {
+        Radix::Binary => binary(bit_vec, option.width, option.twos_complement),
+        Radix::Hexadecimal => hexadecimal(bit_vec, option.width, option.twos_complement),
+        Radix::Octal => octal(bit_vec, option.width, option.twos_complement),
+        Radix::Decimal => decimal(bit_vec, option.width, option.twos_complement),
     }
 }
 
@@ -41,7 +41,7 @@ pub fn parse(value: &str) -> Result<BitVec<u32>, String> {
 impl Default for Option {
     fn default() -> Self {
         Self {
-            format: Format::Binary,
+            radix: Radix::Binary,
             width: 0,
             twos_complement: false,
         }
@@ -52,7 +52,7 @@ impl From<&models::WaveSpec> for Option {
     fn from(wave_spec: &models::WaveSpec) -> Self {
         Self {
             width: wave_spec.wave.width,
-            format: wave_spec.format,
+            radix: wave_spec.radix,
             twos_complement: wave_spec.signed,
         }
     }
