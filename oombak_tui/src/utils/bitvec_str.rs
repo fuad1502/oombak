@@ -38,6 +38,24 @@ pub fn parse(value: &str) -> Result<BitVec<u32>, String> {
     }
 }
 
+pub fn i128_from_bitvec(bit_vec: &BitVec<u32>, is_signed: bool) -> i128 {
+    if (is_signed && bit_vec.last_one() > Some(128))
+        || (!is_signed && bit_vec.last_one() > Some(127))
+    {
+        unimplemented!()
+    }
+
+    let bit_vec = get_resized_bitvec(bit_vec, 128, is_signed);
+    let value = u128_from_bitvec(&bit_vec);
+
+    if is_signed && *bit_vec.last().unwrap() {
+        let (value, _) = (u128::MAX - value).overflowing_add(1);
+        -(value as i128)
+    } else {
+        value as i128
+    }
+}
+
 impl Default for Option {
     fn default() -> Self {
         Self {
@@ -94,7 +112,7 @@ fn octal(bit_vec: &BitVec<u32>, width: usize, twos_complement: bool) -> String {
 }
 
 fn decimal(bit_vec: &BitVec<u32>, width: usize, twos_complement: bool) -> String {
-    if (twos_complement && width > 127) || (!twos_complement && width > 128) {
+    if width > 128 {
         unimplemented!()
     }
 

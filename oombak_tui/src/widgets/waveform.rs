@@ -11,7 +11,7 @@ use ratatui::{
 use crate::{
     components::models::{PlotType, WaveSpec},
     styles::wave_viewer::{CURSOR_STYLE, WAVEFORM_STYLE},
-    utils::bitvec_str,
+    utils::bitvec_str::{self, i128_from_bitvec},
 };
 
 use super::ScrollState;
@@ -155,7 +155,8 @@ impl Waveform<'_> {
     ) -> Vec<String> {
         let height = self.wave_spec.height as usize;
         let num_of_levels = 2 * height + 1;
-        let level_mapper = AnalogLevelMapper::new(&compact_values, num_of_levels);
+        let level_mapper =
+            AnalogLevelMapper::new(&compact_values, num_of_levels, self.wave_spec.signed);
         self.analog_plot_with_level_mapper(
             compact_values,
             plot_offset,
@@ -354,18 +355,27 @@ impl Waveform<'_> {
 struct AnalogLevelMapper {
     limits: Vec<f64>,
     min_value: f64,
+    is_signed: bool,
 }
 
 impl AnalogLevelMapper {
-    fn new(compact_values: &[CompactWaveValue], num_of_levels: usize) -> Self {
-        let (limits, min_value) = Self::calculate_limits(compact_values, num_of_levels);
-        Self { limits, min_value }
+    fn new(compact_values: &[CompactWaveValue], num_of_levels: usize, is_signed: bool) -> Self {
+        let (limits, min_value) = Self::calculate_limits(compact_values, num_of_levels, is_signed);
+        Self {
+            limits,
+            min_value,
+            is_signed,
+        }
     }
 
     fn digital(num_of_levels: usize) -> Self {
         let limits = vec![0.5; num_of_levels - 1];
         let min_value = 0.0;
-        Self { limits, min_value }
+        Self {
+            limits,
+            min_value,
+            is_signed: false,
+        }
     }
 
     fn num_of_levels(&self) -> usize {
@@ -375,16 +385,19 @@ impl AnalogLevelMapper {
     fn calculate_limits(
         compact_values: &[CompactWaveValue],
         num_of_levels: usize,
+        is_signed: bool,
     ) -> (Vec<f64>, f64) {
         if compact_values.is_empty() {
             return (vec![], 0f64);
         }
 
-        let values = compact_values.iter().map(|v| Self::u32_from(v.value()));
+        let values = compact_values
+            .iter()
+            .map(|v| i128_from_bitvec(v.value(), is_signed));
         let max_value = values.clone().max().unwrap();
         let min_value = values.min().unwrap();
         let limits = (1..num_of_levels)
-            .map(|i| i as u32)
+            .map(|i| i as i128)
             .map(|i| (i * (max_value - min_value)) as f64 / num_of_levels as f64)
             .collect();
 
@@ -392,15 +405,8 @@ impl AnalogLevelMapper {
     }
 
     fn map(&self, value: &BitVec<u32>) -> usize {
-        self.limits
-            .partition_point(|l| *l <= Self::u32_from(value) as f64 - self.min_value)
-    }
-
-    fn u32_from(value: &BitVec<u32>) -> u32 {
-        match value.last_one() {
-            Some(i) if i > 31 => unimplemented!(),
-            Some(_) => value.clone().into_vec()[0],
-            None => 0u32,
-        }
+        self.limits.partition_point(|l| {
+            *l <= i128_from_bitvec(value, self.is_signed) as f64 - self.min_value
+        })
     }
 }
