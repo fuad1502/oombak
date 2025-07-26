@@ -3,13 +3,15 @@ use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 use crate::component::{Component, HandleResult};
+use crate::styles::root::{TITLE_STYLE, VERSION_STYLE};
 use crate::threads::{simulator_request_dispatcher, RendererMessage};
 use crate::utils;
 use crate::widgets::{KeyDesc, KeyId, KeyMaps};
 
 use crossterm::event::{KeyCode, KeyEvent};
 
-use ratatui::layout::{Alignment, Constraint, Direction, Layout, Rect};
+use ratatui::layout::{Alignment, Constraint, Direction, Layout, Position, Rect};
+use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, Borders, Clear};
 use ratatui::Frame;
 
@@ -106,15 +108,20 @@ impl Component for Root {
     fn render(&mut self, f: &mut Frame, rect: Rect) {
         let main_layout_v = Layout::default()
             .direction(Direction::Vertical)
-            .constraints(vec![Constraint::Min(0), Constraint::Length(1)])
+            .constraints(vec![
+                Constraint::Length(2),
+                Constraint::Min(0),
+                Constraint::Length(1),
+            ])
             .split(rect);
         let sub_layout_h = Layout::default()
             .direction(Direction::Horizontal)
             .constraints(vec![Constraint::Percentage(25), Constraint::Percentage(75)])
-            .split(main_layout_v[0]);
+            .split(main_layout_v[1]);
+        self.render_title(f, main_layout_v[0]);
         self.render_signals_viewer(f, sub_layout_h[0]);
         self.render_wave_viewer(f, sub_layout_h[1]);
-        self.render_command_interpreter(f, rect, main_layout_v[1]);
+        self.render_command_interpreter(f, rect, main_layout_v[2]);
         if matches!(self.focused_child, Some(Child::InstanceHierView)) {
             self.render_instance_hier_viewer(f, rect);
         }
@@ -233,6 +240,20 @@ impl Component for Root {
 }
 
 impl Root {
+    fn render_title(&mut self, f: &mut Frame, rect: Rect) {
+        let block = Block::new()
+            .borders(Borders::BOTTOM)
+            .border_type(BorderType::Thick);
+        let line = Line::from(vec![
+            Span::from(" 🌊 Oombak TUI"),
+            Span::from(" "),
+            Span::from(format!("v{}", env!("CARGO_PKG_VERSION"))).style(VERSION_STYLE),
+        ])
+        .style(TITLE_STYLE);
+        f.render_widget(line, block.inner(rect));
+        f.render_widget(block, rect);
+    }
+
     fn render_signals_viewer(&mut self, f: &mut Frame, rect: Rect) {
         // SignalsViewer and WaveViewer render area height must be in sync to allow synchronized
         // scrolling. Right now, rendering WaveViewer implicitly render TimeBar on the bottom 3
@@ -247,11 +268,19 @@ impl Root {
         f.render_widget(block, rect);
         // WaveViewer is rendered overlapping with the left border to get a collapsed border look
         self.wave_viewer.render_mut(f, rect);
+        f.buffer_mut()
+            .cell_mut(Position::new(rect.x, rect.y - 1))
+            .unwrap()
+            .set_symbol("┯");
     }
 
     fn render_instance_hier_viewer(&self, f: &mut Frame, rect: Rect) {
         let popup_area = Self::get_popup_area_centered_large(rect);
-        let block = Block::bordered().border_type(BorderType::Rounded);
+        let block = Block::bordered()
+            .border_type(BorderType::Rounded)
+            .title("[Probe Editor]")
+            .title_alignment(Alignment::Center)
+            .title_style(TITLE_STYLE);
         f.render_widget(Clear, popup_area);
         self.instance_hier_viewer
             .write()
@@ -261,7 +290,11 @@ impl Root {
 
     fn render_file_explorer(&self, f: &mut Frame, rect: Rect) {
         let popup_area = Self::get_popup_area_centered_large(rect);
-        let block = Block::bordered().border_type(BorderType::Rounded);
+        let block = Block::bordered()
+            .border_type(BorderType::Rounded)
+            .title("[File Explorer]")
+            .title_alignment(Alignment::Center)
+            .title_style(TITLE_STYLE);
         f.render_widget(Clear, popup_area);
         self.file_explorer
             .write()
@@ -313,7 +346,10 @@ impl Root {
         let popup_area = Self::get_popup_area_centered_large(rect);
         let block = Block::new()
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded);
+            .border_type(BorderType::Rounded)
+            .title("[Terminal]")
+            .title_alignment(Alignment::Center)
+            .title_style(TITLE_STYLE);
         let inner = block.inner(popup_area);
         f.render_widget(Clear, popup_area);
         f.render_widget(block, popup_area);

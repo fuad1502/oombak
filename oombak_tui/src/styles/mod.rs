@@ -7,6 +7,15 @@ pub mod global {
         Style::new().bg(Color::Blue).add_modifier(Modifier::BOLD);
 }
 
+pub mod root {
+    use super::*;
+
+    pub const TITLE_STYLE: Style = Style::new().add_modifier(Modifier::BOLD);
+    pub const VERSION_STYLE: Style = Style::new()
+        .add_modifier(Modifier::ITALIC)
+        .fg(Color::DarkGray);
+}
+
 pub mod file_explorer {
     use super::*;
 
@@ -30,7 +39,7 @@ pub mod wave_viewer {
 
     pub const WAVEFORM_STYLE: Style = Style::new().fg(Color::White);
     pub const TIMEBAR_STYLE: Style = Style::new().fg(Color::White);
-    pub const CURSOR_STYLE: Style = Style::new().bg(Color::Red);
+    pub const CURSOR_STYLE: Style = Style::new().bg(Color::Magenta);
     pub const SELECTED_WAVEFORM_STYLE: Style = Style::new().fg(Color::Green);
 }
 

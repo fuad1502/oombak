@@ -200,7 +200,7 @@ impl Waveform<'_> {
         for _ in 0..(duration - 1) {
             for (row, line) in lines.iter_mut().enumerate() {
                 if row == target_row {
-                    *line += "─";
+                    *line += "━";
                 } else {
                     *line += " ";
                 }
@@ -215,19 +215,19 @@ impl Waveform<'_> {
         let end_row = lines.len() - next_level - 1;
         for (row, line) in lines.iter_mut().enumerate() {
             if row == start_row && is_increasing {
-                *line += "┘";
+                *line += "┛";
             } else if row == start_row && is_decreasing {
-                *line += "┐";
+                *line += "┓";
             } else if row == end_row && is_increasing {
-                *line += "┌";
+                *line += "┏";
             } else if row == end_row && is_decreasing {
-                *line += "└";
+                *line += "┗";
             } else if (is_increasing && (row > end_row && row < start_row))
                 || (is_decreasing && (row < end_row && row > start_row))
             {
-                *line += "│";
+                *line += "┃";
             } else if row == start_row && !is_increasing && !is_decreasing {
-                *line += "─";
+                *line += "━";
             } else {
                 *line += " ";
             }
