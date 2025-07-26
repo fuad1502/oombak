@@ -307,7 +307,7 @@ impl<'a> Generator<'a> {
 
     fn generate_signals_array(&self) -> String {
         let num_of_signals = self.probe.get_probed_points().len();
-        let mut signals_array = format!("sig_t signals[{}] = {{\n", num_of_signals);
+        let mut signals_array = format!("sig_t signals[{num_of_signals}] = {{\n");
         for point in self.probe.get_probed_points() {
             let get = if point.is_gettable() { 1 } else { 0 };
             let set = if point.is_settable() { 1 } else { 0 };
