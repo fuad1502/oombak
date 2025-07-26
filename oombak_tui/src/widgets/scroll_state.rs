@@ -71,7 +71,7 @@ impl ScrollState {
     }
 
     fn is_at_end(&self) -> bool {
-        self.start_position + self.selected_position + 1 == self.content_length
+        self.start_position + self.selected_position == self.content_length.saturating_sub(1)
     }
 
     fn is_at_beginning(&self) -> bool {
