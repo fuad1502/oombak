@@ -283,6 +283,7 @@ impl Root {
         let popup_area = utils::layout::get_popup_area_bottom_right(rect);
         let block = Block::new()
             .borders(Borders::ALL)
+            .border_type(BorderType::Rounded)
             .title_top("Command Keys (F2)")
             .title_bottom(" ← F1 | F3 → ")
             .title_alignment(Alignment::Center);
