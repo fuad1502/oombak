@@ -11,6 +11,8 @@ pub enum OombakGenError {
     SvFilePathNotFound(PathBuf),
     #[error("invalid path given: {}", _0.to_string_lossy())]
     InvalidPath(PathBuf),
+    #[error("file name does not have .sv extension: {}", _0.to_string_lossy())]
+    ExtensionNotSv(PathBuf),
     #[error("IO error: {}", _0)]
     Io(std::io::Error),
     #[error("CMake error: {}", _0)]

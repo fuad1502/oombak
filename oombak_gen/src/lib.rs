@@ -39,7 +39,14 @@ impl Builder {
             .collect();
 
         self.notify_progress("Creating probe...");
-        let probe = Probe::try_from(&source_paths, "sample")?;
+        let top_module_name = match sv_path.file_name().map(|f| f.to_string_lossy()) {
+            Some(file_name) if file_name.ends_with(".sv") => {
+                file_name.trim_end_matches(".sv").to_string()
+            }
+            Some(_) => return Err(OombakGenError::ExtensionNotSv(sv_path.to_path_buf())),
+            None => return Err(OombakGenError::InvalidPath(sv_path.to_path_buf())),
+        };
+        let probe = Probe::try_from(&source_paths, &top_module_name)?;
 
         Ok((self.build_with_probe(sv_path, &probe)?, probe))
     }
