@@ -11,7 +11,9 @@ use crate::{
     components::models::{PlotType, SimulationSpec},
     threads::RendererMessage,
     utils::bitvec_str::Radix,
-    widgets::{CommandLineState, DropDownState, Form, FormState, InputField, KeyMaps},
+    widgets::{
+        CommandLineState, DropDownState, Form, FormState, InputField, KeyDesc, KeyId, KeyMaps,
+    },
 };
 
 pub struct SignalDisplayPropertiesSetter {
@@ -19,6 +21,7 @@ pub struct SignalDisplayPropertiesSetter {
     signal_name: String,
     form_state: FormState,
     renderer_channel: Sender<RendererMessage>,
+    key_maps: KeyMaps,
 }
 
 impl SignalDisplayPropertiesSetter {
@@ -44,7 +47,24 @@ impl SignalDisplayPropertiesSetter {
             signal_name,
             form_state,
             renderer_channel,
+            key_maps: Self::create_key_maps(),
         }
+    }
+
+    fn create_key_maps() -> KeyMaps {
+        KeyMaps::from(HashMap::from([
+            (KeyId::from('q'), KeyDesc::from("close window")),
+            (KeyId::from(KeyCode::Esc), KeyDesc::from("close window")),
+            (KeyId::from('k'), KeyDesc::from("move up")),
+            (KeyId::from(KeyCode::Up), KeyDesc::from("move up")),
+            (KeyId::from('j'), KeyDesc::from("move down")),
+            (KeyId::from(KeyCode::Down), KeyDesc::from("move down")),
+            (KeyId::from(KeyCode::Tab), KeyDesc::from("move down")),
+            (
+                KeyId::from(KeyCode::Enter),
+                KeyDesc::from("open / close dropdown; confirm; move down"),
+            ),
+        ]))
     }
 
     fn set_form_state_initial_values(
@@ -173,11 +193,11 @@ impl Component for SignalDisplayPropertiesSetter {
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult {
         match key_event.code {
             KeyCode::Char(ch) if self.form_state.is_command_line() => self.form_state.put(ch),
+            KeyCode::Backspace => self.form_state.backspace(),
             KeyCode::Up | KeyCode::Char('k') => self.form_state.up(),
             KeyCode::Down | KeyCode::Char('j') | KeyCode::Tab => self.form_state.down(),
             KeyCode::Left | KeyCode::Char('h') => self.form_state.left(),
             KeyCode::Right | KeyCode::Char('l') => self.form_state.right(),
-            KeyCode::Backspace => self.form_state.backspace(),
             KeyCode::Enter => {
                 if self.form_state.is_apply() {
                     let (radix, signed, plot_type, height) =
@@ -197,7 +217,8 @@ impl Component for SignalDisplayPropertiesSetter {
                     self.form_state.down();
                 }
             }
-            KeyCode::Char('q') => return HandleResult::ReleaseFocus,
+            KeyCode::Char('q') | KeyCode::Esc => return HandleResult::ReleaseFocus,
+            KeyCode::F(_) => return HandleResult::NotHandled,
             _ => (),
         }
         self.renderer_channel.send(RendererMessage::Render).unwrap();
@@ -217,6 +238,9 @@ impl Component for SignalDisplayPropertiesSetter {
     }
 
     fn get_key_mappings(&self) -> KeyMaps {
-        KeyMaps::from(HashMap::new())
+        match self.get_focused_child() {
+            Some(child) => child.read().unwrap().get_key_mappings(),
+            None => self.key_maps.clone(),
+        }
     }
 }

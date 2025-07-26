@@ -12,7 +12,7 @@ use crate::{
     components::TokioSender,
     threads::RendererMessage,
     utils,
-    widgets::{Form, FormState, InputField, KeyMaps},
+    widgets::{Form, FormState, InputField, KeyDesc, KeyId, KeyMaps},
 };
 
 pub struct SignalValueSetter {
@@ -20,6 +20,7 @@ pub struct SignalValueSetter {
     renderer_channel: Sender<RendererMessage>,
     sim_request_channel: TokioSender<oombak_sim::Message>,
     form_state: FormState,
+    key_maps: KeyMaps,
 }
 
 impl SignalValueSetter {
@@ -35,7 +36,24 @@ impl SignalValueSetter {
             renderer_channel,
             sim_request_channel,
             form_state,
+            key_maps: Self::create_key_maps(),
         }
+    }
+
+    fn create_key_maps() -> KeyMaps {
+        KeyMaps::from(HashMap::from([
+            (KeyId::from('q'), KeyDesc::from("close window")),
+            (KeyId::from(KeyCode::Esc), KeyDesc::from("close window")),
+            (KeyId::from('k'), KeyDesc::from("move up")),
+            (KeyId::from(KeyCode::Up), KeyDesc::from("move up")),
+            (KeyId::from('j'), KeyDesc::from("move down")),
+            (KeyId::from(KeyCode::Down), KeyDesc::from("move down")),
+            (KeyId::from(KeyCode::Tab), KeyDesc::from("move down")),
+            (
+                KeyId::from(KeyCode::Enter),
+                KeyDesc::from("confirm; move down"),
+            ),
+        ]))
     }
 
     fn parse_user_input(entries: &[String]) -> Result<BitVec<u32>, String> {
@@ -62,7 +80,7 @@ impl Component for SignalValueSetter {
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult {
         match key_event.code {
-            KeyCode::Char(ch) => self.form_state.put(ch),
+            KeyCode::Char(ch) if self.form_state.is_command_line() => self.form_state.put(ch),
             KeyCode::Backspace => self.form_state.backspace(),
             KeyCode::Up => self.form_state.up(),
             KeyCode::Down | KeyCode::Tab => self.form_state.down(),
@@ -81,6 +99,8 @@ impl Component for SignalValueSetter {
                     self.form_state.down();
                 }
             }
+            KeyCode::Char('q') | KeyCode::Esc => return HandleResult::ReleaseFocus,
+            KeyCode::F(_) => return HandleResult::NotHandled,
             _ => (),
         }
         self.renderer_channel.send(RendererMessage::Render).unwrap();
@@ -100,6 +120,9 @@ impl Component for SignalValueSetter {
     }
 
     fn get_key_mappings(&self) -> KeyMaps {
-        KeyMaps::from(HashMap::new())
+        match self.get_focused_child() {
+            Some(child) => child.read().unwrap().get_key_mappings(),
+            None => self.key_maps.clone(),
+        }
     }
 }

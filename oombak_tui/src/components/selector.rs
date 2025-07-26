@@ -23,8 +23,8 @@ pub struct Selector {
     title: String,
     list_state: ListState,
     child: Option<usize>,
-    key_maps: KeyMaps,
     renderer_channel: Sender<RendererMessage>,
+    key_maps: KeyMaps,
 }
 
 pub struct Selection {
@@ -40,8 +40,8 @@ impl Selector {
             title: String::new(),
             list_state: ListState::default(),
             child: None,
-            key_maps: Self::create_key_maps(),
             renderer_channel,
+            key_maps: Self::create_key_maps(),
         }
     }
 
@@ -73,17 +73,15 @@ impl Selector {
 
     fn create_key_maps() -> KeyMaps {
         KeyMaps::from(HashMap::from([
-            (KeyId::from('q'), KeyDesc::from("Close window")),
-            (KeyId::from('k'), KeyDesc::from("Move cursor up")),
-            (KeyId::from(KeyCode::Up), KeyDesc::from("Move cursor up")),
-            (KeyId::from('j'), KeyDesc::from("Move cursor down")),
-            (
-                KeyId::from(KeyCode::Down),
-                KeyDesc::from("Move cursor down"),
-            ),
+            (KeyId::from('q'), KeyDesc::from("close window")),
+            (KeyId::from(KeyCode::Esc), KeyDesc::from("close window")),
+            (KeyId::from('k'), KeyDesc::from("move up")),
+            (KeyId::from(KeyCode::Up), KeyDesc::from("move up")),
+            (KeyId::from('j'), KeyDesc::from("move down")),
+            (KeyId::from(KeyCode::Down), KeyDesc::from("move down")),
             (
                 KeyId::from(KeyCode::Enter),
-                KeyDesc::from("Select highlighted"),
+                KeyDesc::from("select highlighted"),
             ),
         ]))
     }
@@ -151,8 +149,12 @@ impl Component for Selector {
                     .list_state
                     .selected()
                     .filter(|i| !self.selection[*i].disabled);
+                if self.child.is_some() {
+                    self.list_state.select_first();
+                }
             }
-            KeyCode::Char('q') => return HandleResult::ReleaseFocus,
+            KeyCode::Char('q') | KeyCode::Esc => return HandleResult::ReleaseFocus,
+            KeyCode::F(_) => return HandleResult::NotHandled,
             _ => (),
         }
         self.renderer_channel.send(RendererMessage::Render).unwrap();

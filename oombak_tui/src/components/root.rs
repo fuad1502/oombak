@@ -91,6 +91,18 @@ impl Root {
             (KeyId::from('k'), KeyDesc::from("scroll up")),
             (KeyId::from(KeyCode::Down), KeyDesc::from("scroll down")),
             (KeyId::from('j'), KeyDesc::from("scroll down")),
+            (KeyId::from('l'), KeyDesc::from("scroll right")),
+            (KeyId::from(KeyCode::Right), KeyDesc::from("scroll right")),
+            (KeyId::from('h'), KeyDesc::from("scroll left")),
+            (KeyId::from(KeyCode::Left), KeyDesc::from("scroll left")),
+            (KeyId::from('z'), KeyDesc::from("zoom in")),
+            (KeyId::from('+'), KeyDesc::from("zoom in")),
+            (KeyId::from('x'), KeyDesc::from("zoom out")),
+            (KeyId::from('-'), KeyDesc::from("zoom out")),
+            (
+                KeyId::from(KeyCode::Enter),
+                KeyDesc::from("open signal property editor"),
+            ),
         ])
         .into()
     }
