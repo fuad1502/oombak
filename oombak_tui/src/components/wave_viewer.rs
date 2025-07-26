@@ -3,8 +3,10 @@ use std::sync::{Arc, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
+    symbols,
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, ListState, StatefulWidget},
+    Frame,
 };
 
 use crate::{
@@ -22,7 +24,6 @@ pub struct WaveViewer {
     list_state: ListState,
     selected_idx: Option<usize>,
     scroll_state: ScrollState,
-    horizontal_content_length: usize,
 }
 
 impl WaveViewer {
@@ -35,10 +36,10 @@ impl WaveViewer {
         if !self.get_simulation().wave_specs.is_empty() {
             self.list_state.select_first();
             self.selected_idx = Some(0);
-            self.update_content_length();
         } else {
             self.selected_idx = None;
         }
+        self.update_scroll_state_content_length();
     }
 
     pub fn scroll_right(&mut self) {
@@ -69,7 +70,7 @@ impl WaveViewer {
             let mut simulation = self.get_simulation_mut();
             simulation.zoom = simulation.zoom.saturating_add(1);
         }
-        self.update_content_length();
+        self.update_scroll_state_content_length();
     }
 
     pub fn zoom_out(&mut self) {
@@ -77,7 +78,7 @@ impl WaveViewer {
             let mut simulation = self.get_simulation_mut();
             simulation.zoom = simulation.zoom.saturating_sub(1);
         }
-        self.update_content_length();
+        self.update_scroll_state_content_length();
     }
 
     pub fn get_highlighted_unit_time(&self) -> usize {
@@ -87,29 +88,33 @@ impl WaveViewer {
         absolute_highlight_position / (NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(zoom as u32))
     }
 
-    pub fn render_mut(&mut self, f: &mut ratatui::Frame, rect: ratatui::prelude::Rect) {
+    pub fn render_mut(&mut self, f: &mut Frame, rect: Rect) {
         let mut scroll_state = self.scroll_state;
         let items = self.new_list_items(rect.width, &mut scroll_state);
         self.scroll_state = scroll_state;
         let list = List::new(items);
 
+        let areas = Layout::vertical(vec![Constraint::Min(0), Constraint::Length(3)]).split(rect);
+        f.render_stateful_widget(list, areas[0], &mut self.list_state);
+        self.render_time_bar(f, areas[1]);
+    }
+
+    fn render_time_bar(&mut self, f: &mut Frame, area: Rect) {
         let (tick_count, tick_period) = self.calculate_preferred_tick();
         let time_bar = TimeBar::default()
             .tick_count(tick_count)
             .tick_period(tick_period);
 
-        let chunks = Layout::vertical(vec![Constraint::Min(0), Constraint::Length(3)]).split(rect);
-        f.render_stateful_widget(list, chunks[0], &mut self.list_state);
-        f.render_stateful_widget(time_bar, chunks[1], &mut self.scroll_state);
+        let block = Block::new().borders(Borders::LEFT);
+        f.render_stateful_widget(time_bar, block.inner(area), &mut self.scroll_state);
+        f.render_widget(block, area);
     }
 
-    fn update_content_length(&mut self) {
+    fn update_scroll_state_content_length(&mut self) {
         let zoom = self.get_simulation().zoom;
         let total_time = self.get_simulation().total_time;
-        self.horizontal_content_length =
-            NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(zoom as u32) * total_time;
-        self.scroll_state
-            .set_content_length(self.horizontal_content_length);
+        let content_length = NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(zoom as u32) * total_time;
+        self.scroll_state.set_content_length(content_length);
     }
 
     fn calculate_preferred_tick(&self) -> (usize, f64) {
@@ -157,12 +162,19 @@ impl WaveViewer {
         is_selected: bool,
         render_area_width: u16,
     ) -> ListItem<'a> {
+        let border_set = symbols::border::Set {
+            bottom_left: symbols::line::NORMAL.cross,
+            ..symbols::border::PLAIN
+        };
+        let block = Block::new()
+            .borders(Borders::BOTTOM | Borders::LEFT)
+            .border_set(border_set);
         let waveform = Waveform::new(wave_spec)
             .zoom(self.get_simulation().zoom)
-            .block(Block::new().borders(Borders::BOTTOM))
+            .block(block)
             .selected_style(SELECTED_WAVEFORM_STYLE)
             .selected(is_selected);
-        let list_item_height = wave_spec.height * 2 + 2;
+        let list_item_height = (wave_spec.height * 2 + 1) + 1;
         let mut draw_buffer = Buffer::empty(Rect::new(0, 0, render_area_width, list_item_height));
         waveform.render(draw_buffer.area, &mut draw_buffer, scroll_state);
         ListItem::from(Self::buffer_to_lines(&draw_buffer))

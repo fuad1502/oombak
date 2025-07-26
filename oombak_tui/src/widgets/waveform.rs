@@ -78,8 +78,10 @@ impl StatefulWidget for Waveform<'_> {
                 self.digital_plot(compact_values, plot_offset, state.viewport_length())
             }
         };
-        self.render_lines(&lines, area, buf);
-        self.add_cursor_highlight(buf, area, state.selected_position(), lines.len() as u16);
+        let inner_area = self.block.inner_if_some(area);
+        self.render_lines(&lines, inner_area, buf);
+        self.add_cursor_highlight(buf, inner_area, state.selected_position(), area.height);
+        self.block.render(area, buf);
     }
 }
 
@@ -244,8 +246,6 @@ impl Waveform<'_> {
     }
 
     fn render_lines(&self, lines: &[String], area: Rect, buf: &mut Buffer) {
-        self.block.render(area, buf);
-        let area = self.block.inner_if_some(area);
         let selected_style = if self.is_selected {
             self.selected_style
         } else {
@@ -267,10 +267,10 @@ impl Waveform<'_> {
         buf: &mut Buffer,
         area: Rect,
         cursor_position: usize,
-        line_count: u16,
+        cursor_height: u16,
     ) {
         buf.set_style(
-            Rect::new(area.x + cursor_position as u16, area.y, 1, line_count),
+            Rect::new(area.x + cursor_position as u16, area.y, 1, cursor_height),
             CURSOR_STYLE,
         );
     }

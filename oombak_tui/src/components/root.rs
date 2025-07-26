@@ -234,14 +234,19 @@ impl Component for Root {
 
 impl Root {
     fn render_signals_viewer(&mut self, f: &mut Frame, rect: Rect) {
-        self.signals_viewer.render_mut(f, rect);
+        // SignalsViewer and WaveViewer render area height must be in sync to allow synchronized
+        // scrolling. Right now, rendering WaveViewer implicitly render TimeBar on the bottom 3
+        // lines, therefore, we cut SignalsViewer render area height here.
+        // TODO: refactor
+        let areas = Layout::vertical([Constraint::Min(0), Constraint::Length(3)]).split(rect);
+        self.signals_viewer.render_mut(f, areas[0]);
     }
 
     fn render_wave_viewer(&mut self, f: &mut Frame, rect: Rect) {
         let block = Block::new().borders(Borders::LEFT);
-        let inner = block.inner(rect);
         f.render_widget(block, rect);
-        self.wave_viewer.render_mut(f, inner);
+        // WaveViewer is rendered overlapping with the left border to get a collapsed border look
+        self.wave_viewer.render_mut(f, rect);
     }
 
     fn render_instance_hier_viewer(&self, f: &mut Frame, rect: Rect) {
