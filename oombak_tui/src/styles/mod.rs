@@ -37,7 +37,12 @@ pub mod wave_viewer {
 pub mod signals_viewer {
     use super::*;
 
-    pub const SELECTED_SIGNAL_STYLE: Style = Style::new().bg(Color::Blue);
+    pub const SELECTED_SIGNAL_STYLE: Style = Style::new().bg(Color::DarkGray);
+    pub const SIGNAL_NAME_STYLE: Style = Style::new().fg(Color::White).add_modifier(Modifier::BOLD);
+    pub const SIGNAL_WIDTH_STYLE: Style = Style::new().fg(Color::LightGreen);
+    pub const SIGNAL_VALUE_STYLE: Style = Style::new()
+        .fg(Color::LightYellow)
+        .add_modifier(Modifier::ITALIC);
 }
 
 pub mod instance_hier_viewer {

@@ -3,12 +3,14 @@ use std::sync::{Arc, RwLock, RwLockReadGuard};
 use ratatui::{
     style::Style,
     symbols,
-    text::Line,
+    text::{Line, Span},
     widgets::{List, ListItem, ListState},
 };
 
 use crate::{
-    styles::signals_viewer::SELECTED_SIGNAL_STYLE,
+    styles::signals_viewer::{
+        SELECTED_SIGNAL_STYLE, SIGNAL_NAME_STYLE, SIGNAL_VALUE_STYLE, SIGNAL_WIDTH_STYLE,
+    },
     utils::{self, bitvec_str},
 };
 
@@ -89,27 +91,40 @@ impl SignalsViewer {
     fn new_list_item<'a>(&self, wave_spec: &WaveSpec, width: u16, style: Style) -> ListItem<'a> {
         let list_item_height = (wave_spec.height * 2 + 1) as usize;
         let mut lines = vec![Line::from(" ").style(style); list_item_height];
-        let signal_description_line =
-            Line::from(self.new_signal_description(wave_spec)).style(style);
         let horizontal_line = Self::create_horizontal_line(width);
-        lines[list_item_height / 2] = signal_description_line;
+        lines[list_item_height / 2] = self.new_signal_description(wave_spec, style);
         lines.push(horizontal_line);
         lines.into()
     }
 
-    fn new_signal_description(&self, wave_spec: &WaveSpec) -> String {
-        format!(
-            "{} [{}:0] ({})",
-            wave_spec.wave.signal_name,
-            wave_spec.wave.width,
-            self.get_highlighted_value_of(wave_spec)
-        )
+    fn new_signal_description<'a>(&self, wave_spec: &WaveSpec, style: Style) -> Line<'a> {
+        let signal_name = Span::from(wave_spec.wave.signal_name.clone()).style(SIGNAL_NAME_STYLE);
+        let signal_width =
+            Span::from(format!("[{}:0]", wave_spec.wave.width - 1)).style(SIGNAL_WIDTH_STYLE);
+        let signal_value = Span::from(self.get_highlighted_value_of(wave_spec).to_string())
+            .style(SIGNAL_VALUE_STYLE);
+        Line::from(vec![
+            Span::from(" "),
+            signal_name,
+            Span::from(" "),
+            signal_width,
+            Span::from(" ("),
+            signal_value,
+            Span::from(")"),
+        ])
+        .style(style)
     }
 
     fn get_highlighted_value_of(&self, wave_spec: &WaveSpec) -> String {
         if let Some(value) = wave_spec.wave.at(self.highlight_idx) {
             let option = bitvec_str::Option::from(wave_spec);
-            utils::bitvec_str::from(value, &option)
+            let prefix = match option.radix {
+                bitvec_str::Radix::Binary => "0b",
+                bitvec_str::Radix::Hexadecimal => "0x",
+                bitvec_str::Radix::Octal => "0o",
+                bitvec_str::Radix::Decimal => "",
+            };
+            format!("{prefix}{}", utils::bitvec_str::from(value, &option))
         } else {
             "x".to_string()
         }
