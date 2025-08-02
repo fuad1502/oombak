@@ -7,3 +7,6 @@ edition = "2021"
 bitvec = "1.0.1"
 libloading = "0.8.5"
 thiserror = "2.0.6"
+
+[build-dependencies]
+cmake = "0.1.54"

@@ -1,0 +1,3 @@
+[workspace]
+resolver = "3"
+members = ["oombak_tui", "oombak_rs", "oombak_sim", "oombak_local_sim", "oombak_gen"]
