@@ -7,5 +7,5 @@ edition = "2021"
 thiserror = "2.0.9"
 oombak_rs = { version="0.1.0", path="../oombak_rs" }
 oombak_sim = { version="0.1.0", path="../oombak_sim" }
-tokio = { version="1.45.1", features=["full"] }
+tokio = { version="1.45.1", features=["sync"] }
 tempfile = "3.15.0"

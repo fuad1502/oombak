@@ -8,6 +8,6 @@ oombak_gen = { version="0.1.0", path="../oombak_gen" }
 oombak_rs = { version="0.1.0", path="../oombak_rs" }
 oombak_sim = { version="0.1.0", path="../oombak_sim" }
 bitvec = "1.0.1"
-tokio = { version="1.45.1", features=["full"] }
+tokio = { version="1.45.1", features=["sync", "rt"] }
 async-trait = "0.1.88"
 thiserror = "2.0.12"
