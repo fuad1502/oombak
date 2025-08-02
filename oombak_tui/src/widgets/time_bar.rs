@@ -1,12 +1,12 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Style, Stylize},
+    style::Style,
     text::Span,
     widgets::{StatefulWidget, Widget},
 };
 
-use crate::styles::wave_viewer::{CURSOR_STYLE, TIMEBAR_STYLE};
+use crate::styles::wave_viewer::{CURSOR_STYLE, TIMEBAR_STYLE, TIME_INDICATOR_STYLE};
 
 use super::ScrollState;
 
@@ -54,7 +54,7 @@ impl TimeBar {
     fn render_time_indicator(&self, area: Rect, buf: &mut Buffer, state: &ScrollState) {
         let time_indicator_area = Rect::new(area.x, area.y, area.width, 1);
         let span = Span::from(format!(" {:10} ", self.format(self.current_time(state))))
-            .style(Style::default().black().on_magenta());
+            .style(TIME_INDICATOR_STYLE);
         span.render(time_indicator_area, buf);
     }
 
@@ -135,12 +135,9 @@ impl std::fmt::Display for TimeUnit {
 
 #[cfg(test)]
 mod test {
-    use ratatui::{
-        buffer::Buffer,
-        layout::Rect,
-        style::{Style, Stylize},
-        widgets::StatefulWidget,
-    };
+    use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget};
+
+    use crate::styles::wave_viewer::{CURSOR_STYLE, TIME_INDICATOR_STYLE};
 
     use super::{ScrollState, TimeBar};
 
@@ -154,11 +151,13 @@ mod test {
         time_bar.render(buf.area, &mut buf, &mut state);
 
         let mut expected = Buffer::with_lines(vec![
-            "╻0 ns     ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ",
+            " 0.00 ps                                          ",
+            "╻0.00 ps  ╻10.00 ps ╻20.00 ps ╻30.00 ps ╻40.00 ps ",
             "┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷",
         ]);
         expected.area = area;
-        expected.set_style(Rect::new(X0, Y0, 1, 2), Style::default().on_red());
+        expected.set_style(Rect::new(X0, Y0, 12, 1), TIME_INDICATOR_STYLE);
+        expected.set_style(Rect::new(X0, Y0 + 1, 1, 2), CURSOR_STYLE);
 
         assert_eq!(buf, expected);
     }
@@ -174,11 +173,13 @@ mod test {
         time_bar.render(buf.area, &mut buf, &mut state);
 
         let mut expected = Buffer::with_lines(vec![
-            "╻0 ns     ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ",
+            " 10.00 ps                                         ",
+            "╻0.00 ps  ╻10.00 ps ╻20.00 ps ╻30.00 ps ╻40.00 ps ",
             "┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷",
         ]);
         expected.area = area;
-        expected.set_style(Rect::new(X0 + 10, Y0, 1, 2), Style::default().on_red());
+        expected.set_style(Rect::new(X0, Y0, 12, 1), TIME_INDICATOR_STYLE);
+        expected.set_style(Rect::new(X0 + 10, Y0 + 1, 1, 2), CURSOR_STYLE);
 
         assert_eq!(buf, expected);
     }
@@ -194,11 +195,13 @@ mod test {
         time_bar.render(buf.area, &mut buf, &mut state);
 
         let mut expected = Buffer::with_lines(vec![
-            "    ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ╻50 ns",
+            " 55.00 ps                                         ",
+            "ps  ╻10.00 ps ╻20.00 ps ╻30.00 ps ╻40.00 ps ╻50.00",
             "┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻",
         ]);
         expected.area = area;
-        expected.set_style(Rect::new(X0 + 49, Y0, 1, 2), Style::default().on_red());
+        expected.set_style(Rect::new(X0, Y0, 12, 1), TIME_INDICATOR_STYLE);
+        expected.set_style(Rect::new(X0 + 49, Y0 + 1, 1, 2), CURSOR_STYLE);
 
         assert_eq!(buf, expected);
     }
@@ -217,11 +220,13 @@ mod test {
         time_bar.render(buf.area, &mut buf, &mut state);
 
         let mut expected = Buffer::with_lines(vec![
-            "    ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ╻50 ns",
+            " 50.00 ps                                         ",
+            "ps  ╻10.00 ps ╻20.00 ps ╻30.00 ps ╻40.00 ps ╻50.00",
             "┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻",
         ]);
         expected.area = area;
-        expected.set_style(Rect::new(X0 + 44, Y0, 1, 2), Style::default().on_red());
+        expected.set_style(Rect::new(X0, Y0, 12, 1), TIME_INDICATOR_STYLE);
+        expected.set_style(Rect::new(X0 + 44, Y0 + 1, 1, 2), CURSOR_STYLE);
 
         assert_eq!(buf, expected);
     }
@@ -240,11 +245,13 @@ mod test {
         time_bar.render(buf.area, &mut buf, &mut state);
 
         let mut expected = Buffer::with_lines(vec![
-            "     ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ╻50 n",
+            " 5.00 ps                                          ",
+            " ps  ╻10.00 ps ╻20.00 ps ╻30.00 ps ╻40.00 ps ╻50.0",
             "┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷",
         ]);
         expected.area = area;
-        expected.set_style(Rect::new(X0, Y0, 1, 2), Style::default().on_red());
+        expected.set_style(Rect::new(X0, Y0, 12, 1), TIME_INDICATOR_STYLE);
+        expected.set_style(Rect::new(X0, Y0 + 1, 1, 2), CURSOR_STYLE);
 
         assert_eq!(buf, expected);
     }
@@ -260,11 +267,13 @@ mod test {
         time_bar.render(buf.area, &mut buf, &mut state);
 
         let mut expected = Buffer::with_lines(vec![
-            "   ╻10 ns    ╻20 ns    ╻30 ns    ╻40 ns    ╻50 ns",
+            " 55.00 ps                                        ",
+            "s  ╻10.00 ps ╻20.00 ps ╻30.00 ps ╻40.00 ps ╻50.00",
             "┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻┷┷┷┷┻",
         ]);
         expected.area = area;
-        expected.set_style(Rect::new(X0 + 48, Y0, 1, 2), Style::default().on_red());
+        expected.set_style(Rect::new(X0, Y0, 12, 1), TIME_INDICATOR_STYLE);
+        expected.set_style(Rect::new(X0 + 48, Y0 + 1, 1, 2), CURSOR_STYLE);
 
         assert_eq!(buf, expected);
     }
@@ -274,7 +283,7 @@ mod test {
         let mut state = ScrollState::default();
         state.set_content_length(100);
 
-        let area = Rect::new(X0, Y0, viewport_length as u16, 2);
+        let area = Rect::new(X0, Y0, viewport_length as u16, 3);
         let buf = Buffer::empty(area);
         state.set_viewport_length(viewport_length);
 

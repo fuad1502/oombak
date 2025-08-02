@@ -38,8 +38,9 @@ pub mod wave_viewer {
     use super::*;
 
     pub const WAVEFORM_STYLE: Style = Style::new().fg(Color::White);
-    pub const TIMEBAR_STYLE: Style = Style::new().fg(Color::White);
+    pub const TIMEBAR_STYLE: Style = Style::new();
     pub const CURSOR_STYLE: Style = Style::new().bg(Color::Magenta);
+    pub const TIME_INDICATOR_STYLE: Style = Style::new().fg(Color::Black).bg(Color::Magenta);
     pub const SELECTED_WAVEFORM_STYLE: Style = Style::new().fg(Color::Green);
 }
 
