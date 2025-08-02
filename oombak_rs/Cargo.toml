@@ -10,3 +10,4 @@ thiserror = "2.0.6"
 
 [build-dependencies]
 cmake = "0.1.54"
+rerun_except = "1.0.0"
