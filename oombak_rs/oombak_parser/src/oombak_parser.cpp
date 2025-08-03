@@ -5,66 +5,39 @@
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/syntax/SyntaxTree.h"
 #include <cstdlib>
-#include <exception>
+#include <iostream>
 #include <string_view>
 
 using slang::ast::Compilation;
 using slang::syntax::SyntaxTree;
 
-static std::vector<std::string_view>
-from_colon_separated_paths(const char *colon_separated_paths);
+#define RETURN_ON_ERROR(f)                                                     \
+  {                                                                            \
+    if (auto res = f) {                                                        \
+      return f.value();                                                        \
+    }                                                                          \
+  }
 
-static void free_instance(Instance *instance);
+namespace OombakParser {
 
 class OombakParser {
 public:
   OombakParser();
   ~OombakParser();
-  Instance *get_instance_tree(const std::vector<std::string_view> &source_paths,
-                              std::string_view top_module_name);
+  std::variant<oombak_parser_instance_t *, oombak_parser_error_t>
+  get_instance_tree(const std::vector<std::string_view> &source_paths,
+                    std::string_view top_module_name);
 
 private:
-  Instance root_instance;
+  oombak_parser_instance_t root_instance;
 
-  void add_syntax_trees(Compilation &compilation,
-                        const std::vector<std::string_view> &source_paths);
-  void check_compilation(Compilation &compilation);
+  static std::optional<oombak_parser_error_t>
+  add_syntax_trees(Compilation &compilation,
+                   const std::vector<std::string_view> &source_paths);
+  static std::optional<oombak_parser_error_t>
+  check_compilation(Compilation &compilation);
+  static void free_instance(oombak_parser_instance_t *instance);
 };
-
-static OombakParser *parser = new OombakParser();
-
-OOMBAK_PARSER_EXPORT OombakCtx oombak_parser_get_ctx() {
-  return new OombakParser();
-}
-
-OOMBAK_PARSER_EXPORT void oombak_parser_free_ctx(OombakCtx ctx) {
-  auto parser = (OombakParser *)ctx;
-  delete parser;
-}
-
-OOMBAK_PARSER_EXPORT Instance *
-oombak_parser_parse(const char *source_paths, const char *top_module_name) {
-  std::vector<std::string_view> source_paths_vec =
-      from_colon_separated_paths(source_paths);
-  try {
-    return parser->get_instance_tree(source_paths_vec, top_module_name);
-  } catch (...) {
-    return NULL;
-  }
-}
-
-OOMBAK_PARSER_EXPORT Instance *
-oombak_parser_parse(OombakCtx ctx, const char *source_paths,
-                    const char *top_module_name) {
-  auto parser = (OombakParser *)ctx;
-  std::vector<std::string_view> source_paths_vec =
-      from_colon_separated_paths(source_paths);
-  try {
-    return parser->get_instance_tree(source_paths_vec, top_module_name);
-  } catch (...) {
-    return NULL;
-  }
-}
 
 OombakParser::OombakParser() {
   root_instance.parent_instance = NULL;
@@ -78,34 +51,44 @@ OombakParser::OombakParser() {
 
 OombakParser::~OombakParser() { free_instance(&root_instance); }
 
-Instance *OombakParser::get_instance_tree(
+std::variant<oombak_parser_instance_t *, oombak_parser_error_t>
+OombakParser::get_instance_tree(
     const std::vector<std::string_view> &source_paths,
     std::string_view top_module_name) {
   free_instance(&root_instance);
   InstanceTreeBuilder visitor(&root_instance, top_module_name);
   Compilation compilation;
-  add_syntax_trees(compilation, source_paths);
-  check_compilation(compilation);
+  RETURN_ON_ERROR(add_syntax_trees(compilation, source_paths));
+  RETURN_ON_ERROR(check_compilation(compilation));
   compilation.getRoot().visit(visitor);
-  if (!visitor.is_root_found()) {
-    return NULL;
+  if (visitor.has_error()) {
+    return visitor.get_error();
+  } else if (!visitor.is_root_found()) {
+    return OOMBAK_PARSER_ERROR_TOP_MODULE_NOT_FOUND;
   }
   return &root_instance;
 }
 
-void OombakParser::add_syntax_trees(
+std::optional<oombak_parser_error_t> OombakParser::add_syntax_trees(
     Compilation &compilation,
     const std::vector<std::string_view> &source_paths) {
-  for (auto path : source_paths) {
-    auto tree = SyntaxTree::fromFile(path).value();
-    compilation.addSyntaxTree(tree);
+  try {
+    for (auto path : source_paths) {
+      auto tree = SyntaxTree::fromFile(path).value();
+      compilation.addSyntaxTree(tree);
+    }
+    return std::nullopt;
+  } catch (...) {
+    return OOMBAK_PARSER_ERROR_FILE_NOT_FOUND;
   }
 }
 
-void OombakParser::check_compilation(Compilation &compilation) {
+std::optional<oombak_parser_error_t>
+OombakParser::check_compilation(Compilation &compilation) {
   if (!compilation.getAllDiagnostics().empty()) {
-    throw new std::exception;
+    return OOMBAK_PARSER_ERROR_COMPILE_ERROR;
   }
+  return std::nullopt;
 }
 
 std::vector<std::string_view>
@@ -123,7 +106,7 @@ from_colon_separated_paths(const char *colon_separated_paths) {
   return result;
 }
 
-void free_instance(Instance *instance) {
+void OombakParser::free_instance(oombak_parser_instance_t *instance) {
   free((void *)instance->name);
   free((void *)instance->module_name);
   for (int i = 0; i < instance->signals_len; i++) {
@@ -133,4 +116,58 @@ void free_instance(Instance *instance) {
   for (int i = 0; i < instance->child_instances_len; i++) {
     free_instance(instance->child_instances[i]);
   }
+}
+
+} // namespace OombakParser
+
+static OombakParser::OombakParser *parser = new OombakParser::OombakParser();
+
+static oombak_parser_result_t instance_or_error_variant_to_result(
+    std::variant<oombak_parser_instance_t *, oombak_parser_error_t>
+        instance_or_error);
+static std::vector<std::string_view>
+from_colon_separated_paths(const char *colon_separated_paths);
+
+oombak_parser_ctx_t oombak_parser_get_ctx() {
+  return new OombakParser::OombakParser();
+}
+
+void oombak_parser_free_ctx(oombak_parser_ctx_t ctx) {
+  auto parser = (OombakParser::OombakParser *)ctx;
+  delete parser;
+}
+
+oombak_parser_result_t oombak_parser_parse(const char *source_paths,
+                                           const char *top_module_name) {
+  std::vector<std::string_view> source_paths_vec =
+      OombakParser::from_colon_separated_paths(source_paths);
+  auto instance_or_error =
+      parser->get_instance_tree(source_paths_vec, top_module_name);
+  return instance_or_error_variant_to_result(instance_or_error);
+}
+
+oombak_parser_result_t oombak_parser_parse(oombak_parser_ctx_t ctx,
+                                           const char *source_paths,
+                                           const char *top_module_name) {
+  auto parser = (OombakParser::OombakParser *)ctx;
+  std::vector<std::string_view> source_paths_vec =
+      OombakParser::from_colon_separated_paths(source_paths);
+  auto instance_or_error =
+      parser->get_instance_tree(source_paths_vec, top_module_name);
+  return instance_or_error_variant_to_result(instance_or_error);
+}
+
+oombak_parser_result_t instance_or_error_variant_to_result(
+    std::variant<oombak_parser_instance_t *, oombak_parser_error_t>
+        instance_or_error) {
+  oombak_parser_result_t result;
+  if (std::holds_alternative<oombak_parser_instance_t *>(instance_or_error)) {
+    result.is_error = false;
+    result.instance = std::get<oombak_parser_instance_t *>(instance_or_error);
+
+  } else {
+    result.is_error = true;
+    result.error = std::get<oombak_parser_error_t>(instance_or_error);
+  }
+  return result;
 }

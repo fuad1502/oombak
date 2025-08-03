@@ -8,9 +8,11 @@ using testing::AssertionFailure;
 using testing::AssertionResult;
 using testing::AssertionSuccess;
 
-bool operator==(const Signal &lhs, const Signal &rhs);
+bool operator==(const oombak_parser_signal_t &lhs,
+                const oombak_parser_signal_t &rhs);
 
-std::ostream &operator<<(std::ostream &outs, const Signal &value);
+std::ostream &operator<<(std::ostream &outs,
+                         const oombak_parser_signal_t &value);
 
 template <typename T>
 AssertionResult isContainsAll(T *value, uint64_t value_len, T *expected,

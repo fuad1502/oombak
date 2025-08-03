@@ -1,4 +1,4 @@
-module subtractor #(
+module sample #(
     int DLEN = 6
 ) (
     input  logic [DLEN-1:0] a,
@@ -6,9 +6,8 @@ module subtractor #(
     output logic [DLEN-1:0] c
 );
 
-  wire d;
+  ire d;
 
-  assign {d, c} = a - b;
+  assign {d, c} = a + b;
 
 endmodule
-
