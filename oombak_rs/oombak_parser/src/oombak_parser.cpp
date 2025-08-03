@@ -160,8 +160,8 @@ oombak_parser_result_t oombak_parser_parse(const char *source_paths, const char 
     return instance_or_error_variant_to_result(instance_or_error);
 }
 
-oombak_parser_result_t oombak_parser_parse(oombak_parser_ctx_t ctx, const char *source_paths,
-                                           const char *top_module_name)
+oombak_parser_result_t oombak_parser_parse_r(oombak_parser_ctx_t ctx, const char *source_paths,
+                                             const char *top_module_name)
 {
     auto parser = (OombakParser::OombakParser *)ctx;
     std::vector<std::string_view> source_paths_vec = OombakParser::from_colon_separated_paths(source_paths);

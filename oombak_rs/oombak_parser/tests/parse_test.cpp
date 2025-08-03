@@ -1,6 +1,8 @@
+#include "parse_test.h"
 #include "oombak_parser.h"
 #include "utils.hpp"
 #include "gtest/gtest.h"
+#include <future>
 
 TEST(ParseTest, SvSample1_Root)
 {
@@ -90,9 +92,9 @@ TEST(ParseTest, InoutPort)
     ASSERT_EQ(result.error, OOMBAK_PARSER_ERROR_UNSUPPORTED_PORT_DIRECTION);
 }
 
-TEST(ParseTest, PackedArray)
+TEST(ParseTest, UnpackedArray)
 {
-    const char *source_paths = "fixtures/packed_array/sample.sv";
+    const char *source_paths = "fixtures/unpacked_array/sample.sv";
     const char *top_module_name = "sample";
 
     auto result = oombak_parser_parse(source_paths, top_module_name);
@@ -108,4 +110,30 @@ TEST(ParseTest, FileNotFound)
     auto result = oombak_parser_parse(source_paths, top_module_name);
     ASSERT_TRUE(result.is_error);
     ASSERT_EQ(result.error, OOMBAK_PARSER_ERROR_FILE_NOT_FOUND);
+}
+
+TEST(ParseTest, MultiThread)
+{
+    std::future<bool> is_errors_futures[ParseTest::NUM_OF_THREADS];
+    for (int i = 0; i < ParseTest::NUM_OF_THREADS; i++)
+    {
+        is_errors_futures[i] = std::async(std::launch::async, ParseTest::is_parse_error);
+    }
+    for (int i = 0; i < ParseTest::NUM_OF_THREADS; i++)
+    {
+        ASSERT_FALSE(is_errors_futures[i].get());
+    }
+}
+
+bool ParseTest::is_parse_error()
+{
+    const char *source_paths = "fixtures/sv_sample_1/sample.sv:fixtures/sv_sample_1/adder.sv:fixtures/"
+                               "sv_sample_1/subtractor.sv";
+    const char *top_module_name = "sample";
+
+    auto ctx = oombak_parser_get_ctx();
+    auto result = oombak_parser_parse_r(ctx, source_paths, top_module_name);
+    auto is_error = result.is_error;
+    oombak_parser_free_ctx(ctx);
+    return is_error;
 }
