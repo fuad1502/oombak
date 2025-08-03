@@ -5,7 +5,32 @@ extern "C" {
     pub fn oombak_parser_parse(
         source_paths: *const c_char,
         top_module_name: *const c_char,
-    ) -> *const Instance;
+    ) -> Result;
+}
+
+#[repr(C)]
+pub struct Result {
+    pub is_error: u8,
+    pub instance_or_error: InstanceOrError,
+}
+
+#[repr(C)]
+pub union InstanceOrError {
+    pub instance: *const Instance,
+    pub error: Error,
+}
+
+#[repr(C)]
+#[derive(Copy, Clone)]
+#[allow(dead_code)]
+#[allow(clippy::enum_variant_names)]
+pub enum Error {
+    None,
+    FileNotFound,
+    TopModuleNotFound,
+    CompileError,
+    UnsupportedSymbolType,
+    UnsupportedPortDirection,
 }
 
 #[repr(C)]
@@ -30,7 +55,7 @@ pub struct Signal {
 #[repr(C)]
 #[allow(clippy::enum_variant_names)]
 pub enum SignalType {
-    UnpackedArrPortIn,
-    UnpackedArrPortOut,
-    UnpackedArrVarNet,
+    PackedArrPortIn,
+    PackedArrPortOut,
+    PackedArrVarNet,
 }

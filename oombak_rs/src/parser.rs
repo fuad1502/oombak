@@ -11,10 +11,10 @@ use crate::error::{OombakError, OombakResult};
 pub fn parse(source_paths: &[String], top_module_name: &str) -> OombakResult<InstanceNode> {
     let source_paths = CString::new(source_paths.join(":"))?;
     let top_module_name = CString::new(top_module_name)?;
-    let instance_sys = unsafe {
+    let parse_res = unsafe {
         oombak_parser_sys::oombak_parser_parse(source_paths.as_ptr(), top_module_name.as_ptr())
     };
-    InstanceNode::try_from(&instance_sys)
+    InstanceNode::try_from(parse_res)
 }
 
 #[derive(Default, Debug, Clone)]
@@ -33,8 +33,8 @@ pub struct Signal {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SignalType {
-    UnpackedArrPort(Direction, usize),
-    UnpackedArrNetVar(usize),
+    PackedArrPort(Direction, usize),
+    PackedArrNetVar(usize),
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -47,6 +47,16 @@ pub enum Direction {
 pub enum Error {
     #[error("null dereference")]
     NullDereference,
+    #[error("file not found")]
+    FileNotFound,
+    #[error("top module not found")]
+    TopModuleNotFound,
+    #[error("compile error")]
+    CompileError,
+    #[error("found unsupported symbol type")]
+    UnsupportedSymbolType,
+    #[error("found unsupported port direction")]
+    UnsupportedPortDirection,
 }
 
 impl From<Error> for OombakError {
@@ -82,6 +92,28 @@ impl InstanceNode {
     }
 }
 
+impl TryFrom<oombak_parser_sys::Result> for InstanceNode {
+    type Error = OombakError;
+
+    fn try_from(value: oombak_parser_sys::Result) -> OombakResult<InstanceNode> {
+        if value.is_error > 0 {
+            return match unsafe { value.instance_or_error.error } {
+                oombak_parser_sys::Error::FileNotFound => Err(Error::FileNotFound.into()),
+                oombak_parser_sys::Error::TopModuleNotFound => Err(Error::TopModuleNotFound.into()),
+                oombak_parser_sys::Error::CompileError => Err(Error::CompileError.into()),
+                oombak_parser_sys::Error::UnsupportedSymbolType => {
+                    Err(Error::UnsupportedSymbolType.into())
+                }
+                oombak_parser_sys::Error::UnsupportedPortDirection => {
+                    Err(Error::UnsupportedPortDirection.into())
+                }
+                oombak_parser_sys::Error::None => unreachable!(),
+            };
+        }
+        InstanceNode::try_from(unsafe { &value.instance_or_error.instance })
+    }
+}
+
 impl TryFrom<&*const oombak_parser_sys::Instance> for InstanceNode {
     type Error = OombakError;
 
@@ -110,15 +142,13 @@ impl TryFrom<&oombak_parser_sys::Signal> for Signal {
         let name = string_from_ptr(value.name)?;
         let width = value.width as usize;
         let signal_type = match value.signal_type {
-            oombak_parser_sys::SignalType::UnpackedArrPortIn => {
-                SignalType::UnpackedArrPort(Direction::In, width)
+            oombak_parser_sys::SignalType::PackedArrPortIn => {
+                SignalType::PackedArrPort(Direction::In, width)
             }
-            oombak_parser_sys::SignalType::UnpackedArrPortOut => {
-                SignalType::UnpackedArrPort(Direction::Out, width)
+            oombak_parser_sys::SignalType::PackedArrPortOut => {
+                SignalType::PackedArrPort(Direction::Out, width)
             }
-            oombak_parser_sys::SignalType::UnpackedArrVarNet => {
-                SignalType::UnpackedArrNetVar(width)
-            }
+            oombak_parser_sys::SignalType::PackedArrVarNet => SignalType::PackedArrNetVar(width),
         };
         Ok(Signal { name, signal_type })
     }
@@ -127,22 +157,22 @@ impl TryFrom<&oombak_parser_sys::Signal> for Signal {
 impl Signal {
     pub fn is_port(&self) -> bool {
         match &self.signal_type {
-            SignalType::UnpackedArrPort(_, _) => true,
-            SignalType::UnpackedArrNetVar(_) => false,
+            SignalType::PackedArrPort(_, _) => true,
+            SignalType::PackedArrNetVar(_) => false,
         }
     }
 
     pub fn is_input_port(&self) -> bool {
         matches!(
             &self.signal_type,
-            SignalType::UnpackedArrPort(Direction::In, _)
+            SignalType::PackedArrPort(Direction::In, _)
         )
     }
 
     pub fn bit_width(&self) -> usize {
         match &self.signal_type {
-            SignalType::UnpackedArrPort(_, bit_width) => *bit_width,
-            SignalType::UnpackedArrNetVar(bit_width) => *bit_width,
+            SignalType::PackedArrPort(_, bit_width) => *bit_width,
+            SignalType::PackedArrNetVar(bit_width) => *bit_width,
         }
     }
 }
@@ -150,13 +180,13 @@ impl Signal {
 impl Display for SignalType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SignalType::UnpackedArrPort(Direction::In, _) => {
+            SignalType::PackedArrPort(Direction::In, _) => {
                 write!(f, "unpacked array (input port)")
             }
-            SignalType::UnpackedArrPort(Direction::Out, _) => {
+            SignalType::PackedArrPort(Direction::Out, _) => {
                 write!(f, "unpacked array (output port)")
             }
-            SignalType::UnpackedArrNetVar(_) => write!(f, "unpacked array (net / var)"),
+            SignalType::PackedArrNetVar(_) => write!(f, "unpacked array (net / var)"),
         }
     }
 }
@@ -225,11 +255,11 @@ mod test {
         child_2.signals = vec![
             Signal {
                 name: "sig_0".to_string(),
-                signal_type: SignalType::UnpackedArrNetVar(1),
+                signal_type: SignalType::PackedArrNetVar(1),
             },
             Signal {
                 name: "sig_1".to_string(),
-                signal_type: SignalType::UnpackedArrNetVar(1),
+                signal_type: SignalType::PackedArrNetVar(1),
             },
         ];
 
@@ -255,23 +285,23 @@ mod test {
         assert_eq!(root.signals.len(), 5);
         assert!(root.signals.contains(&Signal {
             name: "clk".to_string(),
-            signal_type: SignalType::UnpackedArrPort(Direction::In, 1)
+            signal_type: SignalType::PackedArrPort(Direction::In, 1)
         }));
         assert!(root.signals.contains(&Signal {
             name: "rst_n".to_string(),
-            signal_type: SignalType::UnpackedArrPort(Direction::In, 1)
+            signal_type: SignalType::PackedArrPort(Direction::In, 1)
         }));
         assert!(root.signals.contains(&Signal {
             name: "in".to_string(),
-            signal_type: SignalType::UnpackedArrPort(Direction::In, 6)
+            signal_type: SignalType::PackedArrPort(Direction::In, 6)
         }));
         assert!(root.signals.contains(&Signal {
             name: "out".to_string(),
-            signal_type: SignalType::UnpackedArrPort(Direction::Out, 6)
+            signal_type: SignalType::PackedArrPort(Direction::Out, 6)
         }));
         assert!(root.signals.contains(&Signal {
             name: "c".to_string(),
-            signal_type: SignalType::UnpackedArrNetVar(6)
+            signal_type: SignalType::PackedArrNetVar(6)
         }));
 
         assert_eq!(root.children.len(), 1);
@@ -283,19 +313,19 @@ mod test {
         assert_eq!(child.signals.len(), 4);
         assert!(child.signals.contains(&Signal {
             name: "a".to_string(),
-            signal_type: SignalType::UnpackedArrPort(Direction::In, 6)
+            signal_type: SignalType::PackedArrPort(Direction::In, 6)
         }));
         assert!(child.signals.contains(&Signal {
             name: "b".to_string(),
-            signal_type: SignalType::UnpackedArrPort(Direction::In, 6)
+            signal_type: SignalType::PackedArrPort(Direction::In, 6)
         }));
         assert!(child.signals.contains(&Signal {
             name: "c".to_string(),
-            signal_type: SignalType::UnpackedArrPort(Direction::Out, 6)
+            signal_type: SignalType::PackedArrPort(Direction::Out, 6)
         }));
         assert!(child.signals.contains(&Signal {
             name: "d".to_string(),
-            signal_type: SignalType::UnpackedArrNetVar(1)
+            signal_type: SignalType::PackedArrNetVar(1)
         }));
     }
 
