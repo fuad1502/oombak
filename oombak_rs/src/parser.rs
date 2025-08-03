@@ -11,10 +11,17 @@ use crate::error::{OombakError, OombakResult};
 pub fn parse(source_paths: &[String], top_module_name: &str) -> OombakResult<InstanceNode> {
     let source_paths = CString::new(source_paths.join(":"))?;
     let top_module_name = CString::new(top_module_name)?;
+    let ctx = unsafe { oombak_parser_sys::oombak_parser_get_ctx() };
     let parse_res = unsafe {
-        oombak_parser_sys::oombak_parser_parse(source_paths.as_ptr(), top_module_name.as_ptr())
+        oombak_parser_sys::oombak_parser_parse_r(
+            ctx,
+            source_paths.as_ptr(),
+            top_module_name.as_ptr(),
+        )
     };
-    InstanceNode::try_from(parse_res)
+    let result = InstanceNode::try_from(parse_res);
+    unsafe { oombak_parser_sys::oombak_parser_free_ctx(ctx) };
+    result
 }
 
 #[derive(Default, Debug, Clone)]
@@ -235,9 +242,20 @@ fn child_instances_ptr_to_vec(
 
 #[cfg(test)]
 mod test {
-    use crate::parser::Direction;
-
     use super::{oombak_parser_sys::Instance, parse, InstanceNode, Signal, SignalType};
+    use crate::{
+        error::OombakError,
+        parser::{Direction, Error},
+    };
+    use std::sync::OnceLock;
+
+    static FIXTURES_PATH: OnceLock<String> = OnceLock::new();
+
+    fn fixtures_path() -> &'static String {
+        FIXTURES_PATH.get_or_init(|| {
+            String::from(env!("CARGO_MANIFEST_DIR")) + "/oombak_parser/tests/fixtures"
+        })
+    }
 
     #[test]
     fn test_get_signal() {
@@ -275,8 +293,8 @@ mod test {
     #[test]
     fn test_parse() {
         let source_paths = [
-            "/home/fuad1502/code/oombak_parser/tests/fixtures/sv_sample_1/sample.sv".to_string(),
-            "/home/fuad1502/code/oombak_parser/tests/fixtures/sv_sample_1/adder.sv".to_string(),
+            format!("{}/sv_sample_1/adder.sv", fixtures_path()),
+            format!("{}/sv_sample_1/sample.sv", fixtures_path()),
         ];
         let root = parse(&source_paths, "sample").unwrap();
         assert_eq!(root.name, "sample");
@@ -327,6 +345,47 @@ mod test {
             name: "d".to_string(),
             signal_type: SignalType::PackedArrNetVar(1)
         }));
+    }
+
+    #[test]
+    fn test_invalid_module() {
+        let source_paths = [
+            format!("{}/sv_sample_1/adder.sv", fixtures_path()),
+            format!("{}/sv_sample_1/sample.sv", fixtures_path()),
+        ];
+        let result = parse(&source_paths, "invalid_module");
+        assert!(result.is_err_and(|e| matches!(e, OombakError::Parser(Error::TopModuleNotFound))))
+    }
+
+    #[test]
+    fn test_syntax_error() {
+        let source_paths = [format!("{}/syntax_error/sample.sv", fixtures_path())];
+        let result = parse(&source_paths, "sample");
+        assert!(result.is_err_and(|e| matches!(e, OombakError::Parser(Error::CompileError))))
+    }
+
+    #[test]
+    fn test_inout_port() {
+        let source_paths = [format!("{}/inout_port/sample.sv", fixtures_path())];
+        let result = parse(&source_paths, "sample");
+        assert!(result
+            .is_err_and(|e| matches!(e, OombakError::Parser(Error::UnsupportedPortDirection))))
+    }
+
+    #[test]
+    fn test_unpacked_array() {
+        let source_paths = [format!("{}/unpacked_array/sample.sv", fixtures_path())];
+        let result = parse(&source_paths, "sample");
+        assert!(
+            result.is_err_and(|e| matches!(e, OombakError::Parser(Error::UnsupportedSymbolType)))
+        )
+    }
+
+    #[test]
+    fn test_file_not_found() {
+        let source_paths = [format!("{}/invalid_folder/sample.sv", fixtures_path())];
+        let result = parse(&source_paths, "sample");
+        assert!(result.is_err_and(|e| matches!(e, OombakError::Parser(Error::FileNotFound))))
     }
 
     #[test]

@@ -1,12 +1,19 @@
-use std::ffi::c_char;
+use std::ffi::{c_char, c_void};
 
 #[link(name = "oombak_parser")]
 extern "C" {
-    pub fn oombak_parser_parse(
+    pub fn oombak_parser_parse_r(
+        ctx: Context,
         source_paths: *const c_char,
         top_module_name: *const c_char,
     ) -> Result;
+
+    pub fn oombak_parser_get_ctx() -> Context;
+
+    pub fn oombak_parser_free_ctx(ctx: Context);
 }
+
+type Context = *const c_void;
 
 #[repr(C)]
 pub struct Result {
