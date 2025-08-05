@@ -1,29 +1,25 @@
-use oombak_gen::error::OombakGenError;
-use oombak_rs::error::OombakError;
-use thiserror::Error;
+pub type OombakSimResult<T> = Result<T, Error>;
 
-pub type OombakSimResult<T> = Result<T, OombakSimError>;
-
-#[derive(Debug, Error)]
-pub enum OombakSimError {
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
     #[error("DUT not loaded")]
     DutNotLoaded,
     #[error("DUT is loading")]
     DutIsLoading,
     #[error("oombak_gen: {}", _0)]
-    OombakGen(OombakGenError),
+    OombakGen(oombak_gen::Error),
     #[error("oombak_rs: {}", _0)]
-    Oombak(OombakError),
+    Oombak(oombak_rs::Error),
 }
 
-impl From<OombakGenError> for OombakSimError {
-    fn from(value: OombakGenError) -> Self {
+impl From<oombak_gen::Error> for Error {
+    fn from(value: oombak_gen::Error) -> Self {
         Self::OombakGen(value)
     }
 }
 
-impl From<OombakError> for OombakSimError {
-    fn from(value: OombakError) -> Self {
+impl From<oombak_rs::Error> for Error {
+    fn from(value: oombak_rs::Error) -> Self {
         Self::Oombak(value)
     }
 }

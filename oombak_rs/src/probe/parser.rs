@@ -4,9 +4,8 @@ use std::{
     ffi::{c_char, CStr, CString},
     fmt::Display,
 };
-use thiserror::Error;
 
-use crate::error::{OombakError, OombakResult};
+use crate::{probe, OombakResult};
 
 pub fn parse(source_paths: &[String], top_module_name: &str) -> OombakResult<InstanceNode> {
     let source_paths = CString::new(source_paths.join(":"))?;
@@ -50,7 +49,7 @@ pub enum Direction {
     Out,
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("null dereference")]
     NullDereference,
@@ -58,17 +57,17 @@ pub enum Error {
     FileNotFound,
     #[error("top module not found")]
     TopModuleNotFound,
-    #[error("compile error")]
-    CompileError,
+    #[error("failed to compile")]
+    FailedToCompile,
     #[error("found unsupported symbol type")]
     UnsupportedSymbolType,
     #[error("found unsupported port direction")]
     UnsupportedPortDirection,
 }
 
-impl From<Error> for OombakError {
+impl From<Error> for crate::Error {
     fn from(value: Error) -> Self {
-        OombakError::Parser(value)
+        crate::Error::Probe(probe::Error::Parser(value))
     }
 }
 
@@ -100,14 +99,13 @@ impl InstanceNode {
 }
 
 impl TryFrom<oombak_parser_sys::Result> for InstanceNode {
-    type Error = OombakError;
-
+    type Error = crate::Error;
     fn try_from(value: oombak_parser_sys::Result) -> OombakResult<InstanceNode> {
         if value.is_error > 0 {
             return match unsafe { value.instance_or_error.error } {
                 oombak_parser_sys::Error::FileNotFound => Err(Error::FileNotFound.into()),
                 oombak_parser_sys::Error::TopModuleNotFound => Err(Error::TopModuleNotFound.into()),
-                oombak_parser_sys::Error::CompileError => Err(Error::CompileError.into()),
+                oombak_parser_sys::Error::CompileError => Err(Error::FailedToCompile.into()),
                 oombak_parser_sys::Error::UnsupportedSymbolType => {
                     Err(Error::UnsupportedSymbolType.into())
                 }
@@ -122,7 +120,7 @@ impl TryFrom<oombak_parser_sys::Result> for InstanceNode {
 }
 
 impl TryFrom<&*const oombak_parser_sys::Instance> for InstanceNode {
-    type Error = OombakError;
+    type Error = crate::Error;
 
     fn try_from(ptr: &*const oombak_parser_sys::Instance) -> OombakResult<InstanceNode> {
         let instance = unsafe { deref_instance_ptr(ptr)? };
@@ -143,7 +141,7 @@ impl TryFrom<&*const oombak_parser_sys::Instance> for InstanceNode {
 }
 
 impl TryFrom<&oombak_parser_sys::Signal> for Signal {
-    type Error = OombakError;
+    type Error = crate::Error;
 
     fn try_from(value: &oombak_parser_sys::Signal) -> Result<Self, Self::Error> {
         let name = string_from_ptr(value.name)?;
@@ -242,11 +240,7 @@ fn child_instances_ptr_to_vec(
 
 #[cfg(test)]
 mod test {
-    use super::{oombak_parser_sys::Instance, parse, InstanceNode, Signal, SignalType};
-    use crate::{
-        error::OombakError,
-        parser::{Direction, Error},
-    };
+    use super::{oombak_parser_sys::Instance, parse, Direction, InstanceNode, Signal, SignalType};
     use std::sync::OnceLock;
 
     static FIXTURES_PATH: OnceLock<String> = OnceLock::new();
@@ -259,27 +253,35 @@ mod test {
 
     #[test]
     fn test_get_signal() {
-        let mut root = InstanceNode::default();
-        root.name = "root".to_string();
+        let mut root = InstanceNode {
+            name: "root".to_string(),
+            ..Default::default()
+        };
 
-        let mut child_0 = InstanceNode::default();
-        child_0.name = "child_0".to_string();
+        let child_0 = InstanceNode {
+            name: "child_0".to_string(),
+            ..Default::default()
+        };
 
-        let mut child_1 = InstanceNode::default();
-        child_1.name = "child_1".to_string();
+        let mut child_1 = InstanceNode {
+            name: "child_1".to_string(),
+            ..Default::default()
+        };
 
-        let mut child_2 = InstanceNode::default();
-        child_2.name = "child_2".to_string();
-        child_2.signals = vec![
-            Signal {
-                name: "sig_0".to_string(),
-                signal_type: SignalType::PackedArrNetVar(1),
-            },
-            Signal {
-                name: "sig_1".to_string(),
-                signal_type: SignalType::PackedArrNetVar(1),
-            },
-        ];
+        let child_2 = InstanceNode {
+            name: "child_2".to_string(),
+            signals: vec![
+                Signal {
+                    name: "sig_0".to_string(),
+                    signal_type: SignalType::PackedArrNetVar(1),
+                },
+                Signal {
+                    name: "sig_1".to_string(),
+                    signal_type: SignalType::PackedArrNetVar(1),
+                },
+            ],
+            ..Default::default()
+        };
 
         child_1.children.push(child_2);
         root.children = vec![child_0, child_1];
@@ -353,45 +355,51 @@ mod test {
             format!("{}/sv_sample_1/adder.sv", fixtures_path()),
             format!("{}/sv_sample_1/sample.sv", fixtures_path()),
         ];
-        let result = parse(&source_paths, "invalid_module");
-        assert!(result.is_err_and(|e| matches!(e, OombakError::Parser(Error::TopModuleNotFound))))
+        let e = parse(&source_paths, "invalid_module").unwrap_err();
+        assert_eq!(
+            &e.to_string(),
+            "oombak_rs: probe: parse: top module not found"
+        );
     }
 
     #[test]
     fn test_syntax_error() {
         let source_paths = [format!("{}/syntax_error/sample.sv", fixtures_path())];
-        let result = parse(&source_paths, "sample");
-        assert!(result.is_err_and(|e| matches!(e, OombakError::Parser(Error::CompileError))))
+        let e = parse(&source_paths, "sample").unwrap_err();
+        assert_eq!(&e.to_string(), "oombak_rs: probe: parse: failed to compile");
     }
 
     #[test]
     fn test_inout_port() {
         let source_paths = [format!("{}/inout_port/sample.sv", fixtures_path())];
-        let result = parse(&source_paths, "sample");
-        assert!(result
-            .is_err_and(|e| matches!(e, OombakError::Parser(Error::UnsupportedPortDirection))))
+        let e = parse(&source_paths, "sample").unwrap_err();
+        assert_eq!(
+            &e.to_string(),
+            "oombak_rs: probe: parse: found unsupported port direction"
+        );
     }
 
     #[test]
     fn test_unpacked_array() {
         let source_paths = [format!("{}/unpacked_array/sample.sv", fixtures_path())];
-        let result = parse(&source_paths, "sample");
-        assert!(
-            result.is_err_and(|e| matches!(e, OombakError::Parser(Error::UnsupportedSymbolType)))
-        )
+        let e = parse(&source_paths, "sample").unwrap_err();
+        assert_eq!(
+            &e.to_string(),
+            "oombak_rs: probe: parse: found unsupported symbol type"
+        );
     }
 
     #[test]
     fn test_file_not_found() {
         let source_paths = [format!("{}/invalid_folder/sample.sv", fixtures_path())];
-        let result = parse(&source_paths, "sample");
-        assert!(result.is_err_and(|e| matches!(e, OombakError::Parser(Error::FileNotFound))))
+        let e = parse(&source_paths, "sample").unwrap_err();
+        assert_eq!(&e.to_string(), "oombak_rs: probe: parse: file not found");
     }
 
     #[test]
     fn test_null() {
-        let ptr = 0 as *const Instance;
+        let ptr = std::ptr::null::<Instance>();
         let e = InstanceNode::try_from(&ptr).unwrap_err();
-        assert_eq!(&e.to_string(), "oombak_rs: parse: null dereference");
+        assert_eq!(&e.to_string(), "oombak_rs: probe: parse: null dereference");
     }
 }

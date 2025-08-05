@@ -1,6 +1,6 @@
 use std::{fs::File, io::Write, path::Path};
 
-use crate::error::{OombakGenError, OombakGenResult};
+use crate::{Error, OombakGenResult};
 
 use oombak_rs::probe::{Probe, ProbePoint};
 use tempfile::TempDir;
@@ -293,13 +293,13 @@ impl<'a> Generator<'a> {
         let sv_dir = self
             .sv_path
             .parent()
-            .ok_or(OombakGenError::InvalidPath(self.sv_path.to_path_buf()))?;
+            .ok_or(Error::InvalidPath(self.sv_path.to_path_buf()))?;
         let content = include_str!("templates/CMakeLists.txt.templated");
         let content = content.replace(
             "/*OMBAK_INCLUDE_DIRS*/",
             sv_dir
                 .to_str()
-                .ok_or(OombakGenError::InvalidPath(self.sv_path.to_path_buf()))?,
+                .ok_or(Error::InvalidPath(self.sv_path.to_path_buf()))?,
         );
         self.put_file("CMakeLists.txt", content.as_bytes())?;
         Ok(())

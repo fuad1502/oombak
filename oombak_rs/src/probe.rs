@@ -1,9 +1,8 @@
-use thiserror::Error;
+mod parser;
 
-use crate::{
-    error::{OombakError, OombakResult},
-    parser::{self, InstanceNode, Signal},
-};
+use crate::OombakResult;
+
+pub use parser::{InstanceNode, Signal, SignalType};
 
 #[derive(Clone)]
 pub struct Probe {
@@ -16,19 +15,21 @@ pub struct Probe {
 #[derive(Clone)]
 pub struct ProbePoint {
     path: String,
-    signal: parser::Signal,
+    signal: Signal,
     is_top_level_input: bool,
 }
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("signal '{}' not available", _0)]
     UnknownSignal(String),
+    #[error("parse: {}", _0)]
+    Parser(parser::Error),
 }
 
-impl From<Error> for OombakError {
+impl From<Error> for crate::Error {
     fn from(value: Error) -> Self {
-        OombakError::Probe(value)
+        crate::Error::Probe(value)
     }
 }
 

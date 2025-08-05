@@ -1,4 +1,4 @@
-use oombak_rs::{parser::InstanceNode, probe::Probe};
+use oombak_rs::probe::{InstanceNode, Probe};
 
 use bitvec::vec::BitVec;
 

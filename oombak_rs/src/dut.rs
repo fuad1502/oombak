@@ -1,13 +1,12 @@
 use bitvec::vec::BitVec;
 use dut_sys::SigT;
 use std::ffi::{CStr, CString};
-use thiserror::Error;
 
-use crate::error::{OombakError, OombakResult};
+use crate::OombakResult;
 
 mod dut_sys;
 
-#[derive(Debug, Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("failed to query signals")]
     Query,
@@ -17,11 +16,19 @@ pub enum Error {
     Set(String, BitVec<u32>),
     #[error("failed to get signal {}", _0)]
     Get(String),
+    #[error("libloading: {}", _0)]
+    Libloading(libloading::Error),
 }
 
-impl From<Error> for OombakError {
+impl From<Error> for crate::Error {
     fn from(value: Error) -> Self {
-        OombakError::Dut(value)
+        crate::Error::Dut(value)
+    }
+}
+
+impl From<libloading::Error> for crate::Error {
+    fn from(value: libloading::Error) -> Self {
+        Error::Libloading(value).into()
     }
 }
 

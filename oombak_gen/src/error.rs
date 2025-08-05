@@ -1,12 +1,9 @@
 use std::path::PathBuf;
 
-use oombak_rs::error::OombakError;
-use thiserror::Error;
+pub type OombakGenResult<T> = Result<T, Error>;
 
-pub type OombakGenResult<T> = Result<T, OombakGenError>;
-
-#[derive(Error, Debug)]
-pub enum OombakGenError {
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
     #[error(".sv file path not found: ")]
     SvFilePathNotFound(PathBuf),
     #[error("invalid path given: {}", _0.to_string_lossy())]
@@ -18,17 +15,17 @@ pub enum OombakGenError {
     #[error("CMake error: {}", _0)]
     CMake(String),
     #[error("oombak_rs: {}", _0)]
-    Oombak(OombakError),
+    Oombak(oombak_rs::Error),
 }
 
-impl From<std::io::Error> for OombakGenError {
+impl From<std::io::Error> for Error {
     fn from(value: std::io::Error) -> Self {
-        OombakGenError::Io(value)
+        Error::Io(value)
     }
 }
 
-impl From<OombakError> for OombakGenError {
-    fn from(value: OombakError) -> Self {
-        OombakGenError::Oombak(value)
+impl From<oombak_rs::Error> for Error {
+    fn from(value: oombak_rs::Error) -> Self {
+        Error::Oombak(value)
     }
 }

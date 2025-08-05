@@ -7,20 +7,18 @@ use async_trait::async_trait;
 use bitvec::vec::BitVec;
 
 use oombak_gen::TempGenDir;
-use oombak_rs::{dut::Dut, probe::Probe};
-use oscillator::{Oscillator, OscillatorGroup};
+use oombak_rs::{Dut, Probe};
+use oombak_sim::{
+    request, response, CompactWaveValue, LoadedDut, Message, ProbePointsModification, Request,
+    SimulationResult, Simulator, Wave,
+};
 use tokio::{
     sync::{mpsc::Sender, RwLock, RwLockReadGuard, RwLockWriteGuard},
     task::spawn_blocking,
 };
 
-use oombak_sim::{
-    request::{self, ProbePointsModification},
-    response::{self, CompactWaveValue, LoadedDut, SimulationResult, Wave},
-    Message, Request, Simulator,
-};
-
-use crate::error::{OombakSimError, OombakSimResult};
+use crate::error::{Error, OombakSimResult};
+use crate::oscillator::{Oscillator, OscillatorGroup};
 
 #[derive(Default)]
 pub struct LocalSimulator {
@@ -386,7 +384,7 @@ impl LocalSimulator {
     fn try_set_is_dut_reloading(&self) -> OombakSimResult<()> {
         match self.is_dut_reloading.try_write() {
             Ok(mut x) if !*x => *x = true,
-            _ => return Err(OombakSimError::DutIsLoading),
+            _ => return Err(Error::DutIsLoading),
         };
         Ok(())
     }
@@ -398,44 +396,39 @@ impl LocalSimulator {
 
 impl DutState {
     fn run(&self, duration: usize) -> OombakSimResult<usize> {
-        match &self.dut {
-            Some(dut) => Ok(dut.run(duration as u64)? as usize),
-            None => Err(OombakSimError::DutNotLoaded),
-        }
+        Ok(self.dut()?.run(duration as u64)? as usize)
     }
 
     fn get(&self, signal_name: &str) -> OombakSimResult<BitVec<u32>> {
-        match &self.dut {
-            Some(dut) => Ok(dut.get(signal_name)?),
-            None => Err(OombakSimError::DutNotLoaded),
-        }
+        Ok(self.dut()?.get(signal_name)?)
     }
 
     fn set(&self, signal_name: &str, value: &BitVec<u32>) -> OombakSimResult<()> {
-        match &self.dut {
-            Some(dut) => Ok(dut.set(signal_name, value)?),
-            None => Err(OombakSimError::DutNotLoaded),
-        }
+        Ok(self.dut()?.set(signal_name, value)?)
     }
 
     fn query(&self) -> OombakSimResult<Vec<oombak_rs::dut::Signal>> {
+        Ok(self.dut()?.query()?)
+    }
+
+    fn dut(&self) -> OombakSimResult<&Dut> {
         match &self.dut {
-            Some(dut) => Ok(dut.query()?),
-            None => Err(OombakSimError::DutNotLoaded),
+            Some(dut) => Ok(dut),
+            None => Err(Error::DutNotLoaded),
         }
     }
 
     fn probe(&self) -> OombakSimResult<&Probe> {
         match &self.probe {
             Some(probe) => Ok(probe),
-            None => Err(OombakSimError::DutNotLoaded),
+            None => Err(Error::DutNotLoaded),
         }
     }
 
     fn path(&self) -> OombakSimResult<&Path> {
         match &self.path {
             Some(path) => Ok(path),
-            None => Err(OombakSimError::DutNotLoaded),
+            None => Err(Error::DutNotLoaded),
         }
     }
 

@@ -6,11 +6,12 @@ use std::{
     process::Command,
 };
 
-use error::{OombakGenError, OombakGenResult};
 use oombak_rs::probe::Probe;
 use oombak_sim::{response::Percentage, Message};
 use tempfile::TempDir;
 use tokio::sync::mpsc::Sender;
+
+pub use error::{Error, OombakGenResult};
 
 pub struct TempGenDir {
     tempdir: TempDir,
@@ -43,8 +44,8 @@ impl Builder {
             Some(file_name) if file_name.ends_with(".sv") => {
                 file_name.trim_end_matches(".sv").to_string()
             }
-            Some(_) => return Err(OombakGenError::ExtensionNotSv(sv_path.to_path_buf())),
-            None => return Err(OombakGenError::InvalidPath(sv_path.to_path_buf())),
+            Some(_) => return Err(Error::ExtensionNotSv(sv_path.to_path_buf())),
+            None => return Err(Error::InvalidPath(sv_path.to_path_buf())),
         };
         let probe = Probe::try_from(&source_paths, &top_module_name)?;
 
@@ -86,7 +87,7 @@ impl Builder {
             .output()?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-            return Err(OombakGenError::CMake(stderr));
+            return Err(Error::CMake(stderr));
         }
         self.progress.increment();
         Ok(())
@@ -100,7 +101,7 @@ impl Builder {
             .output()?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-            return Err(OombakGenError::CMake(stderr));
+            return Err(Error::CMake(stderr));
         }
         self.progress.increment();
         Ok(())
@@ -118,13 +119,13 @@ impl Builder {
 
 fn source_paths_from_sv_path(sv_path: &Path) -> OombakGenResult<Vec<PathBuf>> {
     if !sv_path.exists() || !sv_path.is_file() {
-        return Err(OombakGenError::SvFilePathNotFound(sv_path.to_path_buf()));
+        return Err(Error::SvFilePathNotFound(sv_path.to_path_buf()));
     }
     let mut source_paths = vec![];
     source_paths.push(sv_path.to_path_buf());
     let parent_dir = sv_path
         .parent()
-        .ok_or(OombakGenError::InvalidPath(sv_path.to_path_buf()))?;
+        .ok_or(Error::InvalidPath(sv_path.to_path_buf()))?;
     for file in std::fs::read_dir(parent_dir)? {
         let file = file?;
         if let Some(ext) = file.path().extension() {
