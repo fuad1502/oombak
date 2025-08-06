@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use async_trait::async_trait;
 use bitvec::vec::BitVec;
 
-use oombak_gen::TempGenDir;
+use oombak_gen::{NotificationChannel, TempGenDir};
 use oombak_rs::{Dut, Probe};
 use oombak_sim::{
     request, response, CompactWaveValue, LoadedDut, Message, ProbePointsModification, Request,
@@ -213,7 +213,7 @@ impl LocalSimulator {
         notification_channel: Option<Sender<Message>>,
         message_id: usize,
     ) -> OombakSimResult<(LoadedDut, TempGenDir, Probe)> {
-        let builder = oombak_gen::Builder::new(notification_channel, message_id);
+        let builder = Self::create_builder(notification_channel, message_id);
         let (temp_gen_dir, probe) = builder.build(path)?;
         let loaded_dut = LoadedDut::from(&probe);
         Ok((loaded_dut, temp_gen_dir, probe))
@@ -375,7 +375,7 @@ impl LocalSimulator {
         notification_channel: Option<Sender<Message>>,
         message_id: usize,
     ) -> OombakSimResult<(LoadedDut, TempGenDir)> {
-        let builder = oombak_gen::Builder::new(notification_channel, message_id);
+        let builder = Self::create_builder(notification_channel, message_id);
         let temp_gen_dir = builder.build_with_probe(path, probe)?;
         let loaded_dut = LoadedDut::from(probe);
         Ok((loaded_dut, temp_gen_dir))
@@ -387,6 +387,18 @@ impl LocalSimulator {
             _ => return Err(Error::DutIsLoading),
         };
         Ok(())
+    }
+
+    fn create_builder(
+        message_channel: Option<Sender<Message>>,
+        message_id: usize,
+    ) -> oombak_gen::Builder {
+        match message_channel {
+            Some(message_channel) => {
+                oombak_gen::Builder::new(NotificationChannel::new(message_channel, message_id))
+            }
+            None => oombak_gen::Builder::default(),
+        }
     }
 
     async fn reset_is_dut_reloading(&self) {

@@ -19,16 +19,28 @@ pub struct TempGenDir {
 }
 
 pub struct Builder {
-    notification_channel: Option<Sender<Message>>,
-    message_id: usize,
+    notification_channel: Option<NotificationChannel>,
     progress: Percentage,
 }
 
-impl Builder {
-    pub fn new(notification_channel: Option<Sender<Message>>, message_id: usize) -> Self {
+pub struct NotificationChannel {
+    message_channel: Sender<Message>,
+    message_id: usize,
+}
+
+impl Default for Builder {
+    fn default() -> Self {
         Self {
-            notification_channel,
-            message_id,
+            notification_channel: None,
+            progress: Percentage::new(4),
+        }
+    }
+}
+
+impl Builder {
+    pub fn new(notification_channel: NotificationChannel) -> Self {
+        Self {
+            notification_channel: Some(notification_channel),
             progress: Percentage::new(4),
         }
     }
@@ -109,11 +121,24 @@ impl Builder {
 
     fn notify_progress(&self, message: &str) {
         if let Some(channel) = &self.notification_channel {
-            let progress =
+            let progress_payload =
                 oombak_sim::response::Payload::progress(message.to_string(), self.progress.clone());
-            let response = oombak_sim::Message::response(self.message_id, progress);
-            channel.blocking_send(response).unwrap();
+            channel.send(progress_payload);
         }
+    }
+}
+
+impl NotificationChannel {
+    pub fn new(message_channel: Sender<Message>, message_id: usize) -> Self {
+        Self {
+            message_channel,
+            message_id,
+        }
+    }
+
+    pub fn send(&self, payload: oombak_sim::response::Payload) {
+        let response = oombak_sim::Message::response(self.message_id, payload);
+        self.message_channel.blocking_send(response).unwrap();
     }
 }
 
@@ -140,5 +165,42 @@ fn source_paths_from_sv_path(sv_path: &Path) -> OombakGenResult<Vec<PathBuf>> {
 impl TempGenDir {
     pub fn lib_path(&self) -> PathBuf {
         self.tempdir.path().join(&self.lib_path)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::{path::PathBuf, sync::OnceLock};
+
+    use crate::Builder;
+
+    static SV_PROJECT_PATH: OnceLock<PathBuf> = OnceLock::new();
+
+    fn sv_project_path() -> &'static PathBuf {
+        SV_PROJECT_PATH.get_or_init(|| {
+            let mut sv_project_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+            sv_project_path.push("res/test/sv_project");
+            sv_project_path
+        })
+    }
+
+    #[test]
+    fn test_build() {
+        let mut sv_path = sv_project_path().clone();
+        sv_path.push("sample.sv");
+
+        assert!(Builder::default().build(&sv_path).is_ok());
+    }
+
+    #[test]
+    fn test_rebuild() {
+        let mut sv_path = sv_project_path().clone();
+        sv_path.push("sample.sv");
+
+        let (_, probe) = Builder::default().build(&sv_path).unwrap();
+
+        assert!(Builder::default()
+            .build_with_probe(&sv_path, &probe)
+            .is_ok());
     }
 }
