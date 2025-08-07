@@ -1,0 +1,49 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-rust:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: veryl-lang/setup-verilator@v1
+    - name: Build
+      run: cargo build --verbose
+    - name: Run tests
+      run: cargo test --verbose
+    - name: Check code format
+      run: cargo fmt --check --verbose --all
+    - name: Check clippy errors
+      run: cargo clippy --all-targets
+
+  build-cpp:
+    
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          cmake -S oombak_rs/oombak_parser -B build
+          cmake --build build
+      - name: Run tests
+        run: ctest --verbose --output-on-failure --test-dir build
+      - name: Check code format
+        run: |
+          find oombak_rs/oombak_parser \
+          -iname '*.hpp' -o \
+          -iname '*.h' -o \
+          -iname '*.cpp' -o \
+          -iname '*.c' \
+          | xargs clang-format --dry-run --Werror --verbose
