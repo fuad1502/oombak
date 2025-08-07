@@ -15,5 +15,8 @@ fn main() {
     println!("cargo:rustc-link-lib=static=svlang");
     println!("cargo:rustc-link-lib=static=fmtd");
     println!("cargo:rustc-link-lib=static=mimalloc-debug");
+    #[cfg(target_os = "linux")]
     println!("cargo:rustc-link-lib=dylib=stdc++");
+    #[cfg(target_os = "macos")]
+    println!("cargo:rustc-link-lib=dylib=c++");
 }
