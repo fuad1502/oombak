@@ -1,5 +1,5 @@
 use bitvec::vec::BitVec;
-use dut_sys::SigT;
+use dut_sys::OombakSigT;
 use std::ffi::{CStr, CString};
 
 use crate::OombakResult;
@@ -88,7 +88,7 @@ impl Dut {
         bit_vec
     }
 
-    fn signals_from(sig_t_ptr: *const dut_sys::SigT, num_of_signals: usize) -> Vec<Signal> {
+    fn signals_from(sig_t_ptr: *const dut_sys::OombakSigT, num_of_signals: usize) -> Vec<Signal> {
         let sig_t_slice = unsafe { std::slice::from_raw_parts(sig_t_ptr, num_of_signals) };
         sig_t_slice.iter().map(Signal::from).collect()
     }
@@ -102,8 +102,8 @@ pub struct Signal {
     pub set: bool,
 }
 
-impl From<&SigT> for Signal {
-    fn from(value: &SigT) -> Self {
+impl From<&OombakSigT> for Signal {
+    fn from(value: &OombakSigT) -> Self {
         let name =
             String::from_utf8_lossy((unsafe { CStr::from_ptr(value.name) }).to_bytes()).to_string();
         let get = value.get == 1;
