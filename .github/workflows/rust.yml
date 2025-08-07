@@ -17,6 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@stable
+    - uses: veryl-lang/setup-verilator@v1
     - name: Build
       run: cargo build --verbose
     - name: Run tests
