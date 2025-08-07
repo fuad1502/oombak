@@ -37,6 +37,11 @@ impl Default for Builder {
     }
 }
 
+#[cfg(target_os = "linux")]
+static DYLIB_EXT: &str = "so";
+#[cfg(target_os = "macos")]
+static DYLIB_EXT: &str = "dylib";
+
 impl Builder {
     pub fn new(notification_channel: NotificationChannel) -> Self {
         Self {
@@ -82,9 +87,9 @@ impl Builder {
     fn cmake(mut self, source_dir: TempDir) -> OombakGenResult<TempGenDir> {
         self.cmake_configure(source_dir.path())?;
         self.cmake_build(source_dir.path())?;
-        self.notify_progress("liboombak.so generated!");
+        self.notify_progress(&format!("liboombak.{} generated!", DYLIB_EXT));
         let mut lib_path = PathBuf::from("build");
-        lib_path.push("libdut.so");
+        lib_path.push(&format!("libdut.{}", DYLIB_EXT));
         Ok(TempGenDir {
             tempdir: source_dir,
             lib_path,
@@ -93,9 +98,15 @@ impl Builder {
 
     fn cmake_configure(&mut self, source_path: &Path) -> OombakGenResult<()> {
         self.notify_progress("Running CMake configure...");
+        #[cfg(target_os = "linux")]
         let output = Command::new("cmake")
             .current_dir(source_path)
             .args(["-S", ".", "-B", "build"])
+            .output()?;
+        #[cfg(target_os = "macos")]
+        let output = Command::new("cmake")
+            .current_dir(source_path)
+            .args(["-G", "Xcode", "-S", ".", "-B", "build"])
             .output()?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr).to_string();
