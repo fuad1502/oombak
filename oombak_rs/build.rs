@@ -6,15 +6,24 @@ fn main() {
     let dst = cmake::Config::new("oombak_parser").build();
 
     println!("cargo:rustc-link-search=native={}/lib", dst.display());
+
+    println!("cargo:rustc-link-lib=static=oombak_parser");
+
     println!(
         "cargo:rustc-link-search=native={}/build/_deps/slang-build/lib",
         dst.display()
     );
 
-    println!("cargo:rustc-link-lib=static=oombak_parser");
     println!("cargo:rustc-link-lib=static=svlang");
-    println!("cargo:rustc-link-lib=static=fmtd");
-    println!("cargo:rustc-link-lib=static=mimalloc-debug");
+
+    if std::env::var("PROFILE").unwrap() == "release" {
+        println!("cargo:rustc-link-lib=static=fmt");
+        println!("cargo:rustc-link-lib=static=mimalloc");
+    } else {
+        println!("cargo:rustc-link-lib=static=fmtd");
+        println!("cargo:rustc-link-lib=static=mimalloc-debug");
+    }
+
     #[cfg(target_os = "linux")]
     println!("cargo:rustc-link-lib=dylib=stdc++");
     #[cfg(target_os = "macos")]

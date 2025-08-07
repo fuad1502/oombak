@@ -2,6 +2,10 @@
 name = "oombak_tui"
 version = "0.1.0"
 edition = "2021"
+description.workspace = true
+authors.workspace = true
+license-file.workspace = true
+repository.workspace = true
 
 [dependencies]
 bitvec = "1.0.1"
