@@ -18,6 +18,9 @@ jobs:
           - ubuntu-24.04
           - ubuntu-22.04
           - macos-latest
+        profile:
+          - dev
+          - release
 
     runs-on: ${{ matrix.os }}
 
@@ -30,7 +33,7 @@ jobs:
       with:
         xcode-version: 'latest'
     - name: Build
-      run: cargo build --verbose
+      run: cargo build --profile ${{ matrix.profile }} --verbose
     - name: Run tests
       run: cargo test --verbose
     - name: Check code format
