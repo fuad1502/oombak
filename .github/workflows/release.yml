@@ -1,0 +1,72 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  release:
+
+    strategy:
+      matrix:
+        os:
+          - ubuntu-24.04
+          - ubuntu-22.04
+          - macos-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Verify and store version number
+      id: store-version
+      run: |
+        version=$(cat Cargo.toml | grep version | sed -e 's/version = "\(.*\)"/\1/')
+        pushed_version=$(echo  | sed -e 's/v//')
+        [ v${version} = ${{ github.ref_name }} ]
+        echo "version=${version}" >> "$GITHUB_OUTPUT"
+    - name: Install cargo-deb
+      if: ${{ startsWith(matrix.os, 'ubuntu') }}
+      run: cargo install cargo-deb
+    - uses: maxim-lobanov/setup-xcode@v1
+      if: matrix.os == 'macos-latest'
+      with:
+        xcode-version: 'latest'
+    - name: Build ubuntu
+      if: ${{ startsWith(matrix.os, 'ubuntu') }}
+      run: |
+        cargo deb
+        cp \
+        target/debian/oombak-tui_${{ steps.store-version.outputs.version }}-1_amd64.deb \
+        oombak-tui_${{ steps.store-version.outputs.version }}-1_amd64_${{ matrix.os }}.deb
+        mkdir release-artifacts
+        cp target/release/oombak_tui release-artifacts
+        cp LICENSE release-artifacts
+        tar -C release-artifacts -czvf \
+        oombak-tui_${{ steps.store-version.outputs.version }}_${{ matrix.os }}.tar.gz \
+        oombak_tui LICENSE
+    - name: Build macos
+      if: matrix.os == 'macos-latest'
+      run: |
+        cargo build --profile release
+        mkdir release-artifacts
+        cp target/release/oombak_tui release-artifacts
+        cp LICENSE release-artifacts
+        tar -C release-artifacts -czvf \
+        oombak-tui_${{ steps.store-version.outputs.version }}_${{ matrix.os }}.tar.gz \
+        oombak_tui LICENSE
+    - name: Release ubuntu
+      uses: softprops/action-gh-release@v2
+      if: ${{ startsWith(matrix.os, 'ubuntu') }}
+      with:
+        files: |
+          oombak-tui_${{ steps.store-version.outputs.version }}-1_amd64_${{ matrix.os }}.deb
+          oombak-tui_${{ steps.store-version.outputs.version }}_${{ matrix.os }}.tar.gz
+    - name: Release macos
+      uses: softprops/action-gh-release@v2
+      if: matrix.os == 'macos-latest'
+      with:
+        files: |
+          oombak-tui_${{ steps.store-version.outputs.version }}_${{ matrix.os }}.tar.gz
+
