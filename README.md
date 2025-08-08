@@ -1,33 +1,61 @@
 # Oombak 🌊
 
-> This project is still under development, stay tune for updates! I've put up
-> an issue tracker for the first release
-> [here](https://github.com/fuad1502/oombak/issues/1). Later, this repository
-> will be divided into multiple repositories inside github.com/oombak
+[![CI](https://github.com/fuad1502/oombak/actions/workflows/CI.yml/badge.svg)](https://github.com/fuad1502/oombak/actions/workflows/CI.yml)
 
-The **oombak** project consists of multiple sub-projects:
+*Oombak (/ˈɔmbak/, "waves" in Indonesian)* is an interactive SystemVerilog simulator UI that runs on your terminal!
 
-## oombak_tui
+> [!NOTE]
+> Currently, *Oombak* uses [Verilator](https://github.com/verilator/verilator) and [slang](https://github.com/MikePopoloski/slang) to simulate and parse your SystemVerilog source, respectively.
 
-Terminal based interactive SystemVerilog simulator.
+Here's a demo showing off some of *Oombak*'s features:
 
-## oombak_vs
+## Project structure
 
-Interactive SystemVerilog simulator VS Code extension.
+This project is comprised of several Rust *crates*:
 
-## oombak_sim
+- **oombak_gen**. A library crate that generates, from your SystemVerilog project, a dynamically-linked library (`libdut`) which represents a simulation instance of your design. It exports functions for interacting with the simulation, e.g. get / set signal value. It works by generating a SystemVerilog wrapper around your design with *DPI* functions to provide access to internal signals, and a corresponding CMake based C++ Verilator project.
 
-SystemVerilog simulator server.
+- **oombak_rs**: Provides two Rust structs: `Dut` and `Probe`. `Dut` is essentially a Rust binding to **oombak_gen**'s `libdut`, while `Probe` allows you to traverse your design hierarchy and specify active "probe points" (signals you would like to inspect).
 
-## oombak_rs
+- **oombak_sim** and **oombak_local_sim**: *Oombak*'s simulator "backend". Currently, it runs on the same process as the UI's. However, I am planning to support remote server feature!
 
-Rust wrapper for C++ interfaces provided by `oombak_gen` and `oobak_parser`.
+- **oombak_tui**: *Oombak*. *Oombak* uses [ratatui](https://github.com/ratatui/ratatui) library for the terminal drawing primitives. For the UI framework, I decided to implement my own. Learn more about the design [here](). I also made many interesting widgets that I am planning to put into a separate library crate. 
 
-## oombak_gen
+## Installation
 
-C++ interface generator for controlling SystemVerilog **Verilated** simulation
-models.
+Currently, *Oombak* is only supported on Linux and MacOS.
 
-## oombak_parser
+If you already have [rustup](https://www.rust-lang.org/learn/get-started), simply execute:
 
-C++ library for querying SystemVerilog signals and instances hierarchy.
+```sh
+rustup update
+cargo install oombak
+```
+You can also install our pre-built binaries from the [Release page](https://github.com/fuad1502/oombak/releases).
+
+### Dependencies
+
+### Linux (Ubuntu)
+
+```sh
+apt install verilator cmake
+```
+> [!WARNING]
+> If you encounter problems with Verilator from your distributor's package repository, try using the packages built by [veryl-lang]() [here](https://github.com/veryl-lang/verilator-package/releases). Or, try the "Git Quick Install" step in Verilator's documentation [here](https://veripool.org/guide/latest/install.html#git-quick-install).
+
+### MacOS
+
+```sh
+brew install verilator cmake
+```
+
+## Building from source
+
+```sh
+git clone https://github.com/fuad1502/oombak.git
+cd oombak
+cargo build
+cargo test
+```
+
+## Quick start guide
