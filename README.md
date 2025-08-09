@@ -9,6 +9,11 @@
 
 Here's a demo showing off some of *Oombak*'s features:
 
+![]()
+
+> [!IMPORTANT]
+> *Oombak* is still in its very early stage of development. Check out our [issue tracker](https://github.com/fuad1502/oombak/issues?q=is%3Aissue%20state%3Aopen%20label%3Atracker) for a list of features planned for future releases. And please feel free to open up an issue for bugs or feature requests! ❤️
+
 ## Project structure
 
 This project is comprised of several Rust *crates*:
@@ -17,7 +22,7 @@ This project is comprised of several Rust *crates*:
 
 - **oombak_rs**: Provides two Rust structs: `Dut` and `Probe`. `Dut` is essentially a Rust binding to **oombak_gen**'s `libdut`, while `Probe` allows you to traverse your design hierarchy and specify active "probe points" (signals you would like to inspect).
 
-- **oombak_sim** and **oombak_local_sim**: *Oombak*'s simulator "backend". Currently, it runs on the same process as the UI's. However, I am planning to support remote server feature!
+- **oombak_sim** and **oombak_local_sim**: *Oombak*'s simulator "backend". Currently, it runs on the same process as the UI's. However, I am planning to support remote server feature in the future.
 
 - **oombak_tui**: *Oombak*. *Oombak* uses [ratatui](https://github.com/ratatui/ratatui) library for the terminal drawing primitives. For the UI framework, I decided to implement my own. Learn more about the design [here](). I also made many interesting widgets that I am planning to put into a separate library crate. 
 
@@ -58,4 +63,58 @@ cargo build
 cargo test
 ```
 
-## Quick start guide
+## User guide
+
+### Basic operation
+
+Once installed, you can launch *Oombak* by opening a terminal and execute:
+
+```sh
+oombak_tui
+```
+
+You can navigate through the interface with only a keyboard. Mouse support is planned.
+
+At the bottom of the interface, there is a *command keys help bar* always available. It shows what *command keys* are avaiable in the currently active view:
+
+![]()
+
+Depending on the number of available *command keys* and your window size, *command keys help bar* might not show all available *command keys*. To see all available *command keys*, you can toggle the *command keys help window* by pressing `<F2>`:
+
+![]()
+
+You can scroll through the *command keys help window* by pressing `<F1>` or `<F3>`. Once toggled on, *command keys help window* **stays** there while you navigate through *Oombak*. It only captures `<F1>` through `<F3>` keys, and therefore won't interfere with other *command keys*. You can toggle it off by pressing `<F2>` again.
+
+To quit *Oombak*, you can press `q`.
+
+> [!TIP]
+> *Oombak* utilizes overlaying windows to display widgets (e.g. file explorer). You can typically use either `q`, `<esc>`, or `<Ctrl>-D` to close them.
+
+*Oombak* supports both arrow keys (`←`, `↓`, `↑`, `→`) and Vim motions (`h`, `j`, `k`, `l`) for simple navigation (moving left, down, up, and right).
+
+> [!IMPORTANT]
+> Key re-mapping through configuration file feature is planned for future releases. 
+
+### Loading a design
+
+There are two methods for loading a design, using the file explorer and using the terminal. 
+
+To load a design using the file explorer, simply open up the file explorer by pressing `o`, and select your top level SystemVerilog file:
+
+![]()
+
+You can use the terminal to send commands. One of those commands is the `load` command. It accepts a single parameter, a path to a SystemVerilog file. Open the terminal by pressing `t`, write down `load <path to top level SystemVerilog file>`, and press `<enter>`:
+
+![]()
+
+Typically, you would open the terminal to inspect previous outputs, as shown above. For quickly executing commands, you can press `:`, write down your command, and press `<enter>`:
+
+![]()
+
+> [!WARNING]
+> If you encounter *top module not found* error, please ensure your top level SystemVerilog file name is the same as the top module name. 
+> Only files with `.sv` extension within the same folder as your top level SystemVerilog file are compiled.
+
+### Interacting with your simulation
+
+## UI ramework design
