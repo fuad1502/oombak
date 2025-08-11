@@ -43,7 +43,7 @@ extern "C"
     {
         OOMBAK_PARSER_ERROR_NONE,
         OOMBAK_PARSER_ERROR_FILE_NOT_FOUND,
-        OOMBAK_PARSER_ERROR_TOP_MODULE_NOT_FOUND,
+        OOMBAK_PARSER_ERROR_TOP_LEVEL_MODULE_NOT_FOUND,
         OOMBAK_PARSER_ERROR_COMPILE_ERROR,
         OOMBAK_PARSER_ERROR_UNSUPPORTED_SYMBOL_TYPE,
         OOMBAK_PARSER_ERROR_UNSUPPORTED_PORT_DIRECTION,
@@ -63,10 +63,10 @@ extern "C"
     OOMBAK_PARSER_EXPORT oombak_parser_ctx_t oombak_parser_get_ctx();
 
     OOMBAK_PARSER_EXPORT oombak_parser_result_t oombak_parser_parse(const char *source_paths,
-                                                                    const char *top_module_name);
+                                                                    const char *top_level_module_name);
 
     OOMBAK_PARSER_EXPORT oombak_parser_result_t oombak_parser_parse_r(oombak_parser_ctx_t ctx, const char *source_paths,
-                                                                      const char *top_module_name);
+                                                                      const char *top_level_module_name);
 
     OOMBAK_PARSER_EXPORT void oombak_parser_free_ctx(oombak_parser_ctx_t ctx);
 

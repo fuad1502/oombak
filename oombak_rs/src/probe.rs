@@ -34,8 +34,8 @@ impl From<Error> for crate::Error {
 }
 
 impl Probe {
-    pub fn try_from(source_paths: &[String], top_module_name: &str) -> OombakResult<Self> {
-        let root_node = parser::parse(source_paths, top_module_name)?;
+    pub fn try_from(source_paths: &[String], top_level_module_name: &str) -> OombakResult<Self> {
+        let root_node = parser::parse(source_paths, top_level_module_name)?;
         let points = Self::create_top_level_points(&root_node)?;
         let top_level_ports = points.clone();
         let top_level_module_name = root_node.module_name.clone();

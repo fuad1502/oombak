@@ -112,7 +112,7 @@ Typically, you would open the terminal to inspect previous outputs, as shown abo
 ![]()
 
 > [!WARNING]
-> If you encounter *top module not found* error, please ensure your top level SystemVerilog file name is the same as the top module name. 
+> If you encounter *top-level module not found* error, please ensure your top level SystemVerilog file name is the same as the top-level module name. 
 > Only files with `.sv` extension within the same folder as your top level SystemVerilog file are compiled.
 
 ### Interacting with your simulation

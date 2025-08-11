@@ -29,7 +29,7 @@ class OombakParser
     OombakParser();
     ~OombakParser();
     std::variant<oombak_parser_instance_t *, oombak_parser_error_t> get_instance_tree(
-        const std::vector<std::string_view> &source_paths, std::string_view top_module_name);
+        const std::vector<std::string_view> &source_paths, std::string_view top_level_module_name);
 
   private:
     oombak_parser_instance_t root_instance;
@@ -57,10 +57,10 @@ OombakParser::~OombakParser()
 }
 
 std::variant<oombak_parser_instance_t *, oombak_parser_error_t> OombakParser::get_instance_tree(
-    const std::vector<std::string_view> &source_paths, std::string_view top_module_name)
+    const std::vector<std::string_view> &source_paths, std::string_view top_level_module_name)
 {
     free_instance(&root_instance);
-    InstanceTreeBuilder visitor(&root_instance, top_module_name);
+    InstanceTreeBuilder visitor(&root_instance, top_level_module_name);
     Compilation compilation;
     RETURN_ON_ERROR(add_syntax_trees(compilation, source_paths));
     RETURN_ON_ERROR(check_compilation(compilation));
@@ -71,7 +71,7 @@ std::variant<oombak_parser_instance_t *, oombak_parser_error_t> OombakParser::ge
     }
     else if (!visitor.is_root_found())
     {
-        return OOMBAK_PARSER_ERROR_TOP_MODULE_NOT_FOUND;
+        return OOMBAK_PARSER_ERROR_TOP_LEVEL_MODULE_NOT_FOUND;
     }
     return &root_instance;
 }
@@ -153,19 +153,19 @@ void oombak_parser_free_ctx(oombak_parser_ctx_t ctx)
     delete parser;
 }
 
-oombak_parser_result_t oombak_parser_parse(const char *source_paths, const char *top_module_name)
+oombak_parser_result_t oombak_parser_parse(const char *source_paths, const char *top_level_module_name)
 {
     std::vector<std::string_view> source_paths_vec = OombakParser::from_colon_separated_paths(source_paths);
-    auto instance_or_error = parser->get_instance_tree(source_paths_vec, top_module_name);
+    auto instance_or_error = parser->get_instance_tree(source_paths_vec, top_level_module_name);
     return instance_or_error_variant_to_result(instance_or_error);
 }
 
 oombak_parser_result_t oombak_parser_parse_r(oombak_parser_ctx_t ctx, const char *source_paths,
-                                             const char *top_module_name)
+                                             const char *top_level_module_name)
 {
     auto parser = (OombakParser::OombakParser *)ctx;
     std::vector<std::string_view> source_paths_vec = OombakParser::from_colon_separated_paths(source_paths);
-    auto instance_or_error = parser->get_instance_tree(source_paths_vec, top_module_name);
+    auto instance_or_error = parser->get_instance_tree(source_paths_vec, top_level_module_name);
     return instance_or_error_variant_to_result(instance_or_error);
 }
 

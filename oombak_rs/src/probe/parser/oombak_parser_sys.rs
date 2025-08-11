@@ -5,7 +5,7 @@ extern "C" {
     pub fn oombak_parser_parse_r(
         ctx: Context,
         source_paths: *const c_char,
-        top_module_name: *const c_char,
+        top_level_module_name: *const c_char,
     ) -> Result;
 
     pub fn oombak_parser_get_ctx() -> Context;
@@ -34,7 +34,7 @@ pub union InstanceOrError {
 pub enum Error {
     None,
     FileNotFound,
-    TopModuleNotFound,
+    TopLevelModuleNotFound,
     CompileError,
     UnsupportedSymbolType,
     UnsupportedPortDirection,

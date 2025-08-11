@@ -8,9 +8,9 @@ TEST(ParseTest, SvSample1_Root)
 {
     const char *source_paths = "fixtures/sv_sample_1/sample.sv:fixtures/sv_sample_1/adder.sv:fixtures/"
                                "sv_sample_1/subtractor.sv";
-    const char *top_module_name = "sample";
+    const char *top_level_module_name = "sample";
 
-    auto result = oombak_parser_parse(source_paths, top_module_name);
+    auto result = oombak_parser_parse(source_paths, top_level_module_name);
     ASSERT_FALSE(result.is_error) << "oombak_parser_parse returned error code: " << result.error;
     auto root_instance = result.instance;
 
@@ -40,9 +40,9 @@ TEST(ParseTest, SvSample1_NotRoot)
 {
     const char *source_paths = "fixtures/sv_sample_1/sample.sv:fixtures/sv_sample_1/adder.sv:fixtures/"
                                "sv_sample_1/subtractor.sv";
-    const char *top_module_name = "adder";
+    const char *top_level_module_name = "adder";
 
-    auto result = oombak_parser_parse(source_paths, top_module_name);
+    auto result = oombak_parser_parse(source_paths, top_level_module_name);
     ASSERT_FALSE(result.is_error) << "oombak_parser_parse returned error code: " << result.error;
     auto root_instance = result.instance;
 
@@ -65,19 +65,19 @@ TEST(ParseTest, SvSample1_InvalidModule)
 {
     const char *source_paths = "fixtures/sv_sample_1/sample.sv:fixtures/sv_sample_1/adder.sv:fixtures/"
                                "sv_sample_1/subtractor.sv";
-    const char *top_module_name = "invalid_module";
+    const char *top_level_module_name = "invalid_module";
 
-    auto result = oombak_parser_parse(source_paths, top_module_name);
+    auto result = oombak_parser_parse(source_paths, top_level_module_name);
     ASSERT_TRUE(result.is_error);
-    ASSERT_EQ(result.error, OOMBAK_PARSER_ERROR_TOP_MODULE_NOT_FOUND);
+    ASSERT_EQ(result.error, OOMBAK_PARSER_ERROR_TOP_LEVEL_MODULE_NOT_FOUND);
 }
 
 TEST(ParseTest, SyntaxError)
 {
     const char *source_paths = "fixtures/syntax_error/sample.sv";
-    const char *top_module_name = "sample";
+    const char *top_level_module_name = "sample";
 
-    auto result = oombak_parser_parse(source_paths, top_module_name);
+    auto result = oombak_parser_parse(source_paths, top_level_module_name);
     ASSERT_TRUE(result.is_error);
     ASSERT_EQ(result.error, OOMBAK_PARSER_ERROR_COMPILE_ERROR);
 }
@@ -85,9 +85,9 @@ TEST(ParseTest, SyntaxError)
 TEST(ParseTest, InoutPort)
 {
     const char *source_paths = "fixtures/inout_port/sample.sv";
-    const char *top_module_name = "sample";
+    const char *top_level_module_name = "sample";
 
-    auto result = oombak_parser_parse(source_paths, top_module_name);
+    auto result = oombak_parser_parse(source_paths, top_level_module_name);
     ASSERT_TRUE(result.is_error);
     ASSERT_EQ(result.error, OOMBAK_PARSER_ERROR_UNSUPPORTED_PORT_DIRECTION);
 }
@@ -95,9 +95,9 @@ TEST(ParseTest, InoutPort)
 TEST(ParseTest, UnpackedArray)
 {
     const char *source_paths = "fixtures/unpacked_array/sample.sv";
-    const char *top_module_name = "sample";
+    const char *top_level_module_name = "sample";
 
-    auto result = oombak_parser_parse(source_paths, top_module_name);
+    auto result = oombak_parser_parse(source_paths, top_level_module_name);
     ASSERT_TRUE(result.is_error);
     ASSERT_EQ(result.error, OOMBAK_PARSER_ERROR_UNSUPPORTED_SYMBOL_TYPE);
 }
@@ -105,9 +105,9 @@ TEST(ParseTest, UnpackedArray)
 TEST(ParseTest, FileNotFound)
 {
     const char *source_paths = "fixtures/invalid_folder/sample.sv";
-    const char *top_module_name = "sample";
+    const char *top_level_module_name = "sample";
 
-    auto result = oombak_parser_parse(source_paths, top_module_name);
+    auto result = oombak_parser_parse(source_paths, top_level_module_name);
     ASSERT_TRUE(result.is_error);
     ASSERT_EQ(result.error, OOMBAK_PARSER_ERROR_FILE_NOT_FOUND);
 }
@@ -129,10 +129,10 @@ bool ParseTest::is_parse_error()
 {
     const char *source_paths = "fixtures/sv_sample_1/sample.sv:fixtures/sv_sample_1/adder.sv:fixtures/"
                                "sv_sample_1/subtractor.sv";
-    const char *top_module_name = "sample";
+    const char *top_level_module_name = "sample";
 
     auto ctx = oombak_parser_get_ctx();
-    auto result = oombak_parser_parse_r(ctx, source_paths, top_module_name);
+    auto result = oombak_parser_parse_r(ctx, source_paths, top_level_module_name);
     auto is_error = result.is_error;
     oombak_parser_free_ctx(ctx);
     return is_error;

@@ -39,10 +39,10 @@ class Exception : public std::exception
 class InstanceTreeBuilder : public ASTVisitor<InstanceTreeBuilder, true, true>
 {
   public:
-    InstanceTreeBuilder(oombak_parser_instance_t *root_instance, std::string_view top_module_name)
+    InstanceTreeBuilder(oombak_parser_instance_t *root_instance, std::string_view top_level_module_name)
     {
         this->root_instance = root_instance;
-        this->top_module_name = top_module_name;
+        this->top_level_module_name = top_level_module_name;
         root_instance->parent_instance = NULL;
         root_instance->name = NULL;
         root_instance->module_name = NULL;
@@ -74,7 +74,7 @@ class InstanceTreeBuilder : public ASTVisitor<InstanceTreeBuilder, true, true>
         {
             return;
         }
-        else if (module_name(s) == top_module_name)
+        else if (module_name(s) == top_level_module_name)
         {
             try
             {
@@ -97,7 +97,7 @@ class InstanceTreeBuilder : public ASTVisitor<InstanceTreeBuilder, true, true>
 
   private:
     oombak_parser_instance_t *root_instance;
-    std::string_view top_module_name;
+    std::string_view top_level_module_name;
     oombak_parser_error_t error;
 
     void visitInstance(const InstanceSymbol &symbol, oombak_parser_instance_t *instance)

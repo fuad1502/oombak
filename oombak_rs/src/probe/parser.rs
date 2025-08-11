@@ -7,15 +7,15 @@ use std::{
 
 use crate::{probe, OombakResult};
 
-pub fn parse(source_paths: &[String], top_module_name: &str) -> OombakResult<InstanceNode> {
+pub fn parse(source_paths: &[String], top_level_module_name: &str) -> OombakResult<InstanceNode> {
     let source_paths = CString::new(source_paths.join(":"))?;
-    let top_module_name = CString::new(top_module_name)?;
+    let top_level_module_name = CString::new(top_level_module_name)?;
     let ctx = unsafe { oombak_parser_sys::oombak_parser_get_ctx() };
     let parse_res = unsafe {
         oombak_parser_sys::oombak_parser_parse_r(
             ctx,
             source_paths.as_ptr(),
-            top_module_name.as_ptr(),
+            top_level_module_name.as_ptr(),
         )
     };
     let result = InstanceNode::try_from(parse_res);
@@ -55,8 +55,8 @@ pub enum Error {
     NullDereference,
     #[error("file not found")]
     FileNotFound,
-    #[error("top module not found")]
-    TopModuleNotFound,
+    #[error("top-level module not found")]
+    TopLevelModuleNotFound,
     #[error("failed to compile")]
     FailedToCompile,
     #[error("found unsupported symbol type")]
@@ -104,7 +104,9 @@ impl TryFrom<oombak_parser_sys::Result> for InstanceNode {
         if value.is_error > 0 {
             return match unsafe { value.instance_or_error.error } {
                 oombak_parser_sys::Error::FileNotFound => Err(Error::FileNotFound.into()),
-                oombak_parser_sys::Error::TopModuleNotFound => Err(Error::TopModuleNotFound.into()),
+                oombak_parser_sys::Error::TopLevelModuleNotFound => {
+                    Err(Error::TopLevelModuleNotFound.into())
+                }
                 oombak_parser_sys::Error::CompileError => Err(Error::FailedToCompile.into()),
                 oombak_parser_sys::Error::UnsupportedSymbolType => {
                     Err(Error::UnsupportedSymbolType.into())
@@ -358,7 +360,7 @@ mod test {
         let e = parse(&source_paths, "invalid_module").unwrap_err();
         assert_eq!(
             &e.to_string(),
-            "oombak_rs: probe: parse: top module not found"
+            "oombak_rs: probe: parse: top-level module not found"
         );
     }
 
