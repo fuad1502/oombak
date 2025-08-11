@@ -117,4 +117,25 @@ Typically, you would open the terminal to inspect previous outputs, as shown abo
 
 ### Interacting with your simulation
 
-## UI ramework design
+There are several commands that you can invoke to interact with the simulation:
+
+| Command      | parameters                                             | description                                    |
+| :----------- | :----------------------------------------------------- | :--------------------------------------------- |
+| run          | duration                                               | run the simulation for as long as the duration |
+| set          | signal name, value                                     | sets the signal value                          |
+| set-periodic | signal name, period, low state value, high state value | set period signal value                        |
+
+> [!TIP] 
+> All available commands can be listed by invoking the `help` command. 
+
+If you prefer, you can also set signal values through the user interface. Scroll through available signals (by moving up or down) to focus on a signal, and press `<enter>`. This will open up a window for configuring the signal properties for that signal. Not only can you set the signal value, you can also configure how you would like the signal waveform to be displayed:
+
+![]()
+
+### Probe editing
+
+When you first load your design, only top level signals are displayed. If you would like to display internal signals, you can do so with the *probe editor*. Open the *probe editor* by pressing `s`, browse through the hierarchy and press `<enter>` on signals you would like to add (or remove, once added). Once you've made your selection, close the *probe editor* (`q`): 
+
+![]()
+
+## UI framework design
