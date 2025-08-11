@@ -430,7 +430,7 @@ impl InstanceHierViewer {
         frame.render_widget(Text::from(lines), inner_area);
     }
 
-    fn item_detail_lines(&self) -> Vec<Line> {
+    fn item_detail_lines(&self) -> Vec<Line<'_>> {
         if let Some(item) = self.get_selected_item() {
             match item {
                 HierItem::Instance(node) => Self::instance_detail_lines(node.read().unwrap()),
