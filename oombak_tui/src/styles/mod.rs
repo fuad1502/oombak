@@ -33,7 +33,7 @@ pub mod file_explorer {
 pub mod terminal {
     use super::*;
 
-    pub const COMMAND_LINE_STYLE: Style = Style::new().bg(Color::Blue).fg(Color::Reset);
+    pub const COMMAND_LINE_STYLE: Style = Style::new().bg(Color::Blue).fg(Color::White);
     pub const COMMAND_LINE_HEADER_STYLE: Style = Style::new().fg(Color::Black).bg(Color::Yellow);
     pub const NORMAL_OUTPUT_STYLE: Style = Style::new().fg(Color::Green);
     pub const NOTIFICATION_OUTPUT_STYLE: Style = Style::new().fg(Color::Gray);
@@ -45,9 +45,9 @@ pub mod wave_viewer {
     use super::*;
 
     pub const WAVEFORM_STYLE: Style = Style::new().fg(Color::White);
-    pub const TIMEBAR_STYLE: Style = Style::new();
-    pub const CURSOR_STYLE: Style = Style::new().bg(Color::Magenta);
-    pub const TIME_INDICATOR_STYLE: Style = Style::new().fg(Color::Black).bg(Color::Magenta);
+    pub const TIMEBAR_STYLE: Style = Style::new().fg(Color::White);
+    pub const CURSOR_STYLE: Style = Style::new().bg(Color::DarkGray);
+    pub const TIME_INDICATOR_STYLE: Style = Style::new().fg(Color::White).bg(Color::DarkGray);
     pub const SELECTED_WAVEFORM_STYLE: Style = Style::new().fg(Color::Green);
 }
 
@@ -56,10 +56,9 @@ pub mod signals_viewer {
 
     pub const SELECTED_SIGNAL_STYLE: Style = Style::new().bg(Color::DarkGray);
     pub const SIGNAL_NAME_STYLE: Style = Style::new().fg(Color::White).add_modifier(Modifier::BOLD);
-    pub const SIGNAL_WIDTH_STYLE: Style = Style::new().fg(Color::LightGreen);
-    pub const SIGNAL_VALUE_STYLE: Style = Style::new()
-        .fg(Color::LightYellow)
-        .add_modifier(Modifier::ITALIC);
+    pub const SIGNAL_WIDTH_STYLE: Style = Style::new().fg(Color::Blue);
+    pub const SIGNAL_VALUE_STYLE: Style =
+        Style::new().fg(Color::Green).add_modifier(Modifier::ITALIC);
 }
 
 pub mod instance_hier_viewer {
