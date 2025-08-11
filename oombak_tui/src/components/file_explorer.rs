@@ -10,7 +10,7 @@ use crossterm::event::{KeyCode, KeyEvent};
 use file_type::FileType;
 use ratatui::{
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style, Styled, Stylize},
+    style::{Modifier, Style, Styled, Stylize},
     text::{Line, Span, Text},
     widgets::{Block, BorderType, List, ListItem, ListState},
     Frame,
@@ -19,7 +19,10 @@ use ratatui::{
 use crate::{
     component::{Component, HandleResult},
     styles::{
-        file_explorer::{DIR_ITEM_STYLE, FILE_ITEM_STYLE},
+        file_explorer::{
+            DIRECTORY_FILE_TYPE_STYLE, DIR_ITEM_STYLE, ERROR_FILE_TYPE_STYLE, FILE_ITEM_STYLE,
+            FILE_PREVIEW_TAB_WIDTH, OTHER_DETAILED_TYPE_STYLE, SYSTEM_VERILOG_DETAILED_TYPE_STYLE,
+        },
         global::SELECTED_ITEM_STYLE,
     },
     threads::RendererMessage,
@@ -164,8 +167,10 @@ impl FileExplorer {
 
     fn move_into_dir(&mut self, idx: usize) {
         let dir = &self.entries[idx];
-        self.path.push(dir);
-        self.refresh_list();
+        if fs::read_dir(dir).is_ok() {
+            self.path.push(dir);
+            self.refresh_list();
+        }
     }
 
     fn load_file(&self, idx: usize) {
@@ -214,7 +219,7 @@ impl FileExplorer {
         frame.render_widget(Text::from(lines), inner_area);
     }
 
-    fn file_detail_lines(&self) -> Vec<Line> {
+    fn file_detail_lines(&self) -> Vec<Line<'_>> {
         if let Some(file_path) = self.highlighted_file_path() {
             let file_name = Self::file_name_from_path(file_path);
             let (file_type, detailed_type) = Self::file_type_from_path(file_path);
@@ -223,7 +228,9 @@ impl FileExplorer {
             let file_type_header = Span::from("File type : ").add_modifier(Modifier::BOLD);
             let file_name = Span::from(file_name);
             let file_type = if &file_type == "Directory" {
-                Span::from(file_type).style(Style::default().fg(Color::Blue))
+                Span::from(file_type).style(DIRECTORY_FILE_TYPE_STYLE)
+            } else if &file_type == "Directory (permission denied)" {
+                Span::from(file_type).style(ERROR_FILE_TYPE_STYLE)
             } else {
                 Span::from(file_type)
             };
@@ -231,9 +238,9 @@ impl FileExplorer {
             let detailed_type_line = if let Some(detailed_type) = detailed_type {
                 let detailed_type_header = Span::from("Details   : ").add_modifier(Modifier::BOLD);
                 let detailed_type = if detailed_type.contains("Verilog") {
-                    Span::from(detailed_type).style(Style::default().fg(Color::Green))
+                    Span::from(detailed_type).style(SYSTEM_VERILOG_DETAILED_TYPE_STYLE)
                 } else {
-                    Span::from(detailed_type).style(Style::default().fg(Color::Red))
+                    Span::from(detailed_type).style(OTHER_DETAILED_TYPE_STYLE)
                 };
                 Line::from(vec![detailed_type_header, detailed_type])
             } else {
@@ -263,8 +270,14 @@ impl FileExplorer {
     }
 
     fn file_type_from_path(file_path: &Path) -> (String, Option<String>) {
-        if file_path.is_dir() {
-            ("Directory".to_string(), None)
+        if file_path.try_exists().is_err() {
+            ("Unknown".to_string(), None)
+        } else if file_path.is_dir() {
+            if fs::read_dir(file_path).is_err() {
+                ("Directory (permission denied)".to_string(), None)
+            } else {
+                ("Directory".to_string(), None)
+            }
         } else if file_path.is_symlink() {
             let link_path = std::fs::read_link(file_path).unwrap();
             if file_path.exists() {
@@ -287,21 +300,26 @@ impl FileExplorer {
     }
 
     fn detailed_file_type_from_path(file_path: &Path) -> String {
-        FileType::try_from_file(file_path)
-            .expect("file not found")
-            .name()
-            .to_string()
+        if let Ok(file_type) = FileType::try_from_file(file_path) {
+            file_type.name().to_string()
+        } else {
+            "Unknown".to_string()
+        }
     }
 
     fn render_file_preview(&self, frame: &mut Frame, area: Rect) {
         let block = Block::bordered().border_type(BorderType::Rounded);
         let inner_area = block.inner(area);
-        let lines = self.file_preview_lines(inner_area.height as usize);
+        let lines = self.file_preview_lines(inner_area.height as usize, inner_area.width as usize);
         frame.render_widget(block, area);
         frame.render_widget(Text::from(lines), inner_area);
     }
 
-    fn file_preview_lines(&self, max_num_of_lines: usize) -> Vec<Line> {
+    fn file_preview_lines(
+        &self,
+        max_num_of_lines: usize,
+        max_num_of_chars_per_line: usize,
+    ) -> Vec<Line<'_>> {
         if let Some(true) = self.is_highlighted_file_text_file() {
             let file_path = self.highlighted_file_path().unwrap();
             let file = std::fs::File::open(file_path).unwrap();
@@ -309,7 +327,9 @@ impl FileExplorer {
             reader
                 .lines()
                 .take(max_num_of_lines)
-                .filter_map(|l| l.ok())
+                .map(Result::unwrap)
+                .map(format_text)
+                .map(|s| truncate(s, max_num_of_chars_per_line))
                 .map(Line::from)
                 .collect()
         } else {
@@ -320,6 +340,10 @@ impl FileExplorer {
     fn is_highlighted_file_text_file(&self) -> Option<bool> {
         if let Some(file_path) = self.highlighted_file_path() {
             if file_path.is_dir() {
+                return Some(false);
+            }
+
+            if FileType::try_from_file(file_path).is_err() {
                 return Some(false);
             }
 
@@ -373,4 +397,24 @@ impl FileExplorer {
     fn notify_render(&self) {
         self.message_tx.send(RendererMessage::Render).unwrap();
     }
+}
+
+fn format_text(text: String) -> String {
+    let mut formatted_string = String::new();
+    for ch in text.chars() {
+        if ch.is_control() {
+            if ch == '\t' {
+                let current_pos = formatted_string.len();
+                let num_of_spaces = FILE_PREVIEW_TAB_WIDTH - current_pos % FILE_PREVIEW_TAB_WIDTH;
+                formatted_string.push_str(&" ".repeat(num_of_spaces));
+            }
+        } else {
+            formatted_string.push(ch);
+        }
+    }
+    formatted_string
+}
+
+fn truncate(text: String, n: usize) -> String {
+    text.chars().take(n).collect()
 }

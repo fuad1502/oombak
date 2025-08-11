@@ -21,6 +21,13 @@ pub mod file_explorer {
 
     pub const DIR_ITEM_STYLE: Style = Style::new().fg(Color::Green);
     pub const FILE_ITEM_STYLE: Style = Style::new();
+    pub const ERROR_FILE_TYPE_STYLE: Style =
+        Style::new().fg(Color::Red).add_modifier(Modifier::BOLD);
+    pub const DIRECTORY_FILE_TYPE_STYLE: Style = Style::new().fg(Color::Blue);
+    pub const SYSTEM_VERILOG_DETAILED_TYPE_STYLE: Style = Style::new().fg(Color::Green);
+    pub const OTHER_DETAILED_TYPE_STYLE: Style = Style::new().fg(Color::Cyan);
+
+    pub const FILE_PREVIEW_TAB_WIDTH: usize = 8;
 }
 
 pub mod terminal {
