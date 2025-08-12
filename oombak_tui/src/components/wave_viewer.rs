@@ -138,6 +138,7 @@ impl WaveViewer {
         render_area_width: u16,
         scroll_state: &mut ScrollState,
     ) -> Vec<ListItem<'a>> {
+        let number_of_items = self.get_simulation().wave_specs.len();
         self.get_simulation()
             .wave_specs
             .iter()
@@ -147,6 +148,7 @@ impl WaveViewer {
                     ws,
                     scroll_state,
                     Some(i) == self.selected_idx,
+                    i == number_of_items - 1,
                     render_area_width,
                 )
             })
@@ -158,6 +160,7 @@ impl WaveViewer {
         wave_spec: &WaveSpec,
         scroll_state: &mut ScrollState,
         is_selected: bool,
+        is_last: bool,
         render_area_width: u16,
     ) -> ListItem<'a> {
         let border_set = symbols::border::Set {
@@ -172,6 +175,11 @@ impl WaveViewer {
             .block(block)
             .selected_style(SELECTED_WAVEFORM_STYLE)
             .selected(is_selected);
+        let waveform = if is_last {
+            waveform
+        } else {
+            waveform.extend_cursor_highlight()
+        };
         let list_item_height = (wave_spec.height * 2 + 1) + 1;
         let mut draw_buffer = Buffer::empty(Rect::new(0, 0, render_area_width, list_item_height));
         waveform.render(draw_buffer.area, &mut draw_buffer, scroll_state);

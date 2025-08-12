@@ -26,6 +26,7 @@ pub struct Waveform<'a> {
     block: Option<Block<'a>>,
     selected_style: Style,
     is_selected: bool,
+    is_cursor_highlight_extended: bool,
 }
 
 impl<'a> Waveform<'a> {
@@ -36,6 +37,7 @@ impl<'a> Waveform<'a> {
             block: None,
             selected_style: Style::default(),
             is_selected: false,
+            is_cursor_highlight_extended: false,
         }
     }
 
@@ -56,6 +58,11 @@ impl<'a> Waveform<'a> {
 
     pub fn block(mut self, block: Block<'a>) -> Self {
         self.block = Some(block);
+        self
+    }
+
+    pub fn extend_cursor_highlight(mut self) -> Self {
+        self.is_cursor_highlight_extended = true;
         self
     }
 }
@@ -82,7 +89,12 @@ impl StatefulWidget for Waveform<'_> {
         };
         let inner_area = self.block.inner_if_some(area);
         self.render_lines(&lines, inner_area, buf);
-        self.add_cursor_highlight(buf, inner_area, state.selected_position(), area.height);
+        self.add_cursor_highlight(
+            buf,
+            inner_area,
+            state.selected_position(),
+            self.cursor_highlight_height(inner_area),
+        );
         self.block.render(area, buf);
     }
 }
@@ -114,6 +126,14 @@ impl Waveform<'_> {
 
     fn unit_width(&self) -> usize {
         NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(self.zoom as u32)
+    }
+
+    fn cursor_highlight_height(&self, area: Rect) -> u16 {
+        if self.is_cursor_highlight_extended {
+            area.height + 1
+        } else {
+            area.height
+        }
     }
 
     fn digital_plot(
