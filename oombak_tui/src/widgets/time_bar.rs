@@ -137,7 +137,7 @@ impl std::fmt::Display for TimeUnit {
 mod test {
     use ratatui::{buffer::Buffer, layout::Rect, widgets::StatefulWidget};
 
-    use crate::styles::wave_viewer::{CURSOR_STYLE, TIME_INDICATOR_STYLE};
+    use crate::styles::wave_viewer::{CURSOR_STYLE, TIMEBAR_STYLE, TIME_INDICATOR_STYLE};
 
     use super::{ScrollState, TimeBar};
 
@@ -158,6 +158,7 @@ mod test {
         expected.area = area;
         expected.set_style(Rect::new(X0, Y0, 12, 1), TIME_INDICATOR_STYLE);
         expected.set_style(Rect::new(X0, Y0 + 1, 1, 2), CURSOR_STYLE);
+        expected.set_style(Rect::new(X0, Y0 + 1, area.width, 2), TIMEBAR_STYLE);
 
         assert_eq!(buf, expected);
     }
@@ -180,6 +181,7 @@ mod test {
         expected.area = area;
         expected.set_style(Rect::new(X0, Y0, 12, 1), TIME_INDICATOR_STYLE);
         expected.set_style(Rect::new(X0 + 10, Y0 + 1, 1, 2), CURSOR_STYLE);
+        expected.set_style(Rect::new(X0, Y0 + 1, area.width, 2), TIMEBAR_STYLE);
 
         assert_eq!(buf, expected);
     }
@@ -202,6 +204,7 @@ mod test {
         expected.area = area;
         expected.set_style(Rect::new(X0, Y0, 12, 1), TIME_INDICATOR_STYLE);
         expected.set_style(Rect::new(X0 + 49, Y0 + 1, 1, 2), CURSOR_STYLE);
+        expected.set_style(Rect::new(X0, Y0 + 1, area.width, 2), TIMEBAR_STYLE);
 
         assert_eq!(buf, expected);
     }
@@ -227,6 +230,7 @@ mod test {
         expected.area = area;
         expected.set_style(Rect::new(X0, Y0, 12, 1), TIME_INDICATOR_STYLE);
         expected.set_style(Rect::new(X0 + 44, Y0 + 1, 1, 2), CURSOR_STYLE);
+        expected.set_style(Rect::new(X0, Y0 + 1, area.width, 2), TIMEBAR_STYLE);
 
         assert_eq!(buf, expected);
     }
@@ -252,6 +256,7 @@ mod test {
         expected.area = area;
         expected.set_style(Rect::new(X0, Y0, 12, 1), TIME_INDICATOR_STYLE);
         expected.set_style(Rect::new(X0, Y0 + 1, 1, 2), CURSOR_STYLE);
+        expected.set_style(Rect::new(X0, Y0 + 1, area.width, 2), TIMEBAR_STYLE);
 
         assert_eq!(buf, expected);
     }
@@ -274,6 +279,7 @@ mod test {
         expected.area = area;
         expected.set_style(Rect::new(X0, Y0, 12, 1), TIME_INDICATOR_STYLE);
         expected.set_style(Rect::new(X0 + 48, Y0 + 1, 1, 2), CURSOR_STYLE);
+        expected.set_style(Rect::new(X0, Y0 + 1, area.width, 2), TIMEBAR_STYLE);
 
         assert_eq!(buf, expected);
     }
