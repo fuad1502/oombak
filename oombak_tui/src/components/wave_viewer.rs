@@ -16,7 +16,7 @@ use crate::{
 
 use super::models::{SimulationSpec, WaveSpec};
 
-const NUMBER_OF_CELLS_PER_UNIT_TIME: usize = 3;
+const NUMBER_OF_CELLS_PER_UNIT_TIME: usize = 1;
 
 #[derive(Default)]
 pub struct WaveViewer {
@@ -84,8 +84,7 @@ impl WaveViewer {
     pub fn get_highlighted_unit_time(&self) -> usize {
         let absolute_highlight_position =
             self.scroll_state.start_position() + self.scroll_state.selected_position();
-        let zoom = self.get_simulation().zoom;
-        absolute_highlight_position / (NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(zoom as u32))
+        absolute_highlight_position / self.unit_width()
     }
 
     pub fn render_mut(&mut self, f: &mut Frame, rect: Rect) {
@@ -111,17 +110,16 @@ impl WaveViewer {
     }
 
     fn update_scroll_state_content_length(&mut self) {
-        let zoom = self.get_simulation().zoom;
         let total_time = self.get_simulation().total_time;
-        let content_length = NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(zoom as u32) * total_time;
+        let content_length = self.unit_width() * total_time;
         self.scroll_state.set_content_length(content_length);
     }
 
     fn calculate_preferred_tick(&self) -> (usize, f64) {
-        let multiplier = Self::nearest_power_of_2_multiplier(NUMBER_OF_CELLS_PER_UNIT_TIME, 10);
+        let multiplier = Self::nearest_power_of_2_multiplier(NUMBER_OF_CELLS_PER_UNIT_TIME, 16);
         let tick_count = NUMBER_OF_CELLS_PER_UNIT_TIME * multiplier;
-        let zoom = self.get_simulation().zoom;
-        let tick_period = multiplier as f64 / 2usize.pow(zoom as u32) as f64;
+        let tick_period =
+            multiplier as f64 / (self.unit_width() / NUMBER_OF_CELLS_PER_UNIT_TIME) as f64;
         (tick_count, tick_period)
     }
 
@@ -205,5 +203,10 @@ impl WaveViewer {
 
     fn get_simulation_mut(&mut self) -> RwLockWriteGuard<'_, SimulationSpec> {
         self.simulation.write().unwrap()
+    }
+
+    fn unit_width(&self) -> usize {
+        let zoom = self.get_simulation().zoom;
+        NUMBER_OF_CELLS_PER_UNIT_TIME * 2usize.pow(zoom as u32)
     }
 }

@@ -29,7 +29,7 @@ impl SimulationSpec {
             wave_specs: vec![],
             total_time: simulation_result.current_time,
             time_step_ps: 1,
-            zoom: 1,
+            zoom: 2,
         };
         spec.wave_specs = simulation_result
             .waves
