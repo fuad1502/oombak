@@ -8,7 +8,7 @@
 > [!NOTE]
 > Currently, *Oombak* uses [Verilator](https://github.com/verilator/verilator) and [slang](https://github.com/MikePopoloski/slang) to simulate and parse your SystemVerilog source, respectively.
 
-Here's a demo showing off some of *Oombak*'s features:
+Here's a demo, simulating a [QAM16 modulator](https://github.com/fuad1502/qam16-modulator-generator), to show some of *Oombak*'s features:
 
 ![demo.gif](https://github.com/fuad1502/oombak/blob/master/doc/demo.gif?raw=true)
 
