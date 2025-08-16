@@ -35,7 +35,7 @@ If you already have [rustup](https://www.rust-lang.org/learn/get-started), simpl
 
 ```sh
 rustup update
-cargo install oombak
+cargo install oombak_tui
 ```
 You can also install our pre-built binaries from the [Release page](https://github.com/fuad1502/oombak/releases).
 
