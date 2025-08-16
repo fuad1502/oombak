@@ -25,7 +25,7 @@ This project is comprised of several Rust *crates*:
 
 - **oombak_sim** and **oombak_local_sim**: *Oombak*'s simulator "backend". Currently, it runs on the same process as the UI's. However, I am planning to support remote server feature in the future.
 
-- **oombak_tui**: *Oombak*. *Oombak* uses [ratatui](https://github.com/ratatui/ratatui) library for the terminal drawing primitives. For the UI framework, I decided to implement my own. Learn more about the design [here](). I also made many interesting widgets that I am planning to put into a separate library crate. 
+- **oombak_tui**: *Oombak*. *Oombak* uses [ratatui](https://github.com/ratatui/ratatui) library for the terminal drawing primitives. For the UI framework, I decided to implement my own. Learn more about the design [here](#ui-framework-design). I also made many interesting widgets that I am planning to put into a separate library crate. 
 
 ## Installation
 
@@ -140,3 +140,6 @@ When you first load your design, only top level signals are displayed. If you wo
 ![probe_editor.gif](https://github.com/fuad1502/oombak/blob/master/doc/probe_editor.gif?raw=true)
 
 ## UI framework design
+
+> [!NOTE]
+> To be written.
