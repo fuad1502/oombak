@@ -2,6 +2,7 @@
 ---
 
 [![CI](https://github.com/fuad1502/oombak/actions/workflows/CI.yml/badge.svg)](https://github.com/fuad1502/oombak/actions/workflows/CI.yml)
+[![Crates.io](https://img.shields.io/crates/v/oombak_tui.svg)](https://crates.io/crates/oombak_tui)
 
 *Oombak (/ˈɔmbak/, "waves" in Indonesian)* is an interactive SystemVerilog simulator UI that runs on your terminal!
 
