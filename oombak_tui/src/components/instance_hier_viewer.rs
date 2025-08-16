@@ -9,7 +9,7 @@ use oombak_sim::{InstanceNode, Signal};
 use ratatui::layout::Rect;
 use ratatui::style::Stylize;
 use ratatui::text::{Span, Text};
-use ratatui::widgets::{Block, BorderType, Clear};
+use ratatui::widgets::{Block, BorderType};
 use ratatui::Frame;
 use ratatui::{
     layout::{Alignment, Constraint, Layout},
@@ -232,53 +232,7 @@ impl InstanceHierViewer {
     }
 
     fn render_confirmation_box(&mut self, f: &mut Frame, rect: Rect) {
-        let popup_area = Self::get_popup_area_centered(rect, 3, 6, 30, 8);
-        f.render_widget(Clear, popup_area);
-        self.confirmer.write().unwrap().render(f, popup_area);
-    }
-
-    fn get_popup_area_centered(
-        rect: Rect,
-        vert_margin: u16,
-        hor_margin: u16,
-        max_width: u16,
-        max_height: u16,
-    ) -> Rect {
-        let vert_margin = (vert_margin as i64 * 2)
-            .max(rect.height as i64 - max_height as i64 - vert_margin as i64)
-            / 2;
-        let hor_margin = (hor_margin as i64 * 2)
-            .max(rect.width as i64 - max_width as i64 - hor_margin as i64)
-            / 2;
-        Self::get_popup_area(
-            rect,
-            vert_margin as u16,
-            hor_margin as u16,
-            vert_margin as u16,
-            hor_margin as u16,
-        )
-    }
-
-    fn get_popup_area(
-        rect: Rect,
-        top_margin: u16,
-        right_margin: u16,
-        bottom_margin: u16,
-        left_margin: u16,
-    ) -> Rect {
-        let chunks = Layout::vertical(vec![
-            Constraint::Length(top_margin),
-            Constraint::Min(0),
-            Constraint::Length(bottom_margin),
-        ])
-        .split(rect);
-        let chunks = Layout::horizontal(vec![
-            Constraint::Length(left_margin),
-            Constraint::Min(0),
-            Constraint::Length(right_margin),
-        ])
-        .split(chunks[1]);
-        chunks[1]
+        self.confirmer.write().unwrap().render(f, rect);
     }
 
     fn get_flattened_hierarchy(

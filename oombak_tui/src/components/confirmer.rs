@@ -6,13 +6,14 @@ use std::{
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::Rect,
-    widgets::{Paragraph, Wrap},
+    widgets::{Block, BorderType, Clear, Paragraph, Wrap},
     Frame,
 };
 
 use crate::{
     component::{Component, HandleResult},
     threads::RendererMessage,
+    utils::layout::get_popup_area_centered,
     widgets::{ConfirmationBox, ConfirmationState, KeyDesc, KeyId, KeyMaps},
 };
 
@@ -70,9 +71,26 @@ impl Confirmer {
 
 impl Component for Confirmer {
     fn render(&mut self, f: &mut Frame, rect: Rect) {
+        let text_height = self.text.lines().count();
+        let maximum_text_width = self.text.lines().map(|l| l.len()).max().unwrap_or(0);
+        // confirmation button + padding + top & bottom border heights = 4
+        let height = (text_height + 4) as u16;
+        let height = height.min(rect.height.saturating_sub(2));
+        // left & right border widths = 2
+        let width = maximum_text_width + 2;
+        let width = width.max(20) as u16;
+        let width = width.min(rect.width.saturating_sub(2));
+
+        let popup_area = get_popup_area_centered(rect, width, height);
+        let block = Block::bordered().border_type(BorderType::Rounded);
+        let text_area = block.inner(popup_area);
+
         let text = Paragraph::new(&self.text[..]).wrap(Wrap { trim: false });
         let confirm_box = ConfirmationBox::new(&text);
-        f.render_stateful_widget(confirm_box, rect, &mut self.highlighted_state);
+
+        f.render_widget(Clear, popup_area);
+        f.render_widget(block, popup_area);
+        f.render_stateful_widget(confirm_box, text_area, &mut self.highlighted_state);
     }
 
     fn handle_key_event(&mut self, key_event: &KeyEvent) -> HandleResult {
