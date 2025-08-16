@@ -390,7 +390,7 @@ mod test {
     fn test_syntax_error() {
         let source_paths = [format!("{}/syntax_error/sample.sv", fixtures_path())];
         let e = parse(&source_paths, "sample").unwrap_err();
-        assert_eq!(&e.to_string(), "oombak_rs: probe: parse: failed to compile: oombak_parser/tests/fixtures/syntax_error/sample.sv:9:3: error: use of undeclared identifier 'ire'\n  ire d;\n  ^~~\n");
+        assert_eq!(&e.to_string(), "oombak_rs: probe: parse: failed to compile:\noombak_parser/tests/fixtures/syntax_error/sample.sv:9:3: error: use of undeclared identifier 'ire'\n  ire d;\n  ^~~\n");
     }
 
     #[test]
