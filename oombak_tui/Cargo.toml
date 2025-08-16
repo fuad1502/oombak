@@ -6,6 +6,7 @@ description.workspace = true
 authors.workspace = true
 license-file.workspace = true
 repository.workspace = true
+readme.workspace = true
 
 [dependencies]
 bitvec = "1.0.1"
