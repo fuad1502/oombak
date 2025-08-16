@@ -1,4 +1,5 @@
-# Oombak 🌊
+![oombak_banner.png](https://github.com/fuad1502/oombak/blob/master/doc/oombak_banner.png?raw=true)
+#
 
 [![CI](https://github.com/fuad1502/oombak/actions/workflows/CI.yml/badge.svg)](https://github.com/fuad1502/oombak/actions/workflows/CI.yml)
 
