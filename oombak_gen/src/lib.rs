@@ -51,7 +51,8 @@ impl Builder {
     }
 
     pub fn build(self, sv_path: &Path) -> OombakGenResult<(TempGenDir, Probe)> {
-        let source_paths: Vec<String> = source_paths_from_sv_path(sv_path)?
+        let sv_path = get_absolute_canonicalized_path(sv_path)?;
+        let source_paths: Vec<String> = source_paths_from_sv_path(&sv_path)?
             .iter()
             .map(|p| p.to_string_lossy().to_string())
             .collect();
@@ -66,7 +67,7 @@ impl Builder {
         };
         let probe = Probe::try_from(&source_paths, &top_level_module_name)?;
 
-        Ok((self.build_with_probe(sv_path, &probe)?, probe))
+        Ok((self.build_with_probe(&sv_path, &probe)?, probe))
     }
 
     pub fn build_with_probe(
@@ -153,19 +154,28 @@ fn source_paths_from_sv_path(sv_path: &Path) -> OombakGenResult<Vec<PathBuf>> {
         return Err(Error::SvFilePathNotFound(sv_path.to_path_buf()));
     }
     let mut source_paths = vec![];
-    source_paths.push(sv_path.to_path_buf());
     let parent_dir = sv_path
         .parent()
         .ok_or(Error::InvalidPath(sv_path.to_path_buf()))?;
     for file in std::fs::read_dir(parent_dir)? {
         let file = file?;
         if let Some(ext) = file.path().extension() {
-            if ext == "sv" && file.path() != sv_path {
+            if ext == "sv" {
                 source_paths.push(file.path())
             }
         }
     }
     Ok(source_paths)
+}
+
+fn get_absolute_canonicalized_path(sv_path: &Path) -> OombakGenResult<PathBuf> {
+    if sv_path.is_relative() {
+        let mut current_dir = std::env::current_dir()?;
+        current_dir.push(sv_path);
+        Ok(std::fs::canonicalize(current_dir)?)
+    } else {
+        Ok(std::fs::canonicalize(PathBuf::from(sv_path))?)
+    }
 }
 
 impl TempGenDir {

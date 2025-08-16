@@ -4,7 +4,7 @@ pub type OombakGenResult<T> = Result<T, Error>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error(".sv file path not found: ")]
+    #[error(".sv file path not found: {}", _0.to_string_lossy())]
     SvFilePathNotFound(PathBuf),
     #[error("invalid path given: {}", _0.to_string_lossy())]
     InvalidPath(PathBuf),
