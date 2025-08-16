@@ -68,6 +68,10 @@ extern "C"
     OOMBAK_PARSER_EXPORT oombak_parser_result_t oombak_parser_parse_r(oombak_parser_ctx_t ctx, const char *source_paths,
                                                                       const char *top_level_module_name);
 
+    OOMBAK_PARSER_EXPORT const char *oombak_parser_get_last_diagnostics();
+
+    OOMBAK_PARSER_EXPORT const char *oombak_parser_get_last_diagnostics_r(oombak_parser_ctx_t ctx);
+
     OOMBAK_PARSER_EXPORT void oombak_parser_free_ctx(oombak_parser_ctx_t ctx);
 
 #ifdef __cplusplus

@@ -1,12 +1,15 @@
 #include "oombak_parser.h"
 
+#include <cstdio>
 #include <cstdlib>
-#include <iostream>
 #include <string_view>
 
 #include "instance_tree_builder.hpp"
 #include "slang/ast/Compilation.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
+#include "slang/diagnostics/DiagnosticEngine.h"
+#include "slang/diagnostics/NumericDiags.h"
+#include "slang/diagnostics/TextDiagnosticClient.h"
 #include "slang/syntax/SyntaxTree.h"
 
 using slang::ast::Compilation;
@@ -30,9 +33,13 @@ class OombakParser
     ~OombakParser();
     std::variant<oombak_parser_instance_t *, oombak_parser_error_t> get_instance_tree(
         const std::vector<std::string_view> &source_paths, std::string_view top_level_module_name);
+    std::string get_last_diagnostics();
 
   private:
     oombak_parser_instance_t root_instance;
+    std::string last_diagnostics;
+
+    void set_last_diagnostics(Compilation &compilation);
 
     static std::optional<oombak_parser_error_t> add_syntax_trees(Compilation &compilation,
                                                                  const std::vector<std::string_view> &source_paths);
@@ -63,6 +70,7 @@ std::variant<oombak_parser_instance_t *, oombak_parser_error_t> OombakParser::ge
     InstanceTreeBuilder visitor(&root_instance, top_level_module_name);
     Compilation compilation;
     RETURN_ON_ERROR(add_syntax_trees(compilation, source_paths));
+    set_last_diagnostics(compilation);
     RETURN_ON_ERROR(check_compilation(compilation));
     compilation.getRoot().visit(visitor);
     if (visitor.has_error())
@@ -101,6 +109,18 @@ std::optional<oombak_parser_error_t> OombakParser::check_compilation(Compilation
         return OOMBAK_PARSER_ERROR_COMPILE_ERROR;
     }
     return std::nullopt;
+}
+
+void OombakParser::set_last_diagnostics(Compilation &compilation)
+{
+    auto source_manager = compilation.getSourceManager();
+    auto diagnostics = compilation.getAllDiagnostics();
+    last_diagnostics = slang::DiagnosticEngine::reportAll(*source_manager, diagnostics);
+}
+
+std::string OombakParser::get_last_diagnostics()
+{
+    return last_diagnostics;
 }
 
 std::vector<std::string_view> from_colon_separated_paths(const char *colon_separated_paths)
@@ -167,6 +187,17 @@ oombak_parser_result_t oombak_parser_parse_r(oombak_parser_ctx_t ctx, const char
     std::vector<std::string_view> source_paths_vec = OombakParser::from_colon_separated_paths(source_paths);
     auto instance_or_error = parser->get_instance_tree(source_paths_vec, top_level_module_name);
     return instance_or_error_variant_to_result(instance_or_error);
+}
+
+const char *oombak_parser_get_last_diagnostics()
+{
+    return strdup(parser->get_last_diagnostics().c_str());
+}
+
+const char *oombak_parser_get_last_diagnostics_r(oombak_parser_ctx_t ctx)
+{
+    auto parser = (OombakParser::OombakParser *)ctx;
+    return strdup(parser->get_last_diagnostics().c_str());
 }
 
 oombak_parser_result_t instance_or_error_variant_to_result(

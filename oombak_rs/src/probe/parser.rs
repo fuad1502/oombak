@@ -18,9 +18,29 @@ pub fn parse(source_paths: &[String], top_level_module_name: &str) -> OombakResu
             top_level_module_name.as_ptr(),
         )
     };
+    check_compile_error(&parse_res, ctx)?;
     let result = InstanceNode::try_from(parse_res);
     unsafe { oombak_parser_sys::oombak_parser_free_ctx(ctx) };
     result
+}
+
+fn check_compile_error(
+    parse_res: &oombak_parser_sys::Result,
+    ctx: oombak_parser_sys::Context,
+) -> OombakResult<()> {
+    if parse_res.is_error == 1
+        && matches!(
+            unsafe { parse_res.instance_or_error.error },
+            oombak_parser_sys::Error::CompileError
+        )
+    {
+        let error_message = unsafe { oombak_parser_sys::oombak_parser_get_last_diagnostics_r(ctx) };
+        let error_message =
+            String::from_utf8_lossy((unsafe { CStr::from_ptr(error_message) }).to_bytes())
+                .to_string();
+        return Err(Error::FailedToCompile(error_message).into());
+    }
+    Ok(())
 }
 
 #[derive(Default, Debug, Clone)]
@@ -57,8 +77,8 @@ pub enum Error {
     FileNotFound,
     #[error("top-level module not found")]
     TopLevelModuleNotFound,
-    #[error("failed to compile")]
-    FailedToCompile,
+    #[error("failed to compile:\n{}", _0)]
+    FailedToCompile(String),
     #[error("found unsupported symbol type")]
     UnsupportedSymbolType,
     #[error("found unsupported port direction")]
@@ -107,7 +127,9 @@ impl TryFrom<oombak_parser_sys::Result> for InstanceNode {
                 oombak_parser_sys::Error::TopLevelModuleNotFound => {
                     Err(Error::TopLevelModuleNotFound.into())
                 }
-                oombak_parser_sys::Error::CompileError => Err(Error::FailedToCompile.into()),
+                oombak_parser_sys::Error::CompileError => {
+                    Err(Error::FailedToCompile(String::new()).into())
+                }
                 oombak_parser_sys::Error::UnsupportedSymbolType => {
                     Err(Error::UnsupportedSymbolType.into())
                 }
@@ -368,7 +390,7 @@ mod test {
     fn test_syntax_error() {
         let source_paths = [format!("{}/syntax_error/sample.sv", fixtures_path())];
         let e = parse(&source_paths, "sample").unwrap_err();
-        assert_eq!(&e.to_string(), "oombak_rs: probe: parse: failed to compile");
+        assert_eq!(&e.to_string(), "oombak_rs: probe: parse: failed to compile: oombak_parser/tests/fixtures/syntax_error/sample.sv:9:3: error: use of undeclared identifier 'ire'\n  ire d;\n  ^~~\n");
     }
 
     #[test]
