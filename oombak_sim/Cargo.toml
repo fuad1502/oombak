@@ -2,6 +2,7 @@
 name = "oombak_sim"
 version = "0.1.0"
 edition = "2021"
+description = "Oombak's simulator \"backend\" interface."
 authors.workspace = true
 license-file.workspace = true
 repository.workspace = true

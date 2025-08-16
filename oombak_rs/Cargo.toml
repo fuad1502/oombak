@@ -1,7 +1,8 @@
 [package]
 name = "oombak_rs"
-version.workspace = true
+version = "0.1.0"
 edition = "2021"
+description = "Provides two essential structs: `Dut`, which represents a simulation instance of a SystemVerilog design that you can interact with, and `Probe`, which allows you to traverse your design hierarchy and specify active \"probe points\" (signals you would like to inspect)."
 authors.workspace = true
 license-file.workspace = true
 repository.workspace = true

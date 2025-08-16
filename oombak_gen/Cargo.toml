@@ -2,6 +2,7 @@
 name = "oombak_gen"
 version = "0.1.0"
 edition = "2021"
+description = "A library crate that generates, from your SystemVerilog project, a dynamically-linked library (`libdut`) which represents a simulation instance of your design that you can interact with."
 authors.workspace = true
 license-file.workspace = true
 repository.workspace = true
