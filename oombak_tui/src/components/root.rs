@@ -257,7 +257,7 @@ impl Root {
             .borders(Borders::BOTTOM)
             .border_type(BorderType::Thick);
         let line = Line::from(vec![
-            Span::from(" 🌊 Oombak TUI"),
+            Span::from(" 🌊 Oombak"),
             Span::from(" "),
             Span::from(format!("v{}", env!("CARGO_PKG_VERSION"))).style(VERSION_STYLE),
         ])
