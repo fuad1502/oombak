@@ -1,7 +1,7 @@
-use rerun_except::rerun_except;
-
 fn main() {
-    rerun_except(&["build/", "compile_commands.json", ".cache/", "target/"]).unwrap();
+    println!("cargo:rerun-if-changed=oombak_parser/src");
+    println!("cargo:rerun-if-changed=oombak_parser/include");
+    println!("cargo:rerun-if-changed=oombak_parser/CMakeLists.txt");
 
     let dst = cmake::Config::new("oombak_parser").build();
 
