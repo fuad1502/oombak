@@ -8,8 +8,6 @@
 #include "slang/ast/Compilation.h"
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/diagnostics/DiagnosticEngine.h"
-#include "slang/diagnostics/NumericDiags.h"
-#include "slang/diagnostics/TextDiagnosticClient.h"
 #include "slang/syntax/SyntaxTree.h"
 
 using slang::ast::Compilation;
