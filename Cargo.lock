@@ -497,7 +497,7 @@ checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
 
 [[package]]
 name = "oombak_gen"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "oombak_rs",
  "oombak_sim",
@@ -508,7 +508,7 @@ dependencies = [
 
 [[package]]
 name = "oombak_local_sim"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "bitvec",
@@ -521,7 +521,7 @@ dependencies = [
 
 [[package]]
 name = "oombak_rs"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bitvec",
  "cmake",
@@ -532,7 +532,7 @@ dependencies = [
 
 [[package]]
 name = "oombak_sim"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "async-trait",
  "bitvec",
@@ -543,7 +543,7 @@ dependencies = [
 
 [[package]]
 name = "oombak_tui"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bitvec",
  "crossterm",

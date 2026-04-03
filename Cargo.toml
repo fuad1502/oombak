@@ -4,7 +4,7 @@ members = ["oombak_tui", "oombak_rs", "oombak_sim", "oombak_local_sim", "oombak_
 default-members = ["oombak_tui"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 description = "An interactive SystemVerilog simulator that runs on your terminal"
 authors = ["Fuad Ismail <fuad1502@gmail.com>"]
 license-file = "LICENSE"

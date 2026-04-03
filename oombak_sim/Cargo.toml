@@ -1,6 +1,6 @@
 [package]
 name = "oombak_sim"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Oombak's simulator \"backend\" interface."
 authors.workspace = true
@@ -8,7 +8,7 @@ license-file.workspace = true
 repository.workspace = true
 
 [dependencies]
-oombak_rs = { version="0.1.0", path="../oombak_rs" }
+oombak_rs = { version="0.1.1", path="../oombak_rs" }
 bitvec = "1.0.1"
 rand = "0.9.1"
 tokio = { version="1.45.1", features=["sync"] }

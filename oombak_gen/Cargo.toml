@@ -1,6 +1,6 @@
 [package]
 name = "oombak_gen"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A library crate that generates, from your SystemVerilog project, a dynamically-linked library (`libdut`) which represents a simulation instance of your design that you can interact with."
 authors.workspace = true
@@ -9,7 +9,7 @@ repository.workspace = true
 
 [dependencies]
 thiserror = "2.0.9"
-oombak_rs = { version="0.1.0", path="../oombak_rs" }
-oombak_sim = { version="0.1.0", path="../oombak_sim" }
+oombak_rs = { version="0.1.1", path="../oombak_rs" }
+oombak_sim = { version="0.1.1", path="../oombak_sim" }
 tokio = { version="1.45.1", features=["sync"] }
 tempfile = "3.15.0"
