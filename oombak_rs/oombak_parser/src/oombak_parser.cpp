@@ -9,7 +9,9 @@
 #include "slang/ast/symbols/CompilationUnitSymbols.h"
 #include "slang/diagnostics/DiagnosticEngine.h"
 #include "slang/syntax/SyntaxTree.h"
+#include "slang/text/SourceManager.h"
 
+using slang::SourceManager;
 using slang::ast::Compilation;
 using slang::syntax::SyntaxTree;
 
@@ -35,11 +37,13 @@ class OombakParser
 
   private:
     oombak_parser_instance_t root_instance;
+    SourceManager source_manager;
     std::string last_diagnostics;
 
     void set_last_diagnostics(Compilation &compilation);
 
     static std::optional<oombak_parser_error_t> add_syntax_trees(Compilation &compilation,
+                                                                 SourceManager &source_manager,
                                                                  const std::vector<std::string_view> &source_paths);
     static std::optional<oombak_parser_error_t> check_compilation(Compilation &compilation);
     static void free_instance(oombak_parser_instance_t *instance);
@@ -67,7 +71,7 @@ std::variant<oombak_parser_instance_t *, oombak_parser_error_t> OombakParser::ge
     free_instance(&root_instance);
     InstanceTreeBuilder visitor(&root_instance, top_level_module_name);
     Compilation compilation;
-    RETURN_ON_ERROR(add_syntax_trees(compilation, source_paths));
+    RETURN_ON_ERROR(add_syntax_trees(compilation, source_manager, source_paths));
     set_last_diagnostics(compilation);
     RETURN_ON_ERROR(check_compilation(compilation));
     compilation.getRoot().visit(visitor);
@@ -83,13 +87,14 @@ std::variant<oombak_parser_instance_t *, oombak_parser_error_t> OombakParser::ge
 }
 
 std::optional<oombak_parser_error_t> OombakParser::add_syntax_trees(Compilation &compilation,
+                                                                    SourceManager &source_manager,
                                                                     const std::vector<std::string_view> &source_paths)
 {
     try
     {
         for (auto path : source_paths)
         {
-            auto tree = SyntaxTree::fromFile(path).value();
+            auto tree = SyntaxTree::fromFile(path, source_manager).value();
             compilation.addSyntaxTree(tree);
         }
         return std::nullopt;
